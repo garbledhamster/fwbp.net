@@ -33,6 +33,25 @@ html:has(.brand-picker:not([hidden])) { scroll-padding-top: 124px; }
 [data-brand="northwoods"] .episode-art, [data-brand="northwoods"] .guide-cover { border: 2px solid #b39b6c; border-radius: 16px 3px; }
 [data-brand="northwoods"] .field-notes { background: #ede2c5 repeating-linear-gradient(0deg,#6448140a 0 1px,transparent 1px 7px); }
 
+@media (prefers-reduced-motion: no-preference) {
+  [data-brand="northwoods"] body:not([data-reduced]) :is(.surface, .about) { overflow: clip; }
+  [data-brand="northwoods"] body:not([data-reduced]) :is(.surface-art, .ice-art, .below-art) {
+    position: absolute; inset: calc(-1 * var(--travel)) 0 auto;
+    height: calc(100% + 2 * var(--travel));
+    transform: translateY(calc(var(--depth, 0) * var(--travel)));
+  }
+  [data-brand="northwoods"] .surface-art { --travel: 58px; }
+  [data-brand="northwoods"] .ice-art { --travel: 43px; }
+  [data-brand="northwoods"] .below-art { --travel: 80px; }
+  [data-brand="northwoods"] body:not([data-reduced]) .ice-light {
+    animation: none; transform: translateY(calc(var(--depth, 0) * 96px));
+  }
+  [data-brand="northwoods"] body:not([data-reduced]) .walleye {
+    animation: none;
+    transform: translate(calc(var(--depth, 0) * -64px), calc(26px + var(--depth, 0) * 35px));
+  }
+}
+
 /* Instrument readouts and cold water. */
 [data-brand="sonar"] {
   --tent: #091e2e; --lake: #15374e; --deep: #0a2738; --blackwater: #071a29;

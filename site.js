@@ -138,6 +138,7 @@ function applyMotionPreference() {
   motion.disabled = systemMotion.matches;
   motion.setAttribute("aria-pressed", String(reduced));
   document.body.toggleAttribute("data-reduced", reduced);
+  requestScrollUpdate();
 }
 motion.hidden = false;
 motion.addEventListener("click", () => {
@@ -145,20 +146,39 @@ motion.addEventListener("click", () => {
   applyMotionPreference();
 });
 systemMotion.addEventListener("change", applyMotionPreference);
-applyMotionPreference();
 
 const progress = document.querySelector(".scroll-progress");
+const depthScenes = [...document.querySelectorAll(".surface, .ice, .about, .featured")];
+const brandPicker = document.querySelector("#brand-style");
+
+function updateDepth() {
+  if (document.documentElement.dataset.brand !== "northwoods" || reduce || systemMotion.matches) return;
+
+  // Follow each section as it passes through the viewport, from -1 to 1.
+  const viewport = innerHeight;
+  const positions = depthScenes.map(scene => {
+    const { top, height } = scene.getBoundingClientRect();
+    return Math.max(-1, Math.min(1, (viewport - height - 2 * top) / (viewport + height)));
+  });
+  depthScenes.forEach((scene, index) => {
+    scene.style.setProperty("--depth", positions[index].toFixed(3));
+  });
+}
+
 let frame = 0;
-function requestProgress() {
+function requestScrollUpdate() {
   if (frame) return;
   frame = requestAnimationFrame(() => {
     frame = 0;
     const total = document.documentElement.scrollHeight - innerHeight;
     const fraction = total > 0 ? Math.max(0, Math.min(1, scrollY / total)) : 0;
     progress.style.setProperty("--scroll", String(fraction));
+    updateDepth();
   });
 }
-addEventListener("scroll", requestProgress, { passive: true });
-addEventListener("resize", requestProgress);
-for (const guide of document.querySelectorAll("details")) guide.addEventListener("toggle", requestProgress);
-requestProgress();
+addEventListener("scroll", requestScrollUpdate, { passive: true });
+addEventListener("resize", requestScrollUpdate);
+addEventListener("popstate", requestScrollUpdate);
+brandPicker.addEventListener("change", requestScrollUpdate);
+for (const guide of document.querySelectorAll("details")) guide.addEventListener("toggle", requestScrollUpdate);
+applyMotionPreference();
