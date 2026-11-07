@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#142622">
+  <meta name="description" content="A site preview for Fishing with Bryan. Go through the ice to find sample videos and illustrated fishing field notes.">
+  <meta property="og:title" content="Fishing with Bryan · Site preview">
+  <meta property="og:description" content="A first look at Bryan Prokuski’s fishing site. Take a trip under the ice, browse videos and open the illustrated Field notes.">
+  <link rel="icon" href="./assets/mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./site.js"></script>
+  <title>Fishing with Bryan · Site preview</title>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="mast">
+    <div class="mast-inner">
+      <a class="brand" href="#surface" aria-label="Fishing with Bryan, back to the surface">
+        <img src="./assets/mark.svg" width="31" height="31" alt="">
+        <span>Fishing with Bryan</span>
+      </a>
+      <nav aria-label="Main">
+        <a href="#videos">Videos</a>
+        <a href="#field-notes">Field notes</a>
+      </nav>
+    </div>
+    <div class="scroll-progress" aria-hidden="true"></div>
+  </header>
+  <main id="main">
+    <section class="surface" id="surface" aria-labelledby="name">
+      <svg class="surface-art artwork" viewBox="0 0 400 315" preserveAspectRatio="none" aria-hidden="true"><use href="./assets/scenes.svg#bi-tent-inside"/></svg>
+      <div class="surface-inner wrap">
+        <div class="intro">
+          <p class="preview-label"><span></span> Site preview</p>
+          <h1 id="name">Bryan<br>Prokuski</h1>
+          <p class="intro-line">Ice fishing, from the hole down.</p>
+          <div class="hero-actions">
+            <a class="button primary" href="#videos" data-watch="setting-up"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m6 3 11 7-11 7z"/></svg>Check out my latest video</a>
+            <a class="text-link" href="#videos">All videos <span aria-hidden="true">↗</span></a>
+          </div>
+        </div>
+        <a class="hero-cover" href="#videos" data-watch="setting-up" aria-label="Watch the sample video, Setting up on the ice">
+          <svg class="artwork" viewBox="0 0 400 154" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><use href="./assets/scenes.svg#bi-cover-camp"/></svg>
+          <div class="hero-cover-caption"><span>Latest video · Sample</span><strong>Setting up on the ice</strong></div>
+          <span class="play-mark" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="m6 3 11 7-11 7z"/></svg></span>
+        </a>
+      </div>
+      <div class="descent-link wrap"><a href="#ice"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v13m-5-5 5 5 5-5"/></svg>Through the hole</a></div>
+    </section>
+    <section id="ice" class="ice" aria-label="Crossing the ice">
+      <svg class="ice-art artwork" viewBox="0 0 400 177" preserveAspectRatio="none" role="img" aria-label="A fishing line and warm light pass through a chipped opening in the ice"><use href="./assets/scenes.svg#bi-rim"/></svg>
+      <div class="ice-light" aria-hidden="true"></div>
+      <span class="ice-caption"><span></span> At the ice rim</span>
+    </section>
+    <section id="about" class="about" aria-labelledby="about-heading">
+      <svg class="below-art artwork" viewBox="0 0 400 198" preserveAspectRatio="none" role="img" aria-label="The same opening from beneath the ice, with a fishing line descending through the light"><use href="./assets/scenes.svg#bi-below"/></svg>
+      <div class="wrap about-inner">
+        <p class="section-mark"><span></span> Just below the ice</p>
+        <h2 id="about-heading">About Bryan</h2>
+        <p>Every fishing trip has a story. This is where Bryan can share his: what got him fishing, what he looks forward to on the ice, and what he’d show you on your first trip.</p>
+        <p class="content-note">Sample introduction for review.</p>
+      </div>
+    </section>
+    <section id="featured" class="featured" aria-labelledby="featured-heading">
+      <svg class="walleye artwork" viewBox="0 0 172 66" role="img" aria-label="An illustrated walleye beneath the ice"><use href="./assets/scenes.svg#bi-walleye"/></svg>
+      <div class="wrap">
+        <h2 id="featured-heading">Featured videos</h2>
+        <div class="featured-grid" id="featured-grid"></div>
+      </div>
+    </section>
+    <section id="videos" class="library" aria-labelledby="library-heading">
+      <div class="wrap">
+        <div class="section-heading">
+          <div><h2 id="library-heading">Video library</h2><p>Browse the sample clips by topic.</p></div>
+          <div class="filters" aria-label="Filter videos"></div>
+        </div>
+        <p class="library-status" id="library-status" role="status"></p>
+        <div class="video-grid" id="video-grid"></div>
+        <noscript><p><a href="https://www.pexels.com/video/men-fishing-on-ice-6830924/">Watch the stock ice-fishing sample</a>. Enable JavaScript to browse the demo library here.</p></noscript>
+      </div>
+    </section>
+    <section id="field-notes" class="field-notes" aria-labelledby="notes-heading">
+      <div class="wrap">
+        <div class="section-heading">
+          <div><h2 id="notes-heading">Field notes</h2><p>Short picture guides from the ice.</p></div>
+        </div>
+        <div class="guide-list">
+          <details class="guide">
+            <summary>
+              <svg class="artwork guide-cover" viewBox="0 0 400 154" aria-hidden="true"><use href="./assets/scenes.svg#bi-cover-lure"/></svg>
+              <span><strong>How a jig moves</strong><small>Three illustrated steps</small></span>
+              <svg class="chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m5 7 5 5 5-5"/></svg>
+            </summary>
+            <div class="guide-body">
+              <p>Follow the lure beneath the ice.</p>
+              <ol class="guide-frames">
+                <li><figure><svg class="artwork" viewBox="0 0 110 84" aria-hidden="true"><use href="./assets/scenes.svg#bi-jig-frame"/><path d="M59 7v24m22 29V36m-4 5 4-5 4 5" stroke="#f6d397" stroke-width="1.4" fill="none"/><use href="./assets/scenes.svg#bi-jig-hook" x="51" y="29" width="19" height="20"/></svg><figcaption><strong>Lift</strong>Bring the lure up.</figcaption></figure></li>
+                <li><figure><svg class="artwork" viewBox="0 0 110 84" aria-hidden="true"><use href="./assets/scenes.svg#bi-jig-frame"/><path d="M59 7v27" stroke="#f6d397" stroke-width="1.4"/><path d="M77 37v13m5-13v13" stroke="#e2e7c8" stroke-width="1.5"/><use href="./assets/scenes.svg#bi-jig-hook" x="51" y="32" width="19" height="20"/></svg><figcaption><strong>Pause</strong>Hold it there.</figcaption></figure></li>
+                <li><figure><svg class="artwork" viewBox="0 0 110 84" aria-hidden="true"><use href="./assets/scenes.svg#bi-jig-frame"/><path d="M59 7v47m22-19v25m-4-5 4 5 4-5" stroke="#f6d397" stroke-width="1.4" fill="none"/><use href="./assets/scenes.svg#bi-jig-hook" x="51" y="52" width="19" height="20"/></svg><figcaption><strong>Lower</strong>Bring it back down.</figcaption></figure></li>
+              </ol>
+            </div>
+          </details>
+          <details class="guide">
+            <summary>
+              <svg class="artwork guide-cover" viewBox="0 0 400 154" aria-hidden="true"><path d="M0 0h400v154H0z" fill="#ccd5bd"/><use href="./assets/scenes.svg#bi-walleye" x="24" y="10" width="220" height="84"/><use href="./assets/scenes.svg#bi-perch" x="183" y="70" width="195" height="75"/></svg>
+              <span><strong>Walleye or yellow perch?</strong><small>Two fish side by side</small></span>
+              <svg class="chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m5 7 5 5 5-5"/></svg>
+            </summary>
+            <div class="guide-body">
+              <p>Start with the tail on one and the bars on the other.</p>
+              <ul class="guide-frames fish-frames">
+                <li><figure><svg class="artwork" viewBox="0 0 172 76" aria-hidden="true"><use href="./assets/scenes.svg#bi-walleye" y="5" width="172" height="66"/><circle cx="155" cy="60" r="8" fill="none" stroke="#744d28" stroke-width="1.3"/></svg><figcaption><strong>Walleye</strong>White on the lower tail tip.</figcaption></figure></li>
+                <li><figure><svg class="artwork" viewBox="0 0 172 76" aria-hidden="true"><use href="./assets/scenes.svg#bi-perch" y="5" width="172" height="66"/><path d="M44 60v4h63v-4" stroke="#744d28" fill="none" stroke-width="1.3"/></svg><figcaption><strong>Yellow perch</strong>Dark bars across yellow sides.</figcaption></figure></li>
+              </ul>
+              <p class="field-reference">Fish references: <a href="https://www.dnr.state.mn.us/gofishing/ice-fishing-walleye.html">Minnesota DNR walleye</a> and <a href="https://www.dnr.state.mn.us/minnaqua/speciesprofile/yellowperch.html">yellow perch</a>.</p>
+            </div>
+          </details>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer class="footer">
+    <div class="wrap footer-inner">
+      <div><strong>Fishing with Bryan</strong><p>Site preview with sample text, art, and stock video.</p></div>
+      <div class="footer-links"><button id="motion" type="button" aria-pressed="false" hidden>Reduce motion</button><a href="#surface">Back to surface ↑</a></div>
+    </div>
+  </footer>
+  <dialog id="player" aria-labelledby="player-title" aria-describedby="player-description">
+    <div class="dialog-head"><div><p class="player-label">Stock sample</p><h2 id="player-title"></h2></div><form method="dialog"><button class="close" aria-label="Close video"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10m0-10L5 15"/></svg></button></form></div>
+    <video controls playsinline preload="none"></video>
+    <p id="player-description"></p>
+    <p class="player-error" role="status" hidden>Playback is unavailable here. You can open the stock clip below.</p>
+    <a id="player-source" target="_blank" rel="noopener">Open stock clip on Pexels ↗</a>
+  </dialog>
+</body>
+</html>
