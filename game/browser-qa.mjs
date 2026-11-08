@@ -1,0 +1,65 @@
+import assert from 'node:assert/strict';
+
+const defaultUrl = 'http://127.0.0.1:9867/';
+const clockStart = Date.UTC(2026, 0, 1);
+
+// Standard perch, rock bass, walleye, muskie, perch, rock bass.
+const outingSeed = [.05, .35, .55, .98, .05, .35].flatMap(species =>
+  [species, .2, .5, .4, .1]);
+
+export async function withBrowser(check) {
+  const { chromium } = await import(process.env.PLAYWRIGHT_MODULE ?? 'playwright');
+  const browser = await chromium.launch({
+    executablePath: process.env.CHROME_PATH,
+    args: ['--mute-audio'],
+  });
+  try {
+    await check(browser);
+  } finally {
+    await browser.close();
+  }
+}
+
+export async function practicePage(browser, { mobile = false, configure } = {}) {
+  const page = await browser.newPage({
+    viewport: { width: mobile ? 320 : 1200, height: 720 },
+    hasTouch: mobile,
+    isMobile: mobile,
+    reducedMotion: mobile ? 'reduce' : 'no-preference',
+  });
+  page.setDefaultTimeout(3000);
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.clock.install({ time: clockStart });
+  await page.clock.pauseAt(clockStart + 1000);
+  await page.addInitScript(seed => {
+    let draw = 0;
+    Math.random = () => seed[draw++ % seed.length];
+  }, outingSeed);
+  await configure?.(page);
+  const response = await page.goto(process.env.FISHING_QA_URL ?? defaultUrl, { waitUntil: 'domcontentloaded' });
+  assert.ok(response?.ok(), 'the site must load');
+  const tray = page.getByRole('region', { name: 'Fishing controls' });
+  const button = name => tray.getByRole('button', { name, exact: true });
+  const action = tray.locator('.fishing-action');
+  const launch = page.getByRole('button', { name: 'Play fishing game', exact: true })
+    .or(page.getByRole('link', { name: 'Fishing with Bryan, start fishing' }));
+
+  async function press(locator, key = 'Space') {
+    if (mobile) {
+      const box = await locator.boundingBox();
+      assert.ok(box, 'a touch control must be in view');
+      await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+    } else {
+      await locator.focus();
+      await page.keyboard.press(key);
+    }
+  }
+
+  return {
+    page, tray, action, launch, button, press, errors,
+    status: tray.getByRole('status'),
+    timing: tray.locator('.fishing-timing'),
+    tick: ms => page.clock.runFor(ms),
+  };
+}

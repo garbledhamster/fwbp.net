@@ -81,6 +81,7 @@ const skillRow = tray.querySelector('.fishing-skills');
 const slots = [...tray.querySelectorAll('[data-lure]')];
 let launch, previousScroll, run, state, token, target, busy, failed, biteAt, frame;
 let lure = 'jig';
+let practiceError;
 let generation = 0;
 
 async function api(action, data = {}, auth = token) {
@@ -106,11 +107,30 @@ function positionLine() {
   bobber.hidden = tray.hidden;
 }
 
+function setStatus(message) {
+  if (status.textContent !== message) status.textContent = message;
+}
+
+function showPracticeBite(elapsed) {
+  const wait = elapsed < state.window.from;
+  const passed = elapsed > state.window.until;
+  setStatus(wait ? 'Bite! Wait for gold.' : passed ? 'Window passed. Reel, then jig again.' : 'Yeah, reel it!');
+  action.classList.toggle('fishing-action-quiet', wait);
+}
+
+function clearBite() {
+  cancelAnimationFrame(frame);
+  timing.style.removeProperty('--position');
+}
+
 function animateBite() {
   if (tray.hidden || state?.stage !== 'bite') return;
-  const elapsed = performance.now() - biteAt;
+  const elapsed = (token ? performance.now() : Date.now()) - biteAt;
   timing.style.setProperty('--position', `${Math.min(100, elapsed / state.window.until * 100)}%`);
-  if (elapsed < state.window.until) frame = requestAnimationFrame(animateBite);
+  if (!token && !practiceError) showPracticeBite(elapsed);
+  if (elapsed < state.window.until || (!token && elapsed === state.window.until)) {
+    frame = requestAnimationFrame(animateBite);
+  }
 }
 
 function placeFish() {
@@ -133,15 +153,26 @@ function render() {
   tray.querySelector('[data-score]').textContent = state
     ? `${state.lake} · ${token ? 'Ranked' : 'Practice'} · ${state.score} pts · ${Math.min(state.index + 1, state.count)}/${state.count}`
     : 'Fishing beneath the ice';
-  status.textContent = failed ? 'Ranking disconnected. You can start a practice outing.'
-    : state?.stage === 'landed' && state.cue.endsWith('points') ? `All right! ${state.cue}`
-    : state?.cue ?? 'Opening the lake…';
+  const practiceFight = !token && state?.stage === 'fight';
+  const tight = practiceFight && state.fight.tension >= 60;
+  const pullUp = state?.fight?.pulls === 1;
+  const practiceBite = !token && state?.stage === 'bite';
+  let cue = state?.cue ?? 'Opening the lake…';
+  if (failed) cue = 'Ranking disconnected. You can start a practice outing.';
+  else if (practiceError) cue = practiceError;
+  else if (practiceFight) cue = tight ? 'Tight line. Loosen.' : `Line clear. ${pullUp ? 'Pull up' : 'Reel'}.`;
+  else if (state?.stage === 'landed' && cue.endsWith('points')) cue = `All right! ${cue}`;
+  if (!practiceBite || practiceError) setStatus(cue);
   const [actionIcon, label] = failed ? ['next', 'Practice'] : ({
     seek: ['jig', 'Jig'], bite: ['reel', 'Reel'], fight: state?.fight?.pulls === 1 ? ['lift', 'Pull up'] : ['reel', 'Reel'],
     landed: ['next', 'Next fish'], done: ['next', 'Fish again'],
   }[state?.stage] ?? ['next', 'Wait']);
   action.innerHTML = `${icon(actionIcon)}<span>${label}</span>`;
   action.disabled = busy || !state;
+  action.parentElement.toggleAttribute('data-practice-fight', practiceFight);
+  action.classList.toggle('fishing-action-quiet', tight);
+  loosen.classList.toggle('fishing-recommended', tight);
+  if (practiceBite && !practiceError) showPracticeBite(Date.now() - biteAt);
   if (bobber.dataset.lure !== lure) {
     bobber.dataset.lure = lure;
     bobber.innerHTML = icon(lure);
@@ -180,7 +211,10 @@ function render() {
 }
 
 async function begin(practice = false) {
+  const fromAction = document.activeElement === action;
   dismissCelebration();
+  clearBite();
+  practiceError = undefined;
   const current = ++generation;
   busy = true;
   failed = false;
@@ -199,6 +233,7 @@ async function begin(practice = false) {
     }
   }
   if (!state) {
+    lure = 'jig';
     run = start(Date.now());
     state = publicRun(run);
   }
@@ -206,6 +241,7 @@ async function begin(practice = false) {
   placeFish();
   window.scrollTo({ top: 0, behavior: 'instant' });
   render();
+  if (!token && fromAction && document.activeElement === document.body) action.focus({ preventScroll: true });
 }
 
 function enter(event) {
@@ -221,7 +257,7 @@ function enter(event) {
 function leave() {
   dismissCelebration();
   generation++;
-  cancelAnimationFrame(frame);
+  clearBite();
   target?.remove();
   tray.hidden = bobber.hidden = true;
   document.body.classList.remove('fishing');
@@ -232,7 +268,11 @@ function leave() {
 document.querySelectorAll('.brand, .fish-entry').forEach(entry => entry.addEventListener('click', enter));
 exit.addEventListener('click', leave);
 document.addEventListener('keydown', event => {
-  if (!tray.hidden && event.key === 'Escape') leave();
+  if (tray.hidden) return;
+  if (event.key === 'Escape') leave();
+  if (!token && event.repeat && ['Enter', ' '].includes(event.key) && tray.contains(event.target)) {
+    event.preventDefault();
+  }
 });
 window.addEventListener('resize', positionLine);
 slots.forEach(slot => slot.addEventListener('click', () => {
@@ -255,24 +295,31 @@ async function perform(move, input = {}) {
   busy = true;
   render();
   const sentAt = performance.now();
+  const appliedAt = Date.now();
   try {
     const result = token
       ? (await api(move, { ...input, version: state.version })).state
-      : apply(run, { action: move, ...input }, Date.now());
+      : apply(run, { action: move, ...input }, appliedAt);
     if (current !== generation) return;
     state = result;
+    practiceError = undefined;
+    if (!token && move === 'jig' && state.stage === 'seek') {
+      state = { ...state, cue: 'It looked. Try a different lure and jig again.' };
+    }
     if (state.stage === 'landed' && prior.stage !== 'landed') celebrateCatch(state.index + 2);
     if (state.index !== prior.index) dismissCelebration();
     if (state.index !== prior.index) placeFish();
     if (state.stage === 'bite') {
-      biteAt = sentAt;
-      cancelAnimationFrame(frame);
+      biteAt = token ? sentAt : appliedAt;
+      clearBite();
       animateBite();
+    } else if (prior.stage === 'bite') {
+      clearBite();
     }
   } catch (error) {
     if (current !== generation) return;
     if (token) failed = true;
-    else state = { ...state, cue: error.message };
+    else practiceError = error.message;
   }
   busy = false;
   render();

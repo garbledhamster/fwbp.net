@@ -119,3 +119,11 @@ body.fishing .dive-ceiling { transform: none !important; }
 .fishing-pressure meter { width: 6rem; }
 .fishing-pressure [data-pulls] { color: var(--lamp); }
 .fishing-tray [data-loosen] { flex: 1; }
+
+.fishing-tray button.fishing-action-quiet {
+  background: #1a3b3b; color: var(--foam); border-color: #527b76;
+}
+.fishing-tray button.fishing-recommended {
+  background: var(--lamp); color: var(--ink); border-color: var(--lamp); font-weight: 750;
+}
+.fishing-row[data-practice-fight] :is(.fishing-action, [data-loosen]) { flex: 1 1 0; }
