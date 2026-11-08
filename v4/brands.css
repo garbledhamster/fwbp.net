@@ -1,0 +1,115 @@
+/* A timber lodge and a canvas gear catalog. */
+:root {
+  --line-x: 62%;
+  --tent: #253429; --lake: #414b32; --deep: #2b392b; --blackwater: #1f2d24;
+  --foam: #fff4d7; --muted: #ded7b9; --lamp: #e6b56b;
+  --paper: #ede2c5; --ink: #303b2a; --rule: #70755c;
+}
+.mast,
+.footer { background: #243329; }
+.brand { font: bold .98rem Georgia, serif; letter-spacing: .04em; }
+.surface {
+  background: #253429 repeating-linear-gradient(6deg,#ffffff08 0 1px,transparent 1px 8px);
+}
+.surface-art { opacity: .48; filter: sepia(.72) saturate(.7); }
+.intro h1 { color: #f5e0af; font-weight: 800; font-size: clamp(49px,9vw,113px); }
+.hero-cover { border: 6px solid #d1b680; outline: 1px solid #fff2d2; outline-offset: 4px; border-radius: 46px 6px 46px 6px; aspect-ratio: 1.32; }
+.ice-art, .episode-art .artwork { filter: sepia(.48) saturate(.82); }
+.about-inner { border-left: 3px solid #d8ad66; padding-left: clamp(13px,3vw,34px); }
+.episode-art, .guide-cover { border: 2px solid #b39b6c; border-radius: 16px 3px; }
+.field-notes { background: #ede2c5 repeating-linear-gradient(0deg,#6448140a 0 1px,transparent 1px 7px); }
+
+@media (prefers-reduced-motion: no-preference) {
+  body:not([data-reduced]) .surface { overflow: clip; }
+  body:not([data-reduced]) :is(.surface-art, .ice-art) {
+    position: absolute; inset: calc(-1 * var(--travel)) 0 auto;
+    height: calc(100% + 2 * var(--travel));
+    transform: translateY(calc(var(--depth, 0) * var(--travel)));
+  }
+  .surface-art { --travel: 58px; }
+  .ice-art { --travel: 43px; }
+  body:not([data-reduced]) .ice-light {
+    transform: translateY(calc(var(--depth, 0) * 96px));
+  }
+
+}
+
+.lake {
+  position: relative;
+  isolation: isolate;
+  overflow: clip;
+  background:
+    radial-gradient(ellipse 95% 720px at 62% 0%, #c5cb9168, transparent 82%),
+    radial-gradient(ellipse 83% 990px at 15% 40%, #72946a38, transparent 85%),
+    linear-gradient(168deg, #355d54, #25463d 34%, #1a3734 70%, #142c2b);
+}
+.dive, .lake > .library { position: relative; }
+.dive { min-height: clamp(245px, 42svh, 450px); }
+.dive-water { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+.dive-ceiling { position: absolute; inset: -6px 0 auto; width: 100%; height: 25%; opacity: .56; }
+.dive-actors { position: absolute; inset: 0; }
+.dive-actor {
+  position: absolute;
+  translate: -50% -50%;
+  width: clamp(32px, var(--size), 440px);
+}
+.dive-actor svg { display: block; width: 100%; height: auto; }
+.dive-facing-right { transform: scaleX(-1); }
+.dive-actor[data-layer="far"] { z-index: 1; opacity: .35; }
+.dive-actor[data-layer="middle"] { z-index: 2; opacity: .77; }
+.dive-actor[data-layer="near"] { z-index: 3; }
+@media (prefers-reduced-motion: no-preference) {
+  body:not([data-reduced]) .dive-actor {
+    transform: translate(calc(var(--depth, 0) * var(--swim-x)), calc(var(--depth, 0) * var(--swim-y)));
+  }
+  body:not([data-reduced]) .dive-ceiling { transform: translateY(calc(var(--depth, 0) * 12px)); }
+}
+
+/* The aligned segments sit above the water and behind the page content. */
+.fishing-route > section { position: relative; isolation: isolate; }
+.fishing-route > section::before, .lake::before, .footer::before {
+  content: ""; position: absolute; z-index: 0; inset: 0 auto 0 var(--line-x);
+  width: 1px; background: #e9d6a355; pointer-events: none;
+}
+.fishing-route > .surface::before { background: linear-gradient(transparent 40%, #e9d6a355); }
+.fishing-route > section > .wrap, .lake .wrap { position: relative; z-index: 1; }
+.ice-art, .ice-light { position: relative; z-index: -1; }
+.ice-light { position: absolute; }
+.dive[data-dive="weeds"], .dive[data-dive="camera"] {
+  display: grid;
+  align-content: center;
+  min-height: clamp(385px, 52svh, 560px);
+  padding-block: clamp(34px, 6vw, 68px);
+}
+.dive-panel {
+  position: relative; max-width: 660px; margin-left: auto; padding: clamp(15px, 2.5vw, 28px);
+  border: 1px solid #a9a78178; border-radius: 5px;
+  background: #142923c9; box-shadow: 0 12px 42px #0c211e45;
+}
+.dive-panel h2 { margin: 0 0 12px; font: 500 clamp(24px, 4vw, 37px)/1.1 Georgia, serif; }
+.dive-panel.about-inner { max-width: 490px; border-left: 3px solid var(--lamp); }
+.dive-panel.about-inner > p:not(.content-note) { max-width: 42ch; }
+.dive-panel .channel-banner { margin-top: 14px; }
+.dive[data-dive="camera"] .dive-panel { margin-left: 0; }
+.dive-panel .episode-trigger { background: #182e28; border-radius: 14px 4px 4px; padding-bottom: 10px; }
+.dive-panel .episode-meta, .dive-panel .episode-name { padding-inline: 8px; }
+.library .episode-trigger { background: #192d27f5; border-radius: 14px 4px 4px; padding-bottom: 10px; }
+.library .episode-meta, .library .episode-name { padding-inline: 8px; }
+.fishing-route > .field-notes::before { opacity: .52; background: #785d2b68; }
+
+.footer { position: relative; isolation: isolate; }
+.footer::before { bottom: auto; height: 27px; background: #d9cea1; }
+.footer-lure { display: block; position: relative; padding: 162px var(--space) 29px; text-align: center; text-decoration: none; }
+.footer-lure svg { position: absolute; top: 0; left: var(--line-x); translate: -50% 0; }
+.footer-lure-copy { display: inline-grid; gap: 4px; }
+.footer-lure-copy .section-mark { justify-content: center; color: var(--lamp); }
+.footer-lure-copy strong { font: 500 clamp(24px, 5vw, 39px)/1.12 Georgia, serif; color: var(--foam); }
+.footer-lure-copy .lure-story { color: var(--muted); font-size: .88rem; }
+.footer-lure-copy > span:last-child { text-decoration: underline; text-underline-offset: .22em; }
+.footer-lure:hover .footer-lure-copy > span:last-child { color: var(--lamp); }
+
+@media (max-width: 560px) {
+  .dive[data-dive="weeds"], .dive[data-dive="camera"] { padding-block-start: 115px; }
+  .dive-content .dive-panel { margin-left: 0; }
+  .dive-panel .episode-name, .library .episode-name { font-size: .92rem; }
+}

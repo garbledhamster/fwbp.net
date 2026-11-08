@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg"><defs>
+      <linearGradient id="bi-water" x2="0" y2="1">
+        <stop stop-color="#24707a"/><stop offset="1" stop-color="#124952"/>
+      </linearGradient>
+      <linearGradient id="bi-beam" x2="0" y2="1">
+        <stop stop-color="#ffe6a6" stop-opacity=".64"/><stop offset="1" stop-color="#a9ede1" stop-opacity="0"/>
+      </linearGradient>
+      <linearGradient id="bi-ice" x2="0" y2="1">
+        <stop stop-color="#e2f0e5"/><stop offset=".45" stop-color="#afd2cc"/><stop offset="1" stop-color="#5a9a9e"/>
+      </linearGradient>
+      <pattern id="bi-frost" width="66" height="42" patternUnits="userSpaceOnUse">
+        <path d="M-8 18 10 11l11 3 11-9m-7 37 9-10 13-2 17-11m-1 20 9-3" fill="none" stroke="#e4f5e9" stroke-width=".8" opacity=".49"/>
+        <circle cx="10" cy="31" r="1" fill="#eff7de"/><circle cx="55" cy="6" r=".7" fill="#eff7de"/>
+      </pattern>
+      <symbol id="bi-tent-inside" viewBox="0 0 400 315">
+        <path fill="#172b29" d="M0 0h400v315H0z"/>
+        <path fill="#29423b" d="M0 4 177 0l-67 84L0 124Zm0 158L97 89 54 241 0 271Z"/>
+        <path fill="#213934" d="m400 0-95 71-47 112 142 57z"/>
+        <path fill="#f1cc89" d="m346 0-38 66-36 85 128 46V0Z"/>
+        <path fill="#d0e2d4" d="m327 50 73 4v120l-122-32z"/>
+        <path fill="#a2c4be" d="m304 103 96-20v91l-121-31z"/>
+        <path fill="#49695b" d="m367 0-39 53-44 92 116 40v17l-139-46L316 48l35-48Z"/>
+        <path d="M170 0 97 89 54 241m268-223-21 28m-16 39-25 63m16 20 102 38" fill="none" stroke="#8eaa8c" stroke-width="1.2" stroke-dasharray="3 4" opacity=".72"/>
+      </symbol>
+
+      <symbol id="bi-rim" viewBox="0 0 400 177">
+        <path fill="#142a28" d="M0 0h400v177H0z"/>
+        <path fill="url(#bi-ice)" d="M0 28 97 20l104 8 66-10 133 17v142H0Z"/>
+        <path fill="url(#bi-frost)" d="M0 28 97 20l104 8 66-10 133 17v142H0Z"/>
+        <path fill="#f9e3ab" opacity=".56" d="m293 0 101 21-75 108-148-30z"/>
+        <path fill="#487e81" d="M85 92c5-26 63-44 133-43l30-1 13 10 31 1c36 10 58 25 52 45-6 25-59 44-135 43-76-1-129-24-124-55Z"/>
+        <path fill="#153b40" d="M95 86c11-19 64-36 122-35l29-1 12 12 28 1c29 8 49 18 48 31-2 21-53 37-120 37-68 0-126-21-119-45Z"/>
+        <path fill="#0b2b32" d="M111 96c7-14 46-23 104-23 59 0 105 10 106 23-13 18-55 26-106 26-48 0-91-11-104-26Z"/>
+        <path d="m217 51 29-1 12 12 28 1m-176 49c30 14 65 19 105 19" fill="none" stroke="#f6e2ac" stroke-width="3"/>
+        <path d="M0 165c112 10 259 3 400-5v17H0Z" fill="#24707a"/>
+      </symbol>
+
+      <symbol id="bi-below" viewBox="0 0 400 198">
+        <path fill="url(#bi-water)" d="M0 0h400v198H0z"/>
+        <path fill="url(#bi-beam)" d="m227 36 100-2 64 164H172Z"/>
+        <path fill="#8bbdb5" d="M0 0h400v22L332 43l-35-4-14 10-41-1L168 36 0 54Z"/>
+        <path fill="#ffe1a3" d="M216 23c7-8 32-14 61-13 29 1 52 9 51 18-2 9-18 13-31 14l-14 10-21-7c-29-1-52-13-46-22Z"/>
+        <path fill="#293f36" d="M230 23c9-5 28-8 46-7 20 1 37 5 39 10-4 5-13 8-23 9l-9 8-13-6c-20 0-37-7-40-14Z"/>
+        <path d="M266 26c-1 43-11 83-4 142l5 22" fill="none" stroke="#f1d8a4" stroke-width="1.7"/>
+        <path d="m263 188 5 4 4-6" fill="none" stroke="#f1d8a4" stroke-width="1.5"/>
+        <g fill="#b4e3d6" opacity=".54"><circle cx="242" cy="106" r="1.4"/><circle cx="295" cy="114" r="1.1"/><circle cx="316" cy="154" r="1.4"/><circle cx="224" cy="164" r="1.1"/><circle cx="281" cy="73" r="1.2"/></g>
+      </symbol>
+
+      <linearGradient id="bi-walleye-scales" x2="0" y2="1">
+        <stop stop-color="#616741"/><stop offset=".57" stop-color="#a9a675"/><stop offset="1" stop-color="#e0d9b3"/>
+      </linearGradient>
+      <symbol id="bi-walleye" viewBox="0 0 172 66">
+        <path d="m45 22 3-17 6 6 4-8 6 8 5-6 6 9 5-4 7 15m5 0 7-11 14 2 9 13" fill="#727e54" stroke="#4d593d" stroke-width="1"/>
+        <path d="m133 33 27-14-3 16-8 7 8 5 5 12-29-14z" fill="#858b61" stroke="#4d593d"/>
+        <path d="m151 48 7 5 4 6-12-5z" fill="#fff0cf"/>
+        <path d="M13 35C24 30 31 24 45 21c22-6 42-5 64 2l27 10 1 12-23 4c-27 8-57 10-80 0L13 40l9-3z" fill="url(#bi-walleye-scales)" stroke="#4d593d" stroke-width="1.1"/>
+        <path d="M42 27c9 5 9 15 3 22m4-7 20 10-12 3m18-3 15 1-8 8-12-5m24-34c11 2 15 4 23 8" fill="none" stroke="#596246" stroke-width="1.1"/>
+        <path d="m56 24 10 8 8-9 11 10 7-8 9 9 9-5 9 6" fill="none" stroke="#767b52" stroke-width="2.2" opacity=".9"/>
+        <path d="m13 39 22 2" stroke="#5d6347" stroke-width="1.1"/>
+        <circle cx="32" cy="32" r="4.6" fill="#e2d59d" stroke="#4d593d"/><circle cx="32" cy="32" r="2.4" fill="#1d2e2b"/>
+      </symbol>
+      <symbol id="bi-perch" viewBox="0 0 172 66">
+        <path d="m40 23 7-18 5 8 7-10 4 9 7-6 5 11 6-4 7 13m4 0 8-11 12 3 10 12" fill="#86854f" stroke="#4f6046" stroke-width="1"/>
+        <path d="m129 31 30-12-5 17-7 4 7 4 5 12-30-11zM62 50l15 3-7 10-18-10m39-1 16-2-6 11-14-4" fill="#bd7a43" stroke="#805436" stroke-width="1"/>
+        <path d="M17 34c13-11 26-18 47-18 29-1 42 8 68 16v13c-27 6-36 10-63 11-26 0-45-8-54-17z" fill="#c9a954" stroke="#5b6444" stroke-width="1"/>
+        <path d="M17 34c16-12 35-17 54-17 20 0 38 8 61 15v4c-24-7-45-12-65-11-20 1-35 4-50 9Z" fill="#8e8c4c"/>
+        <path d="m43 22 5 20 3-23m9-1 6 31 3-31m11 1 5 28 3-26m11 4 5 21 3-18m9 3 4 14 4-12" fill="#657047"/>
+        <path d="M37 28c8 6 7 15 2 20m10-8 15 9-13 5" fill="none" stroke="#775a3d" stroke-width="1.2"/>
+        <circle cx="30" cy="32" r="4.5" fill="#ead99f"/><circle cx="30" cy="32" r="2.5" fill="#26382e"/>
+      </symbol>
+      <symbol id="bi-jig-frame" viewBox="0 0 110 84">
+        <path fill="#30636a" d="M0 0h110v84H0z"/>
+        <path fill="#b6d1bd" d="M0 0h46l7 5h14l4-5h39v11H0z"/>
+        <path fill="#a5c9b1" opacity=".16" d="M51 9h17l23 75H29Z"/>
+        <path d="M7 65h31m42-12h19m-19 14h24" fill="none" stroke="#a8cbba" opacity=".38"/>
+      </symbol>
+      <symbol id="bi-jig-hook" viewBox="0 0 19 20">
+        <path d="M8 3v9c0 7 10 8 10 0l-2 2" fill="none" stroke="#f6d397" stroke-width="1.45" stroke-linecap="round"/>
+        <circle cx="8" cy="4" r="3" fill="#e0a95f"/>
+      </symbol>
+      <symbol id="bi-cover-camp" viewBox="0 0 400 154">
+        <path fill="#9abfbc" d="M0 0h400v154H0z"/>
+        <path fill="#d7e5d9" d="M0 63 110 56l59 8 122-11 109 5v96H0Z"/>
+        <path fill="#c4d9d1" d="m0 100 132-18 88 17 110-13 70 8v60H0Z"/>
+        <path fill="#bf8a4f" d="m155 100 26-41 57-15 52 49 8 15-143 6z"/>
+        <path fill="#2c514b" d="m238 44 52 49 8 15-62 3z"/>
+        <path fill="#e4b66d" d="m181 59 57-15-2 67-74 4z"/>
+        <path d="m15 129 116-14m169 9 64-3m-31-44 67-1m-377-3 115-4" fill="none" stroke="#94b3ad" stroke-width="1.4"/>
+      </symbol>
+      <symbol id="bi-cover-lure" viewBox="0 0 400 154">
+        <path fill="#2f6a71" d="M0 0h400v154H0z"/><path fill="url(#bi-beam)" d="M76 0h121l105 154H140Z"/>
+        <path d="m231 0-19 77c10 3 13 13 5 24l-10-7" fill="none" stroke="#f6d7a0" stroke-width="3"/>
+        <use href="#bi-walleye" x="227" y="59" width="152" height="64"/>
+      </symbol>
+      <symbol id="bi-cover-ice" viewBox="0 0 400 154">
+        <path fill="#afccbf" d="M0 0h400v154H0z"/><path fill="url(#bi-frost)" d="M0 0h400v154H0z"/>
+        <path fill="#45797a" d="M72 75c0-21 56-39 126-39 66 0 126 18 126 39s-56 44-126 44c-69 0-126-23-126-44Z"/>
+        <path fill="#123b41" d="M93 75c0-14 51-31 107-31 56 0 107 17 107 31 0 18-48 32-107 32-58 0-107-14-107-32Z"/>
+        <path d="M213 0c-12 23-8 51-11 76" fill="none" stroke="#f4dfa8" stroke-width="3"/>
+      </symbol>
+      <symbol id="bi-cover-light" viewBox="0 0 400 154">
+        <path fill="#739b98" d="M0 0h400v154H0z"/><path fill="#edd39a" d="M299 0h101v90L250 72z"/>
+        <path fill="#c5d9ce" d="M0 66 97 72l54-12 113 13 136 16v65H0Z"/>
+        <path fill="#305c59" d="m0 65 77-16 70 11-50 12z"/>
+        <path d="m30 119 116-13m30 24 194-15m-68-14 43-5" fill="none" stroke="#7ba19c" stroke-width="1.3"/>
+      </symbol>
+    </defs></svg>
