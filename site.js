@@ -1,36 +1,60 @@
-const stockBase = "https://videos.pexels.com/video-files/";
 const episodes = [
   {
-    id: "setting-up",
-    title: "Setting up on the ice",
-    category: "On the ice",
-    art: "camp",
-    featured: true,
-    description: "Stock footage of two anglers fishing next to a yellow shelter on a frozen lake.",
-    video: stockBase + "6830924/6830924-sd_640_360_25fps.mp4",
-    source: "https://www.pexels.com/video/men-fishing-on-ice-6830924/"
-  },
-  {
-    id: "at-the-hole",
-    title: "A closer look at the hole",
-    category: "Techniques",
+    id: "3dmUMd9oR88",
+    title: "Five of Diamonds for northern pike and bass",
+    category: "Underwater",
     art: "ice",
-    featured: true,
-    description: "A vertical stock clip showing an angler fishing through a hole at twilight.",
-    video: stockBase + "6831472/6831472-sd_360_640_25fps.mp4",
-    source: "https://www.pexels.com/video/a-person-fishing-in-the-ice-6831472/"
+    description: "Bryan fishes a Five of Diamonds spoon through the ice with an underwater camera."
   },
   {
-    id: "walking-out",
-    title: "A morning on the lake",
-    category: "On the ice",
+    id: "20uLF46BQKk",
+    title: "Northern pike on a Dardevle",
+    category: "Underwater",
+    art: "lure",
+    featured: true,
+    description: "Watch northern pike come in on a Dardevle spoon from the camera’s view below the ice."
+  },
+  {
+    id: "PHJOCTI5XUo",
+    title: "Pike, bass, crappie and a muskrat on camera",
+    category: "Underwater",
+    art: "lure",
+    description: "An Aqua-Vu camera captures some unexpected company below the ice."
+  },
+  {
+    id: "i5TfAtufo7U",
+    title: "Early ice walleyes on Mille Lacs",
+    category: "Mille Lacs",
+    art: "camp",
+    description: "Early-season walleye fishing on Mille Lacs Lake with an underwater camera."
+  },
+  {
+    id: "sXRoaFLDS10",
+    title: "Ice Castle perch on Mille Lacs",
+    category: "Mille Lacs",
+    art: "ice",
+    description: "Bryan films yellow perch under the ice on Mille Lacs."
+  },
+  {
+    id: "toN7z2eNxEU",
+    title: "Mississippi River smallmouth from a kayak",
+    category: "Kayak fishing",
     art: "light",
-    photo: "https://picsum.photos/id/1036/720/405.webp",
-    description: "Stock footage of two people out on a frozen lake in winter. The library cover is a placeholder photo.",
-    video: stockBase + "6830930/6830930-sd_640_360_25fps.mp4",
-    source: "https://www.pexels.com/video/people-walking-on-a-frozen-lake-6830930/"
+    featured: true,
+    description: "Bryan heads to the Mississippi River for smallmouth bass from his kayak."
+  },
+  {
+    id: "1mtyGF6wlDI",
+    title: "Underwater camera setup for early ice",
+    category: "Gear",
+    art: "camp",
+    description: "Bryan takes an underwater camera out for an early-ice scouting trip in Minnesota."
   }
 ];
+
+function watchUrl(id) {
+  return "https://www.youtube.com/watch?v=" + id;
+}
 
 const library = document.querySelector("#video-grid");
 const featured = document.querySelector("#featured-grid");
@@ -43,31 +67,28 @@ function makeEpisode(episode) {
   article.className = "episode";
   const link = document.createElement("a");
   link.className = "episode-trigger";
-  link.href = episode.source;
+  link.href = watchUrl(episode.id);
   link.dataset.watch = episode.id;
-  link.setAttribute("aria-label", "Watch sample video: " + episode.title);
+  link.setAttribute("aria-label", "Watch " + episode.title);
   const art = document.createElement("span");
   art.className = "episode-art";
   art.setAttribute("aria-hidden", "true");
   art.innerHTML = '<svg class="artwork" viewBox="0 0 400 154" preserveAspectRatio="xMidYMid slice"><use/></svg>';
   art.querySelector("use").setAttribute("href", "./assets/scenes.svg#bi-cover-" + episode.art);
-  if (episode.photo) {
-    const image = document.createElement("img");
-    image.alt = "";
-    image.loading = "lazy";
-    image.decoding = "async";
-    image.referrerPolicy = "no-referrer";
-    image.addEventListener("error", () => image.remove(), { once: true });
-    image.src = episode.photo;
-    art.append(image);
-  }
+  const image = document.createElement("img");
+  image.alt = "";
+  image.loading = "lazy";
+  image.decoding = "async";
+  image.addEventListener("error", () => image.remove(), { once: true });
+  image.src = "https://i.ytimg.com/vi/" + episode.id + "/mqdefault.jpg";
+  art.append(image);
   const play = document.createElement("span");
   play.className = "play-mark";
   play.innerHTML = '<svg viewBox="0 0 20 20"><path d="m6 3 11 7-11 7z"/></svg>';
   art.append(play);
   const meta = document.createElement("span");
   meta.className = "episode-meta";
-  meta.textContent = episode.category + " · Sample";
+  meta.textContent = episode.category;
   const title = document.createElement("strong");
   title.className = "episode-name";
   title.textContent = episode.title;
@@ -96,11 +117,10 @@ featured.replaceChildren(...episodes.filter((episode) => episode.featured).map(m
 setFilter("All");
 
 const player = document.querySelector("#player");
-const video = player.querySelector("video");
+const videoSlot = player.querySelector("#player-video");
 const playerTitle = player.querySelector("#player-title");
 const playerDescription = player.querySelector("#player-description");
 const source = player.querySelector("#player-source");
-const playbackError = player.querySelector(".player-error");
 let opener;
 
 document.addEventListener("click", (event) => {
@@ -112,21 +132,17 @@ document.addEventListener("click", (event) => {
   opener = trigger;
   playerTitle.textContent = episode.title;
   playerDescription.textContent = episode.description;
-  source.href = episode.source;
-  playbackError.hidden = true;
+  source.href = watchUrl(episode.id);
+  const frame = document.createElement("iframe");
+  frame.title = episode.title;
+  frame.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
+  frame.referrerPolicy = "strict-origin-when-cross-origin";
+  frame.src = "https://www.youtube-nocookie.com/embed/" + episode.id + "?autoplay=1&playsinline=1&rel=0";
   player.showModal();
-  video.src = episode.video;
-  video.play().catch(() => {
-    if (player.open && video.error) playbackError.hidden = false;
-  });
-});
-video.addEventListener("error", () => {
-  if (player.open && video.hasAttribute("src")) playbackError.hidden = false;
+  videoSlot.replaceChildren(frame);
 });
 player.addEventListener("close", () => {
-  video.pause();
-  video.removeAttribute("src");
-  video.load();
+  videoSlot.replaceChildren();
   opener?.focus({ preventScroll: true });
 });
 

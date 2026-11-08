@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")"
+lock=$(git rev-parse --git-path fwbp-publish.lock)
+if ! mkdir "$lock"; then
+  echo "Another ./gitpush is running in this checkout." >&2
+  exit 1
+fi
+trap 'rm -rf "$lock"' EXIT
+
+if [[ "$(git branch --show-current)" != main || -n "$(git status --porcelain)" ]]; then
+  echo "Switch to main and commit your changes before running ./gitpush." >&2
+  exit 1
+fi
+
+git fetch origin main
+if ! git merge-base --is-ancestor FETCH_HEAD HEAD; then
+  echo "Remote main has new commits. Reconcile them before publishing." >&2
+  exit 1
+fi
+if [[ -n "$(git diff --name-only --diff-filter=DMRT FETCH_HEAD HEAD -- ':(glob)v[0-9]*/**')" ]]; then
+  echo "Published version folders are read-only. Put site edits at the root." >&2
+  exit 1
+fi
+
+site_files=(index.html styles.css brands.css site.js brands.js assets)
+number=0
+while IFS= read -r name; do
+  if [[ "$name" =~ ^v([1-9][0-9]*)$ ]] && (( BASH_REMATCH[1] > number )); then
+    number=${BASH_REMATCH[1]}
+  fi
+done < <(git ls-tree --name-only -d HEAD)
+
+version="v$number"
+if (( number == 0 )) || ! git diff --quiet "HEAD:$version" HEAD -- "${site_files[@]}"; then
+  version="v$((number + 1))"
+  if [[ -e "$version" || -L "$version" ]]; then
+    echo "Cannot create $version because that path already exists." >&2
+    exit 1
+  fi
+  mkdir "$lock/$version"
+  git archive --format=tar -o "$lock/site.tar" HEAD -- "${site_files[@]}"
+  tar -xf "$lock/site.tar" -C "$lock/$version"
+  mv "$lock/$version" "$version"
+  git add -- "$version"
+  git commit -m "Publish site $version"
+fi
+
+git push origin HEAD:main
+printf 'Latest: https://fwbp.net/\nVersion: https://fwbp.net/%s/index.html\n' "$version"

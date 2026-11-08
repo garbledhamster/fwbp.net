@@ -1,13 +1,17 @@
-# Fishing with Bryan
+# Fishing with Bryan Prokuski
 
-This is a public review demo for Bryan Prokuski’s fishing site. The video titles, introduction, illustrations, and stock clips are sample material. The people shown in stock footage are the stock models.
+Bryan’s videos, illustrated field notes, and a gallery of his former merch. Northwoods Outfitters opens by default. The **Brand preview** menu keeps the other styles available for comparison.
 
-To preview locally, run `python3 -m http.server 8000 --bind 127.0.0.1` from this directory and open `http://127.0.0.1:8000/`. GitHub Pages publishes the root of `main` as a static site.
+## Preview and edit
 
-Update the episode entries in `site.js` for Bryan’s own footage. The shared art lives in `assets/scenes.svg`, and the illustrated Field notes are in `index.html`.
+Run `python3 -m http.server 8000 --bind 127.0.0.1` here and open [the local preview](http://127.0.0.1:8000/). The library entries live in `site.js`. To feature a new upload, add its entry there and update the two latest-video links, title and thumbnail in `index.html`.
 
-Use **Brand preview** to compare five directions alongside the original. Each choice has a shareable URL with `?style=northwoods`, `?style=sonar`, `?style=icehouse`, `?style=journal`, or `?style=after-dark`.
+The logo, banner and product images come from [Bryan’s YouTube channel](https://www.youtube.com/@BryanProkuski) and its [merch shelf](https://www.youtube.com/@BryanProkuski/store). The merch gallery documents designs from the former Spring store. Video players and thumbnails are served by YouTube. The fish guide uses the Minnesota DNR references for [walleye](https://www.dnr.state.mn.us/gofishing/ice-fishing-walleye.html) and [yellow perch](https://www.dnr.state.mn.us/minnaqua/speciesprofile/yellowperch.html).
 
-- Sample clips by Tima Miroshnichenko, via [Pexels](https://www.pexels.com/@tima-miroshnichenko/) and the [Pexels license](https://www.pexels.com/license/). Each player links to its original.
-- Placeholder photograph via [Lorem Picsum](https://picsum.photos/id/1036/info).
-- Fish details use the Minnesota DNR references for [walleye](https://www.dnr.state.mn.us/gofishing/ice-fishing-walleye.html) and [yellow perch](https://www.dnr.state.mn.us/minnaqua/speciesprofile/yellowperch.html).
+## Publish a version
+
+1. Make and check edits in the root site files. Commit them on `main`.
+2. Run `./gitpush` from this repository. It copies the committed HTML, CSS, scripts and assets to the next numbered folder and pushes both the current site and the snapshot together.
+3. Once GitHub Pages finishes deploying, open the printed version URL. Use [fwbp.net](https://fwbp.net/) for the latest site, or send a numbered link such as [v1](https://fwbp.net/v1/index.html) to keep a review tied to one release.
+
+Leave earlier numbered folders alone. Rerunning `./gitpush` after a failed push reuses the prepared snapshot if the site files match. An unchanged site reuses its current version. Numbered releases preserve site files and video IDs. YouTube still controls video and thumbnail availability.

@@ -45,7 +45,7 @@ button, a, summary { -webkit-tap-highlight-color: transparent; }
   min-height: var(--mast-height); display: flex; justify-content: space-between; gap: 10px; align-items: center;
 }
 .brand { display: flex; gap: 9px; align-items: center; font-size: .92rem; font-weight: 760; text-decoration: none; white-space: nowrap; }
-.brand img { flex: none; }
+.brand img { flex: none; border-radius: 4px; }
 .mast nav { display: flex; gap: clamp(10px, 3vw, 30px); align-items: center; }
 .mast nav a { min-height: 44px; display: inline-flex; align-items: center; font-size: .86rem; text-decoration: none; white-space: nowrap; }
 .mast nav a:hover { text-decoration: underline; }
@@ -71,7 +71,7 @@ button, a, summary { -webkit-tap-highlight-color: transparent; }
   border: 1px solid #9eb7a8; border-radius: 8px; background: #7fa8a4; text-decoration: none;
   box-shadow: 0 19px 55px #10292357;
 }
-.hero-cover > svg { height: 100%; position: absolute; inset: 0; z-index: -1; }
+.hero-cover > img { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; z-index: -1; }
 .hero-cover::after { content: ""; position: absolute; inset: 30% 0 0; z-index: -1; background: linear-gradient(transparent,#102522ea); }
 .hero-cover-caption { position: absolute; inset: auto 60px 16px 17px; }
 .hero-cover-caption span { display: block; color: #f8dfad; font-size: .74rem; font-weight: 720; }
@@ -97,6 +97,7 @@ button, a, summary { -webkit-tap-highlight-color: transparent; }
 .about-inner h2 { margin: 12px 0 15px; }
 .about-inner > p:not(.section-mark) { max-width: 36ch; }
 .about-inner .content-note { margin-top: 11px; color: #d0e7da; font-size: .8rem; }
+.channel-banner { display: block; width: min(100%, 560px); height: auto; margin-top: 20px; border: 1px solid var(--rule); border-radius: 4px; }
 .section-mark { color: #ebeed6; }
 .featured { position: relative; isolation: isolate; overflow: clip; background: linear-gradient(var(--lake),var(--deep)); padding: 28px 0 clamp(47px, 8vw, 100px); }
 .featured h2 { max-width: 80%; margin-bottom: 24px; }
@@ -143,6 +144,12 @@ button, a, summary { -webkit-tap-highlight-color: transparent; }
 .guide-frames figcaption { margin-top: 6px; font-size: .85rem; line-height: 1.35; }
 .guide-frames strong { display: block; }
 .field-reference { margin-top: 14px; color: #43574b; font-size: .79rem; }
+.library-channel, .guide-watch { display: inline-flex; align-items: center; min-height: 44px; margin-top: 10px; font-size: .88rem; }
+img.guide-cover { aspect-ratio: 400 / 154; object-fit: cover; }
+.merch { background: var(--deep); padding: clamp(36px, 7vw, 82px) 0; }
+.merch-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 132px), 1fr)); gap: clamp(12px, 2vw, 20px); margin-top: 20px; }
+.merch-grid img { display: block; width: 100%; height: auto; border-radius: 5px; }
+.merch-grid figcaption { margin-top: 7px; font-size: .86rem; line-height: 1.35; }
 .footer { background: #132925; padding: 27px 0; }
 .footer-inner, .footer-links { display: flex; flex-wrap: wrap; gap: 8px 20px; justify-content: space-between; align-items: center; }
 .footer p { color: var(--muted); font-size: .82rem; }
@@ -156,9 +163,8 @@ dialog::backdrop { background: #051719d9; }
 .dialog-head h2 { font-size: clamp(23px, 6vw, 36px); line-height: 1.1; }
 .player-label { font-size: .8rem; color: var(--lamp); }
 .close { min-width: 44px; min-height: 44px; display: grid; place-items: center; border: 1px solid #64837e; border-radius: 4px; background: transparent; }
-dialog video { display: block; width: 100%; max-height: 56dvh; background: #061c20; aspect-ratio: 16/9; }
-#player-description, .player-error { margin: 10px 0; font-size: .87rem; }
-.player-error { color: #f8d7a0; }
+dialog iframe { display: block; width: 100%; min-height: 200px; max-height: 56dvh; border: 0; background: #061c20; aspect-ratio: 16/9; }
+#player-description { margin: 10px 0; font-size: .87rem; }
 #player-source { display: inline-flex; min-height: 44px; align-items: center; font-size: .83rem; }
 @media (max-width: 680px) {
   .surface-inner { grid-template-columns: 1fr; }
