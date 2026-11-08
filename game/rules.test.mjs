@@ -129,3 +129,100 @@ test('skipping Level 2 leaves later Practice catches without a choice', () => {
   assert.deepEqual(third.skills, { quick: 0, control: 0, lift: 0 });
   assert.throws(() => apply(run, { action: 'upgrade', skill: 'lift' }, 3800), /unavailable/);
 });
+
+test('fish get a seek window based on rarity', () => {
+  for (const [roll, deadline] of [[0, 31000], [.55, 26000], [.99, 21000]]) {
+    assert.equal(publicRun(start(1000, () => roll)).seekUntil, deadline);
+  }
+});
+
+test('the last millisecond can start a bite and keep its normal reel window', () => {
+  const run = start(1000, () => 0);
+  const bite = apply(run, { action: 'jig', lure: 'jig' }, 30999);
+  assert.equal(bite.stage, 'bite');
+  assert.equal(bite.seekUntil, null);
+  const caught = apply(run, { action: 'reel' }, 31549);
+  assert.equal(caught.stage, 'landed');
+  assert.equal(caught.score, 10);
+});
+
+test('a late Jig loses the fish even when no timer callback has run', () => {
+  const run = start(1000, () => 0);
+  apply(run, { action: 'jig', lure: 'spoon' }, 30000);
+  const missed = apply(run, { action: 'jig', lure: 'jig' }, 31000);
+  assert.equal(missed.stage, 'missed');
+  assert.equal(missed.fish, null);
+  assert.equal(missed.seekUntil, null);
+  assert.equal(missed.score, 0);
+  assert.throws(() => apply(run, { action: 'jig', lure: 'jig' }, 31400), /unavailable/);
+});
+
+test('a failed reel restores the same seek deadline', () => {
+  const run = start(1000, () => 0);
+  apply(run, { action: 'jig', lure: 'jig' }, 30000);
+  const retry = apply(run, { action: 'reel' }, 30100);
+  assert.equal(retry.stage, 'seek');
+  assert.equal(retry.seekUntil, 31000);
+  assert.throws(() => apply(run, { action: 'expire' }, 30999), /unavailable/);
+  assert.equal(apply(run, { action: 'expire' }, 31000).stage, 'missed');
+});
+
+test('a failed reel after the seek deadline ends the encounter', () => {
+  const run = start(1000, () => 0);
+  apply(run, { action: 'jig', lure: 'jig' }, 30999);
+  assert.equal(apply(run, { action: 'reel' }, 33100).stage, 'missed');
+});
+
+test('a fight continues past the deadline until a broken line releases the fish', () => {
+  const run = start(1000, () => .99);
+  apply(run, { action: 'jig', lure: 'spoon' }, 20999);
+  const fight = apply(run, { action: 'reel' }, 21549);
+  assert.equal(fight.stage, 'fight');
+  assert.equal(fight.fight.pulls, 3);
+  const missed = apply(run, { action: 'lift' }, 21900);
+  assert.equal(missed.stage, 'missed');
+  assert.equal(missed.fight, null);
+  assert.equal(missed.catch, null);
+  assert.equal(missed.score, 0);
+});
+
+test('misses award no XP and the sixth miss ends the outing', () => {
+  const run = start(1000, () => 0, 'mille-lacs', { practice: true });
+  let opened = 1000;
+  for (let encounter = 0; encounter < 6; encounter++) {
+    const missed = apply(run, { action: 'expire' }, opened + 30000);
+    assert.equal(missed.stage, encounter === 5 ? 'done' : 'missed');
+    assert.equal(missed.fish, null);
+    assert.equal(missed.score, 0);
+    assert.deepEqual(missed.practice, { xp: 0, level: 1 });
+    if (encounter < 5) {
+      opened += 32000;
+      const next = apply(run, { action: 'next' }, opened);
+      assert.equal(next.index, encounter + 1);
+      assert.equal(next.seekUntil, opened + 30000);
+    }
+  }
+});
+
+test('two landed fish still unlock Level 2 after a miss', () => {
+  const run = start(1000, () => 0, 'mille-lacs', { practice: true });
+  apply(run, { action: 'expire' }, 31000);
+  let caught;
+  for (const now of [32000, 33000]) {
+    apply(run, { action: 'next' }, now);
+    apply(run, { action: 'jig', lure: 'jig' }, now + 50);
+    caught = apply(run, { action: 'reel' }, now + 600);
+  }
+  assert.deepEqual(caught.practice, { xp: 20, level: 2 });
+  assert.equal(caught.skillPoints, 1);
+  assert.equal(caught.score, 20);
+});
+
+test('an existing ranked encounter without a deadline can finish and start a timed fish', () => {
+  const run = start(1000, () => 0);
+  delete run.seekUntil;
+  assert.equal(publicRun(run).seekUntil, null);
+  apply(run, { action: 'jig', lure: 'jig' }, 45000);
+  assert.equal(apply(run, { action: 'reel' }, 45600).score, 10);
+  assert.equal(apply(run, { action: 'next' }, 46000).seekUntil, 76000);
+});

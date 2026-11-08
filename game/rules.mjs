@@ -14,6 +14,7 @@ export const practiceSkills = {
   lift: 'One fewer pull on a fish that fights',
 };
 const searchDepths = [1, 3, 2, 5, 4, 0];
+const seekWindows = { Common: 30000, Uncommon: 25000, Rare: 20000 };
 const practiceLevelCatches = 2;
 const practiceCatchXp = 10;
 export const practiceLevelXp = practiceLevelCatches * practiceCatchXp;
@@ -23,9 +24,14 @@ export function reelWindow(levels) {
 }
 export const runLifetime = 20 * 60 * 1000;
 
+function seekDeadline(run, now) {
+  const { species } = run.encounters[run.index];
+  return now + seekWindows[lakes[run.lake].fish[species].rarity];
+}
+
 export function start(now, random = Math.random, lake = 'mille-lacs', { practice = false } = {}) {
   const pool = lakes[lake].fish.flatMap((entry, index) => Array(entry.weight).fill(index));
-  return {
+  const run = {
     lake, skills: { quick: 0, control: 0, lift: 0 }, skillPoints: 0, fight: null,
     encounters: searchDepths.map(depth => ({
       depth,
@@ -37,19 +43,22 @@ export function start(now, random = Math.random, lake = 'mille-lacs', { practice
     expires: now + runLifetime, last: now - 300, index: 0, score: 0, discoveries: [],
     stage: 'seek', biteAt: 0, catch: null, cue: 'Fish in view. Pick a lure and jig.',
     version: 0, submitted: false,
-    ...(practice && { practice: true }),
+    ...(practice && { practice: true, landed: 0 }),
   };
+  run.seekUntil = seekDeadline(run, now);
+  return run;
 }
 
 export function publicRun(run) {
   const encounter = run.encounters[run.index];
-  const target = encounter && lakes[run.lake].fish[encounter.species];
-  const xp = (run.index + Number(run.stage === 'landed')) * practiceCatchXp;
+  const target = run.stage !== 'missed' && encounter && lakes[run.lake].fish[encounter.species];
+  const xp = (run.landed ?? (run.index + Number(run.stage === 'landed'))) * practiceCatchXp;
   return {
     fish: target ? { id: target.id, art: target.art, depth: encounter.depth ?? searchDepths[run.index], x: encounter.x, y: encounter.y, gilded: encounter.colorRoll >= .97 } : null,
     lake: lakes[run.lake].name, skills: run.skills, skillPoints: run.skillPoints, fight: run.fight, window: reelWindow(run.skills),
     index: run.index, count: run.encounters.length, score: run.score, stage: run.stage,
     version: run.version, discoveries: run.discoveries, catch: run.catch, cue: run.cue,
+    seekUntil: run.stage === 'seek' ? run.seekUntil ?? null : null,
     submitted: run.submitted,
     ...(run.practice && { practice: { xp, level: xp >= practiceLevelXp ? 2 : 1 } }),
   };
@@ -58,11 +67,17 @@ export function publicRun(run) {
 export function apply(run, input, now) {
   if (!input || Object.keys(input).some(key => !['action', 'lure', 'skill'].includes(key))) throw Error('Invalid action.');
   if (now >= run.expires) throw Error('This outing expired.');
+  const jig = input.action === 'jig' && run.stage === 'seek' && Object.hasOwn(lures, input.lure);
+  if (run.stage === 'seek' && seekExpired(run, now) && (jig || input.action === 'expire')) {
+    miss(run);
+    run.version++;
+    return publicRun(run);
+  }
   const paced = ['jig', 'lift', 'loosen'].includes(input.action);
   if (paced && now - run.last < 250) throw Error('Give the line a moment.');
   const encounter = run.encounters[run.index];
   const target = lakes[run.lake].fish[encounter?.species];
-  if (input.action === 'jig' && run.stage === 'seek' && Object.hasOwn(lures, input.lure)) {
+  if (jig) {
     if (input.lure === target.lure) {
       run.stage = 'bite';
       run.biteAt = now;
@@ -120,25 +135,44 @@ export function apply(run, input, now) {
     run.skills[input.skill]++;
     run.skillPoints--;
     if (!run.practice) run.cue = `${skills[input.skill]} improved.`;
-  } else if (input.action === 'next' && run.stage === 'landed') {
-    if (run.practice) run.skillPoints = 0;
+  } else if (input.action === 'next' && ['landed', 'missed'].includes(run.stage)) {
+    if (run.practice) {
+      run.landed ??= run.index + Number(run.stage === 'landed');
+      run.skillPoints = 0;
+    }
     run.index++;
     run.catch = null;
     run.stage = run.index === run.encounters.length ? 'done' : 'seek';
+    run.seekUntil = run.stage === 'seek' ? seekDeadline(run, now) : null;
     run.cue = run.stage === 'done' ? 'Outing complete.' : 'Fish in view. Pick a lure and jig.';
   } else {
     throw Error('That action is unavailable.');
   }
+  if (run.stage === 'seek' && seekExpired(run, now)) miss(run);
   if (paced) run.last = now;
   run.version++;
   return publicRun(run);
+}
+
+function seekExpired(run, now) {
+  return Number.isFinite(run.seekUntil) && now >= run.seekUntil;
+}
+
+function miss(run) {
+  const last = run.index + 1 === run.encounters.length;
+  run.stage = last ? 'done' : 'missed';
+  if (last) run.index++;
+  run.seekUntil = null;
+  run.fight = run.catch = null;
+  run.cue = last ? 'The fish swam away. Outing complete.' : 'The fish swam away.';
 }
 
 function land(run, target) {
   const { length, rarity, points, grade, gilded } = run.catch;
   run.fight = null;
   run.score += points;
-  if (!run.practice || run.index === practiceLevelCatches - 1) run.skillPoints++;
+  if (run.practice) run.landed = (run.landed ?? run.index) + 1;
+  if (!run.practice || run.landed === practiceLevelCatches) run.skillPoints++;
   if (!run.discoveries.some(entry => entry.fish === target.name)) {
     run.discoveries.push({ fish: target.name, lure: target.lure });
   }

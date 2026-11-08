@@ -28,8 +28,12 @@ body.fishing .dive-ceiling { transform: none !important; }
 .fishing-target svg { display: block; width: 100%; filter: drop-shadow(0 4px 6px #061d24); }
 .fishing-target.is-biting { left: var(--line-x); top: 44%; }
 .fishing-target.is-curious:not(.is-biting) { animation: fishing-inspect .65s ease-in-out; }
+.fishing-target.is-escaping { animation: fishing-escape .45s ease-in both; }
 @keyframes fishing-inspect {
   45% { left: calc(var(--x) + (var(--line-x) - var(--x)) * .38); top: calc(var(--y) + (44% - var(--y)) * .38); }
+}
+@keyframes fishing-escape {
+  to { transform: translate(120%, -65%); opacity: 0; }
 }
 .fishing-bobber {
   position: absolute; z-index: 2; left: var(--line-x); top: var(--line-depth, 0px);
@@ -56,7 +60,8 @@ body.fishing .dive-ceiling { transform: none !important; }
 }
 @media (prefers-reduced-motion: reduce) {
   .fishing-target { transition: none; }
-  .fishing-target.is-curious, .fishing-bobber.is-jigging, .fishing-bobber.is-jigging::before { animation: none; }
+  .fishing-target.is-curious, .fishing-target.is-escaping,
+  .fishing-bobber.is-jigging, .fishing-bobber.is-jigging::before { animation: none; }
 }
 .fishing-timing::before { left: var(--window-start, 26.2%); }
 .fishing-target.gilded svg { filter: sepia(1) saturate(1.8) drop-shadow(0 3px 7px #e5bc59); }
@@ -131,6 +136,9 @@ body.fishing .dive-ceiling { transform: none !important; }
 .fishing-row[data-practice-fight] :is(.fishing-action, [data-loosen]) { flex: 1 1 0; }
 
 .fishing-practice-progress { color: var(--lamp); font-size: .8rem; font-weight: 700; }
+.fishing-encounter { justify-content: space-between; flex-wrap: wrap; }
+.fishing-encounter:not(:has(> :not([hidden]))) { display: none; }
+.fishing-countdown { color: var(--foam); font-size: .8rem; font-variant-numeric: tabular-nums; }
 .fishing-practice-choice { display: grid; gap: 5px; font-size: .82rem; }
 .fishing-practice-choice .fishing-row { align-items: stretch; }
 .fishing-practice-choice button[data-skill] {

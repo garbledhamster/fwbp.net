@@ -13,7 +13,10 @@ tray.innerHTML = `
   <div class="fishing-tray-inner">
     <div class="fishing-row"><img class="fishing-brand" src="./assets/fwbp-logo.jpg" alt="" width="27" height="27"><strong data-score></strong><button type="button" data-exit>Exit fishing</button></div>
     <p class="fishing-status" role="status"></p>
-    <p class="fishing-practice-progress" hidden></p>
+    <div class="fishing-row fishing-encounter">
+      <p class="fishing-practice-progress" hidden></p>
+      <p class="fishing-countdown" role="timer" hidden></p>
+    </div>
     <div class="fishing-timing" aria-hidden="true" hidden><i></i></div>
     <div class="fishing-pressure" hidden>
       <label>Line tension <meter min="0" max="100" high="60" optimum="0"></meter></label>
@@ -91,9 +94,11 @@ const board = tray.querySelector('[data-board]');
 const skillRow = tray.querySelector('.fishing-skills');
 const practiceChoice = tray.querySelector('.fishing-practice-choice');
 const practiceProgress = tray.querySelector('.fishing-practice-progress');
+const countdown = tray.querySelector('.fishing-countdown');
 const practiceButtons = [...practiceChoice.querySelectorAll('button')];
 const slots = [...tray.querySelectorAll('[data-lure]')];
 let launch, previousScroll, run, state, token, target, busy, failed, biteAt, frame;
+let countdownTimer, rankedSeekUntil, escapeTimer;
 let lure = 'jig';
 let practiceError;
 let generation = 0;
@@ -123,6 +128,36 @@ function positionLine() {
 
 function setStatus(message) {
   if (status.textContent !== message) status.textContent = message;
+}
+
+function stopCountdown() {
+  clearTimeout(countdownTimer);
+  countdown.hidden = true;
+}
+
+function updateCountdown() {
+  const deadline = token ? rankedSeekUntil : state?.seekUntil;
+  if (tray.hidden || failed || state?.stage !== 'seek' || !Number.isFinite(deadline)) {
+    countdown.hidden = true;
+    return;
+  }
+  const remaining = deadline - (token ? performance.now() : Date.now());
+  countdown.hidden = false;
+  countdown.textContent = `Fish leaves in ${Math.max(0, Math.ceil(remaining / 1000))}s`;
+  if (remaining <= 0) {
+    if (!busy) void perform('expire');
+  } else {
+    countdownTimer = setTimeout(updateCountdown, remaining % 1000 || 1000);
+  }
+}
+
+function syncCountdown(serverNow) {
+  clearTimeout(countdownTimer);
+  // The server reports its own clock so a player's wall clock cannot shift ranked timing.
+  rankedSeekUntil = Number.isFinite(serverNow) && Number.isFinite(state?.seekUntil)
+    ? performance.now() + Math.max(0, state.seekUntil - serverNow) : null;
+  updateCountdown();
+  updateSearch();
 }
 
 function fishInView() {
@@ -169,9 +204,24 @@ function animateBite() {
   }
 }
 
-function placeFish() {
+function removeTarget() {
+  clearTimeout(escapeTimer);
   target?.remove();
   target = null;
+}
+
+function swimAway() {
+  if (!target || document.body.hasAttribute('data-reduced') || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    removeTarget();
+    return;
+  }
+  target.classList.remove('is-curious', 'is-biting');
+  target.classList.add('is-escaping');
+  escapeTimer = setTimeout(removeTarget, 450);
+}
+
+function placeFish() {
+  removeTarget();
   positionLine();
   if (!state.fish) return;
   const { art: [file, symbol, box], x, y } = state.fish;
@@ -213,7 +263,7 @@ function render() {
   }
   const [actionIcon, label] = failed ? ['next', 'Practice'] : ({
     seek: ['jig', 'Jig'], bite: ['reel', 'Reel'], fight: state?.fight?.pulls === 1 ? ['lift', 'Pull up'] : ['reel', 'Reel'],
-    landed: ['next', 'Next fish'], done: ['next', 'Fish again'],
+    landed: ['next', 'Next fish'], missed: ['next', 'Next fish'], done: ['next', 'Fish again'],
   }[state?.stage] ?? ['next', 'Wait']);
   action.innerHTML = `${icon(actionIcon)}<span>${label}</span>`;
   action.disabled = busy || !state;
@@ -254,7 +304,7 @@ function render() {
   }
   if (state) timing.style.setProperty('--window-start', `${state.window.from / state.window.until * 100}%`);
   timing.hidden = state?.stage !== 'bite' || failed;
-  form.hidden = !token || state?.stage !== 'done' || state.submitted || failed;
+  form.hidden = !token || state?.stage !== 'done' || state.score <= 0 || state.submitted || failed;
   log.hidden = !state?.discoveries.length;
   log.querySelector('ul').replaceChildren(...(state?.discoveries ?? []).map(entry => {
     const li = document.createElement('li');
@@ -268,6 +318,7 @@ async function begin(practice = false) {
   const fromAction = document.activeElement === action;
   dismissCelebration();
   clearBite();
+  stopCountdown();
   practiceError = undefined;
   const current = ++generation;
   busy = true;
@@ -275,13 +326,14 @@ async function begin(practice = false) {
   token = null;
   state = null;
   board.hidden = true;
-  target?.remove();
+  removeTarget();
   render();
+  let serverNow;
   if (endpoint && !practice) {
     try {
       const opened = await api('start', {}, null);
       if (current !== generation) return;
-      ({ token, state } = opened);
+      ({ token, state, serverNow } = opened);
     } catch {
       if (current !== generation) return;
     }
@@ -295,6 +347,7 @@ async function begin(practice = false) {
   placeFish();
   window.scrollTo({ top: 0, behavior: 'instant' });
   render();
+  syncCountdown(serverNow);
   if (!token && fromAction && document.activeElement === document.body) action.focus({ preventScroll: true });
 }
 
@@ -312,7 +365,8 @@ function leave() {
   dismissCelebration();
   generation++;
   clearBite();
-  target?.remove();
+  stopCountdown();
+  removeTarget();
   tray.hidden = bobber.hidden = true;
   document.body.classList.remove('fishing');
   window.scrollTo({ top: previousScroll, behavior: 'instant' });
@@ -367,12 +421,13 @@ async function perform(move, input = {}) {
   render();
   const sentAt = performance.now();
   const appliedAt = Date.now();
+  let serverNow;
   try {
     const result = token
-      ? (await api(move, { ...input, version: state.version })).state
-      : apply(run, { action: move, ...input }, appliedAt);
+      ? await api(move, { ...input, version: state.version })
+      : { state: apply(run, { action: move, ...input }, appliedAt) };
     if (current !== generation) return;
-    state = result;
+    ({ state, serverNow } = result);
     practiceError = undefined;
     if (!token && move === 'jig' && state.stage === 'seek') {
       state = { ...state, cue: 'It looked. Try a different lure and jig again.' };
@@ -382,7 +437,8 @@ async function perform(move, input = {}) {
       else if (state.practice.xp === practiceLevelXp) celebrateCatch(state.practice.level, true);
     }
     if (state.index !== prior.index) dismissCelebration();
-    if (state.index !== prior.index) placeFish();
+    if (state.stage === 'missed' || (state.stage === 'done' && prior.stage !== 'landed')) swimAway();
+    else if (state.index !== prior.index) placeFish();
     if (state.stage === 'bite') {
       biteAt = token ? sentAt : appliedAt;
       clearBite();
@@ -393,10 +449,18 @@ async function perform(move, input = {}) {
   } catch (error) {
     if (current !== generation) return;
     if (token) failed = true;
-    else practiceError = error.message;
+    else {
+      practiceError = error.message;
+      if (appliedAt >= run.expires) {
+        state = { ...state, stage: 'done', fish: null, fight: null };
+        clearBite();
+        removeTarget();
+      }
+    }
   }
   busy = false;
   render();
+  syncCountdown(serverNow);
   if (focused === action || (move === 'upgrade' && skillRow.hidden && practiceChoice.hidden)) {
     action.focus({ preventScroll: true });
   }
@@ -408,7 +472,7 @@ loosen.addEventListener('click', () => perform('loosen'));
 action.addEventListener('click', () => {
   if (failed || state.stage === 'done') return begin(failed);
   if (state.stage === 'seek' && !fishInView()) return updateSearch();
-  const move = { seek: 'jig', bite: 'reel', fight: 'lift', landed: 'next' }[state.stage];
+  const move = { seek: 'jig', bite: 'reel', fight: 'lift', landed: 'next', missed: 'next' }[state.stage];
   return perform(move, move === 'jig' ? { lure } : {});
 });
 for (const button of [...skillRow.children, ...practiceButtons]) {

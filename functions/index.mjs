@@ -44,7 +44,7 @@ export const fishing = onRequest({ region: 'us-central1', maxInstances: 3, timeo
         tx.create(ref, { ...run, expireAt: new Date(now + runLifetime) });
         return true;
       });
-      return allowed ? res.json({ token, state: publicRun(run) }) : res.sendStatus(429);
+      return allowed ? res.json({ token, state: publicRun(run), serverNow: Date.now() }) : res.sendStatus(429);
     }
     const token = /^Bearer ([A-Za-z0-9_-]{43})$/.exec(req.get('Authorization') ?? '')?.[1];
     if (!token || !Number.isInteger(version)) return res.sendStatus(401);
@@ -72,7 +72,7 @@ export const fishing = onRequest({ region: 'us-central1', maxInstances: 3, timeo
       tx.set(ref, run);
       return publicRun(run);
     });
-    if (action !== 'submit') return res.json({ state });
+    if (action !== 'submit') return res.json({ state, serverNow: Date.now() });
     const top = await scores.orderBy('score', 'desc').limit(10).get();
     return res.json({ state, board: top.docs.map(doc => {
       const { nickname, score } = doc.data();
