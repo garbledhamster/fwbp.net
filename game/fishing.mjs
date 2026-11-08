@@ -1,4 +1,4 @@
-import { apply, lures, practiceLevelXp, practiceSkills, publicRun, skills, start } from './rules.mjs?v=11';
+import { apply, lures, practiceLevelXp, practiceSkills, publicRun, skills, start } from './rules.mjs?v=12';
 
 const endpoint = document.querySelector('meta[name="fishing-api"]')?.content;
 const scenes = [...document.querySelectorAll('.dive[data-dive]')].slice(0, 6);
@@ -98,7 +98,8 @@ const countdown = tray.querySelector('.fishing-countdown');
 const practiceButtons = [...practiceChoice.querySelectorAll('button')];
 const slots = [...tray.querySelectorAll('[data-lure]')];
 let launch, previousScroll, run, state, token, target, busy, failed, biteAt, frame;
-let countdownTimer, rankedSeekUntil, escapeTimer;
+let countdownTimer, rankedSeekUntil, rankedServerSeekUntil, escapeTimer;
+let jigActivation = false;
 let lure = 'jig';
 let practiceError;
 let generation = 0;
@@ -132,6 +133,7 @@ function setStatus(message) {
 
 function stopCountdown() {
   clearTimeout(countdownTimer);
+  rankedSeekUntil = rankedServerSeekUntil = undefined;
   countdown.hidden = true;
 }
 
@@ -153,9 +155,13 @@ function updateCountdown() {
 
 function syncCountdown(serverNow) {
   clearTimeout(countdownTimer);
-  // The server reports its own clock so a player's wall clock cannot shift ranked timing.
-  rankedSeekUntil = Number.isFinite(serverNow) && Number.isFinite(state?.seekUntil)
-    ? performance.now() + Math.max(0, state.seekUntil - serverNow) : null;
+  if (Number.isFinite(serverNow) && Number.isFinite(state?.seekUntil)) {
+    const receivedDeadline = performance.now() + Math.max(0, state.seekUntil - serverNow);
+    // A slow response can only tighten an existing countdown, never add time to it.
+    rankedSeekUntil = state.seekUntil === rankedServerSeekUntil
+      ? Math.min(rankedSeekUntil, receivedDeadline) : receivedDeadline;
+    rankedServerSeekUntil = state.seekUntil;
+  }
   updateCountdown();
   updateSearch();
 }
@@ -232,6 +238,8 @@ function placeFish() {
   target.style.setProperty('--x', `${x}%`);
   target.style.setProperty('--y', `${y}%`);
   target.innerHTML = `<svg viewBox="${box}" aria-hidden="true"><use href="./assets/${file}.svg#${symbol}"/></svg>`;
+  target.addEventListener('animationend', updateSearch);
+  target.addEventListener('transitionend', updateSearch);
   scenes[state.fish.depth ?? state.index].append(target);
 }
 
@@ -319,6 +327,7 @@ async function begin(practice = false) {
   dismissCelebration();
   clearBite();
   stopCountdown();
+  jigActivation = false;
   practiceError = undefined;
   const current = ++generation;
   busy = true;
@@ -387,6 +396,7 @@ document.addEventListener('keydown', event => {
       : document.documentElement.scrollHeight;
     event.preventDefault();
     window.scrollBy({ top: step * scrollKeys[event.key], behavior: 'instant' });
+    updateSearch();
   }
   if (!token && event.repeat && ['Enter', ' '].includes(event.key) && tray.contains(event.target)) {
     event.preventDefault();
@@ -469,7 +479,17 @@ async function perform(move, input = {}) {
 
 loosen.addEventListener('click', () => perform('loosen'));
 
+action.addEventListener('pointerdown', event => {
+  if (event.isPrimary && event.button === 0) jigActivation = state?.stage === 'seek';
+});
+action.addEventListener('pointercancel', () => { jigActivation = false; });
+action.addEventListener('keydown', event => {
+  if (!event.repeat && ['Enter', ' '].includes(event.key)) jigActivation = state?.stage === 'seek';
+});
 action.addEventListener('click', () => {
+  const startedAsJig = jigActivation;
+  jigActivation = false;
+  if (startedAsJig && ['missed', 'done'].includes(state.stage)) return;
   if (failed || state.stage === 'done') return begin(failed);
   if (state.stage === 'seek' && !fishInView()) return updateSearch();
   const move = { seek: 'jig', bite: 'reel', fight: 'lift', landed: 'next', missed: 'next' }[state.stage];

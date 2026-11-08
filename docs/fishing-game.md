@@ -4,9 +4,11 @@ Choose **Play fishing game** to fish in the lake beneath the site. The site cont
 
 ## Strategy
 
-The first outing should teach itself in about a minute. Show how the fish responds to a jig, cue the player when it bites, and show its name, rarity and points when it lands. Ranked play offers a nickname prompt at the end. The same lake, fish illustrations and warm lamp color make the game feel like part of Bryan’s site.
+The first outing should teach you how to find, hook and land a fish. Show how the fish responds to a jig, cue the player when it bites, and show its name, rarity and points when it lands. Ranked play offers a nickname prompt after an outing with a catch. The same lake, fish illustrations and warm lamp color make the game feel like part of Bryan’s site.
 
-An outing has six encounters in the existing dive sections. Pick one of three lures, find the fish, jig, and reel when the line is ready. A weak lure gets a response and leaves room to switch. The catch record reveals successful pairings. A player can start a new outing or leave at any point.
+Start at the ice hole and scroll the lake to find a fish. Jig becomes available when the fish comes into view above the tackle tray. Pick one of three lures and reel when the line is ready. Next fish leaves you at the same depth, so look above and below you. The catch log shows which lure worked for each fish you landed.
+
+Each outing has six encounters. Common fish give you 30 seconds, Uncommon fish 25 seconds, and Rare fish 20 seconds. The clock starts when the fish arrives and keeps running while you search or try lures. If time runs out, the fish swims away. It counts as one encounter and earns zero points and XP. You can leave at any time or start another outing when you finish.
 
 ## Architecture
 
@@ -51,9 +53,9 @@ In Practice, each landed fish earns 10 XP toward Level 2, separate from its scor
 
 The lure hangs from the ice hole on one continuous line. Jig bounces it vertically, and the fish comes to inspect it. The tackle tray and lure share one SVG icon sheet, with labels on the controls.
 
-The first reel uses the gold timing band. In Practice, Bryan tells you to wait at the bite and calls “Yeah, reel it!” when the window opens. If it closes, press **Reel** to resolve the attempt, then jig for the same fish. Common fish usually land on the first reel. Stronger or trophy fish pull the line tight. **Loosen** to drop the tension, then **Reel** when the line clears. Use **Pull up** on the last turn. Reeling against a tight line raises tension and can break it. Tougher fish surge more often. The ranked server still decides accepted timing and points.
+The first reel uses the gold timing band. In Practice, Bryan tells you to wait at the bite and calls “Yeah, reel it!” when the window opens. A bite before the fish’s deadline gives you the full reel window. If the window closes, press **Reel** to resolve the attempt. You can jig again if the fish still has time left. Common fish usually land on the first reel. Stronger or trophy fish pull the line tight. **Loosen** to drop the tension, then **Reel** when the line clears. Use **Pull up** on the last turn. Reeling against a tight line raises tension and can break it. Tougher fish surge more often. The ranked server still decides accepted timing and points.
 
 
 ### Run the game checks
 
-Run `node --test game/rules.test.mjs` for the shared rules. To replay the seeded browser checks, start the local site as described in the README. Set `FISHING_QA_URL` to that URL and run `node game/cues.browser.mjs` and `node game/milestone.browser.mjs`. If Playwright is installed outside the checkout, set `PLAYWRIGHT_MODULE` to its module path. Use `CHROME_PATH` if you need to point Playwright to an installed Chrome.
+Run `node --test game/rules.test.mjs` for the shared rules. To replay the seeded browser checks, start the local site as described in the README. Set `FISHING_QA_URL` to that URL and run `node game/search.browser.mjs`, `node game/escape.browser.mjs`, `node game/cues.browser.mjs` and `node game/milestone.browser.mjs`. If Playwright is installed outside the checkout, set `PLAYWRIGHT_MODULE` to its module path. Use `CHROME_PATH` if you need to point Playwright to an installed Chrome.

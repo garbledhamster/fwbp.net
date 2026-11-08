@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { practicePage, withBrowser } from './browser-qa.mjs';
+import { apply, publicRun, start } from './rules.mjs';
 
 async function checkOuting(browser, mobile) {
   const { page, tray, launch, action, button, status, press, tick, findFish, errors } =
@@ -78,6 +79,91 @@ async function checkLateJig(browser) {
   await page.close();
 }
 
+async function checkHeldJig(browser, mobile) {
+  const { page, tray, launch, action, press, findFish, status, errors } = await practicePage(browser, { mobile });
+  const score = tray.locator('[data-score]');
+  await press(launch, 'Enter');
+  await findFish();
+  await page.clock.fastForward(29999);
+  const touch = mobile ? await page.context().newCDPSession(page) : null;
+  if (touch) {
+    const box = await action.boundingBox();
+    await touch.send('Input.dispatchTouchEvent', {
+      type: 'touchStart',
+      touchPoints: [{ x: box.x + box.width / 2, y: box.y + box.height / 2 }],
+    });
+  } else {
+    await action.focus();
+    await page.keyboard.down('Space');
+  }
+  await page.clock.fastForward(1);
+  assert.match(await action.textContent(), /next fish/i);
+  if (touch) await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  else await page.keyboard.up('Space');
+  assert.match(await score.textContent(), /1\/6/, 'releasing Jig must leave the missed encounter in place');
+  assert.match(await status.textContent(), /fish swam away/i);
+  await press(action);
+  assert.match(await score.textContent(), /2\/6/, 'a new press can advance to the next fish');
+  assert.deepEqual(errors, []);
+  await page.close();
+}
+
+async function checkRankedDelay(browser) {
+  const url = process.env.FISHING_QA_URL ?? 'http://127.0.0.1:9867/';
+  const token = 'a'.repeat(43);
+  const actions = [];
+  let run, holdResponse, releaseResponse;
+  const responseHeld = new Promise(resolve => { holdResponse = resolve; });
+  const release = new Promise(resolve => { releaseResponse = resolve; });
+  const { page, tray, launch, action, press, tick, findFish, errors } = await practicePage(browser, {
+    async configure(page) {
+      await page.route(url, async route => {
+        const response = await route.fetch();
+        const body = (await response.text()).replace('<head>', '<head><meta name="fishing-api" content="/ranked-fixture">');
+        await route.fulfill({ response, body });
+      });
+      await page.route('**/ranked-fixture', async route => {
+        const { action, version, ...move } = route.request().postDataJSON();
+        const now = (await page.evaluate(() => Date.now())) + 2 * 60 * 60 * 1000;
+        actions.push(action);
+        if (action === 'start') {
+          run = start(now, () => 0);
+          return route.fulfill({ json: { token, state: publicRun(run), serverNow: now } });
+        }
+        assert.equal(route.request().headers().authorization, 'Bearer ' + token);
+        assert.equal(version, run.version);
+        const state = apply(run, { action, ...move }, now);
+        if (action === 'jig') {
+          holdResponse();
+          await release;
+        }
+        return route.fulfill({ json: { state, serverNow: now } });
+      });
+    },
+  });
+
+  await press(launch, 'Enter');
+  await tray.getByText(/Ranked/).waitFor();
+  await findFish();
+  await tick(10000);
+  await press(tray.locator('[data-lure="spoon"]'), 'Enter');
+  await press(action, 'Enter');
+  await responseHeld;
+  await tick(3000);
+  const countdown = tray.getByRole('timer');
+  assert.match(await countdown.textContent(), /17s/);
+  releaseResponse();
+  await tray.getByText(/different lure/).waitFor();
+  assert.match(await countdown.textContent(), /17s/, 'the delayed ranked response cannot add time');
+  await tick(16999);
+  assert.deepEqual(actions, ['start', 'jig']);
+  await tick(1);
+  await tray.getByText(/fish swam away/i).waitFor();
+  assert.deepEqual(actions, ['start', 'jig', 'expire']);
+  assert.deepEqual(errors, []);
+  await page.close();
+}
+
 async function checkExpiredOuting(browser) {
   const { page, tray, launch, action, press, status, errors } = await practicePage(browser);
   await press(launch, 'Enter');
@@ -96,6 +182,9 @@ const checks = [
   ['desktop countdown and escape', browser => checkOuting(browser, false)],
   ['phone countdown and reduced-motion escape', browser => checkOuting(browser, true)],
   ['late Jig before the timer callback', checkLateJig],
+  ['held Space release at expiry', browser => checkHeldJig(browser, false)],
+  ['held touch release at expiry', browser => checkHeldJig(browser, true)],
+  ['delayed ranked response preserves the deadline', checkRankedDelay],
   ['return after the entire outing expires', checkExpiredOuting],
 ];
 await withBrowser(async browser => {

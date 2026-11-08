@@ -112,7 +112,51 @@ async function checkTouch(browser) {
   await page.close();
 }
 
-const checks = [['wheel down, keyboard back up, and Fish Guide', checkDesktop], ['320px touch search', checkTouch]];
+async function checkInspectVisibility(browser) {
+  const { page, tray, launch, action, button, press, tick, errors } = await practicePage(browser);
+  const fish = page.locator('.fishing-target');
+  await page.evaluate(() => {
+    const seed = [.05, .2, .01, .4, .1];
+    let draw = 0;
+    Math.random = () => seed[draw++ % seed.length];
+  });
+
+  await press(launch, 'Enter');
+  const trayTop = (await tray.boundingBox()).y;
+  await fish.evaluate((el, top) => {
+    const box = el.getBoundingClientRect();
+    window.scrollBy({ top: box.top + box.height / 2 - top + 15, behavior: 'instant' });
+  }, trayTop);
+  await tick(100);
+  assert.equal(await action.isEnabled(), true);
+
+  await press(button('Spoon'));
+  await press(action, 'Enter');
+  await fish.evaluate(el => {
+    const inspect = el.getAnimations().find(animation => animation.animationName === 'fishing-inspect');
+    inspect.pause();
+    inspect.currentTime = inspect.effect.getTiming().duration * .45;
+    window.scrollBy({ top: -2, behavior: 'instant' });
+  });
+  await page.waitForFunction(() => document.querySelector('.fishing-action').ariaDisabled === 'true',
+    null, { polling: 25 });
+
+  await fish.evaluate(el => new Promise(resolve => {
+    el.addEventListener('animationend', resolve, { once: true });
+    el.getAnimations().find(animation => animation.animationName === 'fishing-inspect').finish();
+  }));
+  const box = await fish.boundingBox();
+  assert.ok(box.y + box.height / 2 < (await tray.boundingBox()).y);
+  assert.equal(await action.isEnabled(), true, 'Jig becomes available when the fish comes back into view');
+  assert.deepEqual(errors, []);
+  await page.close();
+}
+
+const checks = [
+  ['wheel down, keyboard back up, and Fish Guide', checkDesktop],
+  ['320px touch search', checkTouch],
+  ['fish visibility updates after inspecting a lure', checkInspectVisibility],
+];
 await withBrowser(async browser => {
   const results = await Promise.allSettled(checks.map(([, check]) => check(browser)));
   for (const [i, result] of results.entries()) {
