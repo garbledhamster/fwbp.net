@@ -166,10 +166,10 @@ systemMotion.addEventListener("change", applyMotionPreference);
 const progress = document.querySelector(".scroll-progress");
 const depthScenes = [...document.querySelectorAll(".surface, .ice, [data-dive]")];
 
-const lure = document.querySelector(".footer-lure");
+const lure = document.querySelector(".footer-rig");
 
 function updateDepth(remaining) {
-  if (reduce || systemMotion.matches) return;
+  if (reduce || systemMotion.matches || document.body.hasAttribute("data-fish-paused")) return;
 
   // Follow each section as it passes through the viewport, from -1 to 1.
   const viewport = innerHeight;

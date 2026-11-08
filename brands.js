@@ -1,3 +1,5 @@
+import { fishProfiles } from "./assets/fish-profiles.js";
+
 const species = {
   pike: ["lake-life", "pike", "0 0 230 72"],
   perch: ["scenes", "bi-perch", "0 0 172 66"],
@@ -113,7 +115,7 @@ const svgNamespace = "http://www.w3.org/2000/svg";
 function makeActor([kind, x, y, size, travelX, travelY, layer]) {
   const fish = species[kind];
   const [sheet, symbol, viewBox] = fish ?? debris[kind];
-  const actor = document.createElement("div");
+  const actor = document.createElement(fish ? "button" : "div");
   actor.className = "dive-actor";
   actor.dataset.layer = layer;
   actor.style.left = x + "%";
@@ -124,10 +126,16 @@ function makeActor([kind, x, y, size, travelX, travelY, layer]) {
 
   const svg = document.createElementNS(svgNamespace, "svg");
   svg.setAttribute("viewBox", viewBox);
+  svg.setAttribute("aria-hidden", "true");
   const use = document.createElementNS(svgNamespace, "use");
   use.setAttribute("href", "./assets/" + sheet + ".svg#" + symbol);
   if (fish) {
+    actor.classList.add("fish-target");
+    actor.type = "button";
+    actor.disabled = true;
     actor.dataset.fish = kind;
+    actor.setAttribute("aria-label", fishProfiles[kind].name);
+    actor.setAttribute("aria-haspopup", "dialog");
     svg.classList.toggle("dive-facing-right", travelX > 0);
   }
   svg.append(use);
@@ -144,3 +152,69 @@ const requested = new URL(location.href).searchParams.get("dive");
 if (location.hash === "#dive" && ["perch", "weeds", "rocks", "camera"].includes(requested)) {
   document.getElementById(requested).scrollIntoView();
 }
+
+const guideToggle = document.querySelector("#fish-guide-toggle");
+const guideLabel = guideToggle.querySelector(".brand-mode");
+const guideHint = document.querySelector(".fish-mode-hint");
+const navigation = document.querySelector(".mast nav");
+const overlayLink = document.querySelector(".footer-lure");
+const habitatLayers = document.querySelectorAll(".dive-water, .lakebed-art");
+const targets = document.querySelectorAll(".fish-target");
+const fishCard = document.querySelector("#fish-card");
+const cardArt = fishCard.querySelector(".fish-card-art");
+const cardTitle = fishCard.querySelector("h2");
+const cardFields = Object.fromEntries(
+  Array.from(fishCard.querySelectorAll("[data-card]"), field => [field.dataset.card, field])
+);
+const profileOrder = Object.keys(fishProfiles);
+let cardOpener;
+
+function setFishGuide(active) {
+  document.body.toggleAttribute("data-fish-mode", active);
+  guideToggle.setAttribute("aria-pressed", String(active));
+  guideLabel.textContent = active ? "Exit fish guide" : "Fish guide";
+  guideHint.hidden = !active;
+  navigation.hidden = active;
+  overlayLink.inert = active;
+  for (const layer of habitatLayers) layer.setAttribute("aria-hidden", String(!active));
+  for (const target of targets) target.disabled = !active;
+}
+
+guideToggle.disabled = false;
+guideToggle.addEventListener("click", () => {
+  setFishGuide(!document.body.hasAttribute("data-fish-mode"));
+});
+
+document.addEventListener("click", event => {
+  const trigger = event.target.closest(".fish-target");
+  if (!trigger || trigger.disabled || fishCard.open) return;
+
+  const key = trigger.dataset.fish;
+  const profile = fishProfiles[key];
+  const [sheet, symbol, viewBox] = species[key];
+  cardOpener = trigger;
+  cardTitle.textContent = profile.name;
+  cardFields.number.textContent = String(profileOrder.indexOf(key) + 1).padStart(2, "0") + " / " + profileOrder.length;
+  cardFields.family.textContent = profile.family;
+  cardFields.feature.textContent = profile.feature;
+  cardFields.habitat.textContent = profile.habitat;
+  cardFields.note.hidden = !profile.note;
+  cardFields.note.textContent = profile.note ?? "";
+  cardFields.source.href = profile.source;
+  cardArt.setAttribute("viewBox", viewBox);
+  cardArt.querySelector("use").setAttribute("href", "./assets/" + sheet + ".svg#" + symbol);
+  document.body.setAttribute("data-fish-paused", "");
+  fishCard.showModal();
+});
+
+fishCard.addEventListener("close", () => {
+  document.body.removeAttribute("data-fish-paused");
+  cardOpener?.focus({preventScroll: true});
+});
+
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape" && !fishCard.open && document.body.hasAttribute("data-fish-mode")) {
+    setFishGuide(false);
+    guideToggle.focus({preventScroll: true});
+  }
+});

@@ -12,13 +12,15 @@ The dive uses original SVG illustrations. Species and habitat references come fr
 
 The 23 fish illustrations combine subjects from Bryan’s lake, river, and Great Lakes videos with white bass from local rivers. Common carp, channel catfish, black bullhead, and golden redhorse represent groups Bryan names in his uploads. The drawings use the [Minnesota fish identification guide](https://files.dnr.state.mn.us/recreation/fishing/fin/fish_id_placemat.pdf), [Minnesota DNR white bass profile](https://www.dnr.state.mn.us/fish/whitebass/index.html), [Minnesota trout and salmon guide](https://www.dnr.state.mn.us/fishing/trout/northshore.html), and agency profiles for [quillback](https://mdc.mo.gov/fishing/species/carpsucker-quillback) and [Chinook salmon](https://www.michigan.gov/dnr/education/michigan-species/fish-species/chinook-salmon).
 
+Tap **Fishing with Bryan** in the sticky header to open the fish guide. The page content hides in place so you can select the fish swimming behind it. Opening a card pauses the water motion. Close the card to keep exploring, and tap Bryan again to restore the page content. Identification and habitat text lives in `assets/fish-profiles.js`.
+
 The lakebed footer uses foreground growth, a distant ridge and two of Bryan’s underwater videos. A pike swims toward the lure as the visitor reaches the bottom. The fishing line ends with a bobber and a red-and-white spoon that links to [Bryan’s Dardevle Short](https://www.youtube.com/shorts/kgUSasaMays). The lure illustration references [Eppinger’s design history](https://dardevle.com/ourtradition/).
 
 The lakebed moves decorative layers with [CSS transforms](https://web.dev/articles/animations-guide) and honors [reduced motion](https://www.w3.org/WAI/WCAG21/Understanding/animation-from-interactions).
 
 ## Fishing game
 
-Click Bryan’s name or the logo to fish beneath the ice. See the [game design and deployment notes](docs/fishing-game.md) for rules, lake sources and ranked setup.
+Choose **Play fishing game** from the hero to fish beneath the ice. See the [game design and deployment notes](docs/fishing-game.md) for rules, lake sources and ranked setup.
 
 ## Publish a version
 
