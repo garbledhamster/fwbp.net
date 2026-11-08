@@ -26,7 +26,38 @@ const bobber = document.createElement('div');
 bobber.className = 'fishing-bobber';
 bobber.hidden = true;
 bobber.setAttribute('aria-hidden', 'true');
-document.body.append(tray, bobber);
+const celebration = document.createElement('div');
+celebration.className = 'fishing-celebration';
+celebration.hidden = true;
+celebration.innerHTML = `
+  <div class="fishing-splash" aria-hidden="true">
+    ${[-130, -87, -53, 53, 87, 130].map((x, i) => `
+      <svg style="--dx:${x}px;--dy:${-30 - i % 3 * 16}px;--delay:${i * 45}ms" viewBox="0 0 32 18">
+        <path d="M1 3l7 3C14 0 24 1 31 9c-7 8-17 9-23 3l-7 3 3-6z"/>
+      </svg>`).join('')}
+  </div>
+  <img src="./assets/bryan-level-up.webp" alt="" width="320" height="320" loading="lazy">
+  <div class="fishing-ribbon"><strong data-level></strong><span>+1 skill point</span></div>`;
+const announcement = document.createElement('span');
+announcement.className = 'fishing-announcement';
+announcement.setAttribute('role', 'status');
+document.body.append(tray, bobber, celebration, announcement);
+
+let celebrationTimer;
+
+function dismissCelebration() {
+  clearTimeout(celebrationTimer);
+  celebration.hidden = true;
+  announcement.textContent = '';
+}
+
+function celebrateCatch(level) {
+  dismissCelebration();
+  celebration.querySelector('[data-level]').textContent = `Level ${level}`;
+  celebration.hidden = false;
+  announcement.textContent = `Level ${level}. You earned one skill point.`;
+  celebrationTimer = setTimeout(dismissCelebration, 3600);
+}
 
 const action = tray.querySelector('.fishing-action');
 const timing = tray.querySelector('.fishing-timing');
@@ -119,6 +150,7 @@ function render() {
 }
 
 async function begin(practice = false) {
+  dismissCelebration();
   const current = ++generation;
   busy = true;
   failed = false;
@@ -157,6 +189,7 @@ function enter(event) {
 }
 
 function leave() {
+  dismissCelebration();
   generation++;
   cancelAnimationFrame(frame);
   target?.remove();
@@ -196,6 +229,8 @@ async function perform(move, input = {}) {
       : apply(run, { action: move, ...input }, Date.now());
     if (current !== generation) return;
     state = result;
+    if (state.stage === 'landed' && prior.stage !== 'landed') celebrateCatch(state.index + 2);
+    if (state.index !== prior.index) dismissCelebration();
     if (state.index !== prior.index) placeFish();
     if (state.stage === 'bite') {
       biteAt = sentAt;

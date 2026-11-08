@@ -33,3 +33,54 @@
 .fishing-tray [data-board], .fishing-tray details ul { max-height: 7rem; overflow: auto; margin-block: 0; }
 .fishing-tray [data-score] { font-size: .85rem; }
 .fishing-tray input { max-width: 9rem; padding: .5rem; }
+
+.fishing-celebration {
+  position: fixed;
+  z-index: 9;
+  inset: max(12px, env(safe-area-inset-top)) auto auto 50%;
+  width: min(168px, 42vw);
+  transform: translateX(-50%);
+  isolation: isolate;
+  text-align: center;
+  pointer-events: none;
+  animation: fishing-award-in .32s ease-out both;
+}
+.fishing-celebration img { display: block; width: 73%; height: auto; margin: auto auto -16px; }
+.fishing-ribbon {
+  position: relative;
+  padding: 5px 15px 8px;
+  color: #252416;
+  background: var(--lamp);
+  clip-path: polygon(0 0, 100% 0, 95% 50%, 100% 100%, 0 100%, 5% 50%);
+}
+.fishing-ribbon strong { display: block; font: bold 1.42rem/1.2 Georgia, serif; }
+.fishing-ribbon span { display: block; font-size: .8rem; font-weight: 720; }
+.fishing-splash { position: absolute; inset: 76% 0 auto; z-index: -1; }
+.fishing-splash svg {
+  position: absolute;
+  left: calc(50% - 12px);
+  width: 24px;
+  fill: #9dc7b7;
+  animation: fishing-school-out .85s ease-out var(--delay) both;
+}
+.fishing-splash svg:nth-child(odd) { fill: var(--lamp); }
+.fishing-announcement {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+@keyframes fishing-award-in {
+  from { transform: translate(-50%, -12px) scale(.94); opacity: 0; }
+}
+@keyframes fishing-school-out {
+  from { opacity: 0; transform: scale(.45); }
+  20% { opacity: 1; }
+  to { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(.85); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fishing-celebration, .fishing-splash svg { animation: none; }
+  .fishing-splash { display: none; }
+}

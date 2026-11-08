@@ -42,3 +42,7 @@ Each fish has a length and grade. Trophy and record lengths score more. A rare g
 ### Ranked deployment
 
 The dedicated [Firebase project](https://console.firebase.google.com/project/fwbp-fishing-game/overview) is active. Enable Blaze and provision a Firestore database in the project's US region. Configure Firestore TTL on `expireAt` for `fishingRuns` and `fishingStarts` before opening ranked play. Install the dependencies in `functions` and deploy with `npx -y firebase-tools@latest deploy --project fwbp-fishing-game --only firestore:rules,functions`. The predeploy hook copies the shared rules into the upload. Smoke-test the function and then add a `fishing-api` meta tag to the site pointing to the verified HTTPS endpoint. Site releases without the tag offer practice. Account access can be managed in the project's Users and permissions settings.
+
+### Level-up celebration
+
+An outing starts at level 1. Each landed fish raises the level and earns one skill point. On landing, Bryan’s illustrated portrait appears with a ribbon and a burst of small fish silhouettes. The controls stay available during the celebration. Reduced-motion players see the still portrait and ribbon, and the award is announced to screen readers.
