@@ -97,6 +97,7 @@ let launch, previousScroll, run, state, token, target, busy, failed, biteAt, fra
 let lure = 'jig';
 let practiceError;
 let generation = 0;
+const scrollKeys = { ArrowUp: -1, ArrowDown: 1, PageUp: -1, PageDown: 1, Home: -1, End: 1 };
 
 async function api(action, data = {}, auth = token) {
   const response = await fetch(endpoint, {
@@ -108,7 +109,7 @@ async function api(action, data = {}, auth = token) {
 }
 
 function positionLine() {
-  const scene = scenes[state?.index];
+  const scene = scenes[state?.fish?.depth ?? state?.index];
   if (!scene || !state.fish) {
     bobber.hidden = true;
     return;
@@ -118,11 +119,32 @@ function positionLine() {
   const hole = iceCeiling.getBoundingClientRect();
   bobber.style.setProperty('--line-start', `${hole.top - water.top + hole.height * 20 / 110}px`);
   bobber.style.setProperty('--line-depth', `${encounter.top - water.top + encounter.height * .44}px`);
-  bobber.hidden = tray.hidden;
 }
 
 function setStatus(message) {
   if (status.textContent !== message) status.textContent = message;
+}
+
+function fishInView() {
+  if (!target || target.hidden) return false;
+  const { left, top, width, height } = target.getBoundingClientRect();
+  const x = left + width / 2;
+  const y = top + height / 2;
+  const {
+    offsetLeft = 0, offsetTop = 0, width: viewWidth = innerWidth, height: viewHeight = innerHeight,
+  } = window.visualViewport ?? {};
+  return x >= offsetLeft && x < offsetLeft + viewWidth
+    && y >= offsetTop && y < Math.min(offsetTop + viewHeight, tray.getBoundingClientRect().top);
+}
+
+function updateSearch() {
+  if (tray.hidden) return;
+  const searching = !failed && state?.stage === 'seek';
+  const inView = searching && fishInView();
+  if (searching && !inView) action.setAttribute('aria-disabled', 'true');
+  else action.removeAttribute('aria-disabled');
+  bobber.hidden = !state?.fish || (searching && !inView);
+  if (searching) setStatus(inView ? practiceError ?? state.cue : 'Scroll up or down to find the fish.');
 }
 
 function showPracticeBite(elapsed) {
@@ -160,7 +182,7 @@ function placeFish() {
   target.style.setProperty('--x', `${x}%`);
   target.style.setProperty('--y', `${y}%`);
   target.innerHTML = `<svg viewBox="${box}" aria-hidden="true"><use href="./assets/${file}.svg#${symbol}"/></svg>`;
-  scenes[state.index].append(target);
+  scenes[state.fish.depth ?? state.index].append(target);
 }
 
 function render() {
@@ -182,7 +204,7 @@ function render() {
       else cue += `. ${state.skills.control ? skills.control : skills.lift} selected.`;
     }
   }
-  if (!practiceBite || practiceError) setStatus(cue);
+  if ((state?.stage !== 'seek' || failed) && (!practiceBite || practiceError)) setStatus(cue);
   practiceProgress.hidden = !state?.practice || failed;
   if (state?.practice) {
     const { xp, level } = state.practice;
@@ -239,6 +261,7 @@ function render() {
     li.textContent = `${entry.fish} · ${lures[entry.lure]}`;
     return li;
   }));
+  updateSearch();
 }
 
 async function begin(practice = false) {
@@ -300,12 +323,29 @@ document.querySelectorAll('.game-entry, .fish-entry').forEach(entry => entry.add
 exit.addEventListener('click', leave);
 document.addEventListener('keydown', event => {
   if (tray.hidden) return;
-  if (event.key === 'Escape') leave();
+  if (event.key === 'Escape') return leave();
+  if (Object.hasOwn(scrollKeys, event.key) && !event.defaultPrevented
+    && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey
+    && !event.target.closest('input')) {
+    // Keep a page step inside the visible water and avoid a scroll that outlasts the game.
+    const step = event.key.startsWith('Arrow') ? 48
+      : event.key.startsWith('Page') ? tray.getBoundingClientRect().top * .85
+      : document.documentElement.scrollHeight;
+    event.preventDefault();
+    window.scrollBy({ top: step * scrollKeys[event.key], behavior: 'instant' });
+  }
   if (!token && event.repeat && ['Enter', ' '].includes(event.key) && tray.contains(event.target)) {
     event.preventDefault();
   }
 });
-window.addEventListener('resize', positionLine);
+window.addEventListener('scroll', updateSearch, { passive: true });
+window.addEventListener('resize', () => {
+  positionLine();
+  updateSearch();
+});
+window.visualViewport?.addEventListener('scroll', updateSearch, { passive: true });
+window.visualViewport?.addEventListener('resize', updateSearch);
+log.addEventListener('toggle', updateSearch);
 slots.forEach(slot => slot.addEventListener('click', () => {
   lure = slot.dataset.lure;
   render();
@@ -367,6 +407,7 @@ loosen.addEventListener('click', () => perform('loosen'));
 
 action.addEventListener('click', () => {
   if (failed || state.stage === 'done') return begin(failed);
+  if (state.stage === 'seek' && !fishInView()) return updateSearch();
   const move = { seek: 'jig', bite: 'reel', fight: 'lift', landed: 'next' }[state.stage];
   return perform(move, move === 'jig' ? { lure } : {});
 });

@@ -56,8 +56,19 @@ export async function practicePage(browser, { mobile = false, configure } = {}) 
     }
   }
 
+  async function findFish() {
+    await page.locator('.fishing-target').evaluate(el => {
+      const box = el.getBoundingClientRect();
+      window.scrollBy({ top: box.top + box.height / 2 - innerHeight * .35, behavior: 'instant' });
+    });
+    await page.waitForFunction(() => {
+      const button = document.querySelector('.fishing-action');
+      return !button.disabled && button.getAttribute('aria-disabled') !== 'true';
+    }, null, { polling: 25 });
+  }
+
   return {
-    page, tray, action, launch, button, press, errors,
+    page, tray, action, launch, button, press, errors, findFish,
     status: tray.getByRole('status'),
     timing: tray.locator('.fishing-timing'),
     tick: ms => page.clock.runFor(ms),

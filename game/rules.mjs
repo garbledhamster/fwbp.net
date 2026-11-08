@@ -13,6 +13,7 @@ export const practiceSkills = {
   control: '350 ms more to set the hook',
   lift: 'One fewer pull on a fish that fights',
 };
+const searchDepths = [1, 3, 2, 5, 4, 0];
 const practiceLevelCatches = 2;
 const practiceCatchXp = 10;
 export const practiceLevelXp = practiceLevelCatches * practiceCatchXp;
@@ -26,14 +27,15 @@ export function start(now, random = Math.random, lake = 'mille-lacs', { practice
   const pool = lakes[lake].fish.flatMap((entry, index) => Array(entry.weight).fill(index));
   return {
     lake, skills: { quick: 0, control: 0, lift: 0 }, skillPoints: 0, fight: null,
-    encounters: Array.from({ length: 6 }, () => ({
+    encounters: searchDepths.map(depth => ({
+      depth,
       species: pool[Math.floor(random() * pool.length)],
       x: 17 + Math.round(random() * 66),
       y: 28 + Math.round(random() * 38),
       sizeRoll: random(), colorRoll: random(),
     })),
     expires: now + runLifetime, last: now - 300, index: 0, score: 0, discoveries: [],
-    stage: 'seek', biteAt: 0, catch: null, cue: 'Keep on jigging! Pick a lure and give it a bounce.',
+    stage: 'seek', biteAt: 0, catch: null, cue: 'Fish in view. Pick a lure and jig.',
     version: 0, submitted: false,
     ...(practice && { practice: true }),
   };
@@ -44,7 +46,7 @@ export function publicRun(run) {
   const target = encounter && lakes[run.lake].fish[encounter.species];
   const xp = (run.index + Number(run.stage === 'landed')) * practiceCatchXp;
   return {
-    fish: target ? { id: target.id, art: target.art, x: encounter.x, y: encounter.y, gilded: encounter.colorRoll >= .97 } : null,
+    fish: target ? { id: target.id, art: target.art, depth: encounter.depth ?? searchDepths[run.index], x: encounter.x, y: encounter.y, gilded: encounter.colorRoll >= .97 } : null,
     lake: lakes[run.lake].name, skills: run.skills, skillPoints: run.skillPoints, fight: run.fight, window: reelWindow(run.skills),
     index: run.index, count: run.encounters.length, score: run.score, stage: run.stage,
     version: run.version, discoveries: run.discoveries, catch: run.catch, cue: run.cue,
@@ -123,7 +125,7 @@ export function apply(run, input, now) {
     run.index++;
     run.catch = null;
     run.stage = run.index === run.encounters.length ? 'done' : 'seek';
-    run.cue = run.stage === 'done' ? 'Outing complete.' : 'Scroll down to find the next fish.';
+    run.cue = run.stage === 'done' ? 'Outing complete.' : 'Fish in view. Pick a lure and jig.';
   } else {
     throw Error('That action is unavailable.');
   }

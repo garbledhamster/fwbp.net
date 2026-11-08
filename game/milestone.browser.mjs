@@ -3,7 +3,7 @@ import { practicePage, withBrowser } from './browser-qa.mjs';
 
 async function checkMilestone(browser, choice) {
   const mobile = choice === 'Lift';
-  const { page, tray, action, launch, button, status, errors, press, tick } =
+  const { page, tray, action, launch, button, status, errors, press, tick, findFish } =
     await practicePage(browser, { mobile });
   const celebration = page.locator('.fishing-celebration');
   const levelOne = tray.getByText(/0\s*\/\s*20 XP to Level 2/);
@@ -17,6 +17,7 @@ async function checkMilestone(browser, choice) {
   };
 
   await press(launch, 'Enter');
+  await findFish();
   await press(action);
   await press(action);
   assert.match(await status.textContent(), /slipped the hook/i);
@@ -29,6 +30,7 @@ async function checkMilestone(browser, choice) {
   assert.equal(await control.isHidden(), true);
   await press(action);
   await tick(260);
+  await findFish();
 
   await landCommon();
   assert.match(await status.textContent(), /Rock bass.*\+15 points.*Level 2.*choose a skill/i);
@@ -63,6 +65,7 @@ async function checkMilestone(browser, choice) {
   await press(action);
   assert.equal(await control.isHidden(), true);
   await tick(260);
+  await findFish();
   await press(button('Minnow'));
   await press(action);
   await tick(2250);
@@ -95,6 +98,7 @@ async function checkMilestone(browser, choice) {
   if (choice === 'Line Control') {
     await press(button('Exit fishing'));
     await press(launch, 'Enter');
+    await findFish();
     assert.equal(await levelOne.isVisible(), true);
     assert.match(await tray.locator('[data-score]').textContent(), /0 pts/);
     await press(action);

@@ -11,7 +11,7 @@
 .fishing-row > strong { margin-right: auto; color: var(--lamp); font-variant-numeric: tabular-nums; }
 .fishing-tray button { min-height: 44px; background: #1a3b3b; padding: 0 10px; border: 1px solid #527b76; border-radius: 4px; }
 .fishing-tray button[aria-pressed="true"], .fishing-tray .fishing-action { background: var(--lamp); color: var(--ink); border-color: var(--lamp); font-weight: 750; }
-.fishing-tray button:disabled { opacity: .55; cursor: default; }
+.fishing-tray button:is(:disabled, [aria-disabled="true"]) { opacity: .55; cursor: default; }
 .fishing-action { flex: 1; }
 .fishing-status { color: var(--foam); font-size: .88rem; min-height: 1.55em; }
 .fishing-tray details { font-size: .84rem; }

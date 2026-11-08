@@ -2,11 +2,12 @@ import assert from 'node:assert/strict';
 import { practicePage, withBrowser } from './browser-qa.mjs';
 
 async function checkBite(browser) {
-  const { page, launch, action, status, timing, press, tick, errors } = await practicePage(browser);
+  const { page, launch, action, status, timing, press, tick, errors, findFish } = await practicePage(browser);
   const keyboard = page.keyboard;
   const cue = () => status.textContent();
   await press(launch, 'Enter');
   assert.equal(await page.locator(':focus').textContent(), 'Exit fishing');
+  await findFish();
   await keyboard.press('Tab');
   await keyboard.press('Tab');
   await keyboard.press('Space'); // Select Spoon for the perch.
@@ -64,6 +65,7 @@ async function checkBite(browser) {
   await keyboard.press('Escape');
   assert.equal(await launch.evaluate(el => el === document.activeElement), true);
   await press(launch, 'Enter');
+  await findFish();
   await keyboard.press('Tab');
   for (let i = 0; i < 3; i++) await keyboard.press('Tab');
   await keyboard.press('Space');
@@ -71,19 +73,20 @@ async function checkBite(browser) {
   await keyboard.press('Escape');
   await press(launch, 'Enter');
   await tick(2200);
-  assert.match(await cue(), /pick a lure/i);
+  assert.match(await cue(), /scroll.*find the fish/i);
   assert.equal(await timing.isHidden(), true);
   assert.deepEqual(errors, []);
   await page.close();
 }
 
 async function checkFight(browser) {
-  const { page, launch, action, status, button, tray, press, tick, errors } =
+  const { page, launch, action, status, button, tray, press, tick, errors, findFish } =
     await practicePage(browser, { mobile: true });
   const cue = () => status.textContent();
   const color = control => control.evaluate(el => getComputedStyle(el).backgroundColor);
   const loosen = button('Loosen');
   await press(launch);
+  await findFish();
   const gold = await color(action);
   for (const fish of [/yellow perch.*\+10 points/i, /rock bass.*\+15 points/i]) {
     await press(action);
@@ -92,6 +95,7 @@ async function checkFight(browser) {
     assert.match(await cue(), fish);
     await press(action); // Next fish, skipping any skill.
     await tick(260);
+    await findFish();
   }
   await press(button('Minnow'));
   await press(action);
