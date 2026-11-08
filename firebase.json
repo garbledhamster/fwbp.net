@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "source": "functions",
+    "predeploy": "cp game/rules.mjs functions/rules.mjs"
+  },
+  "firestore": { "rules": "firestore.rules" }
+}

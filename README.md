@@ -16,6 +16,10 @@ The lakebed footer uses foreground growth, a distant ridge and two of Bryan’s 
 
 The lakebed moves decorative layers with [CSS transforms](https://web.dev/articles/animations-guide) and honors [reduced motion](https://www.w3.org/WAI/WCAG21/Understanding/animation-from-interactions).
 
+## Fishing game
+
+Click Bryan’s name or the logo to fish beneath the ice. See the [game design and deployment notes](docs/fishing-game.md) for rules, lake sources and ranked setup.
+
 ## Publish a version
 
 1. Make and check edits in the root site files. Commit them on `main`.
