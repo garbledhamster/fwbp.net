@@ -10,6 +10,16 @@
       <stop offset=".52" stop-color="#aa864e"/>
       <stop offset="1" stop-color="#d5ba82"/>
     </linearGradient>
+    <linearGradient id="bottom-color" x2="0" y2="1">
+      <stop stop-color="#53654b"/>
+      <stop offset=".28" stop-color="#3d5140"/>
+      <stop offset="1" stop-color="#172b24"/>
+    </linearGradient>
+    <pattern id="bottom-grain" width="56" height="39" patternUnits="userSpaceOnUse">
+      <path d="M3 12l8-1m24 6 7-1m-26 17 5-1m22-5 9-2" fill="none" stroke="#98a17b" stroke-width="1" opacity=".34"/>
+      <circle cx="17" cy="9" r="1" fill="#cad1a5" opacity=".45"/>
+      <circle cx="35" cy="34" r="1.5" fill="#cad1a5" opacity=".32"/>
+    </pattern>
     <pattern id="pike-spots" width="21" height="13" patternUnits="userSpaceOnUse">
       <path d="M3 4q3-3 7 0-4 3-7 0Zm11 6q2-2 5 0-3 2-5 0Z" fill="#d1c990" opacity=".83"/>
     </pattern>
@@ -49,5 +59,24 @@
     <g fill="#e3dfac">
       <circle cx="12" cy="25" r="1.5"/><circle cx="43" cy="94" r="2"/><circle cx="56" cy="51" r=".9"/><circle cx="74" cy="122" r="1.4"/><circle cx="86" cy="16" r="2"/><circle cx="102" cy="68" r="1.4"/><circle cx="133" cy="126" r="1.7"/><circle cx="141" cy="28" r="1.3"/><circle cx="158" cy="97" r=".9"/><circle cx="174" cy="151" r="1.6"/><circle cx="191" cy="49" r="1.4"/><circle cx="215" cy="92" r="1.8"/><circle cx="236" cy="149" r="2"/><circle cx="243" cy="33" r=".8"/><circle cx="272" cy="126" r="1.7"/><circle cx="283" cy="62" r="2.1"/>
     </g>
+  </symbol>
+  <symbol id="lakebed-ridge" viewBox="0 0 1000 240">
+    <path d="M0 164q82-10 121-57 47-36 116-15l93 41q65 22 126-9l108-61q34-19 91-5l87 25q45 5 110-32l89-36 59 17v208H0Z" fill="#263e36"/>
+    <path d="m0 202 112-39 47-36 90-12 92 38 73 11 98-22 123-60 82 9 75 21 114-55 94 10v173H0Z" fill="#355044"/>
+    <path d="m63 165 55-17 47-28 58-8m280 47 49-20 66-39 61-7m138 20 79-26 51-24" fill="none" stroke="#748063" stroke-width="2" opacity=".42"/>
+  </symbol>
+  <symbol id="lakebed-ground" viewBox="0 0 1000 320">
+    <path d="M0 98q46-10 99-4t129-17q92-34 190 5t169-5q85-31 161-8t126 7q66-26 126-4v248H0Z" fill="url(#bottom-color)"/>
+    <path d="M0 104q46-10 99-4t129-17q92-34 190 5t169-5q85-31 161-8t126 7q66-26 126-4v242H0Z" fill="url(#bottom-grain)"/>
+    <path d="m0 138 30-38 38-9 52 30-6 22-68 12Zm125 25 17-27 44-12 36 26-6 19-68 10Zm129-66 13-17 35-12 38 18-7 16-56 5Zm522 42 32-48 52-15 62 23 18 31-24 26-105 3Zm-84-42 15-23 43-8 30 23-14 13-56 4Zm229 95 31-44 48-8v68l-52 2Z" fill="#4e5e4c" stroke="#334839" stroke-width="2"/>
+    <path d="m30 101 37-8 44 28-44 5-28 17-27-5Zm112 36 43-12 35 25-41 4-32 11-12-6Zm671-45 46-15 56 24-35 5-28 22-49 7-20-4Zm-109-13 45-11 29 21-43 5Z" fill="#79836a" opacity=".68"/>
+    <path d="M20 215q113-28 218-4m43 25q99-23 185-8m77-58q109-17 223 7m-56 92q80-20 170-10" fill="none" stroke="#a5a37b" stroke-width="1.6" opacity=".25"/>
+  </symbol>
+  <symbol id="lakebed-growth" viewBox="0 0 1000 350">
+    <g fill="none" stroke-linecap="round">
+      <path d="M26 276q-2-79 35-175m-11 176q34-109 28-177m-69 179Q25 178 8 132m74 133q17-66 74-117m-25 114q13-69 12-91m777 89q-41-84-34-166m65 191q-8-92 30-153m-60 132q-5-112 33-205m-37 202q-37-51-66-72m117 65q-5-62 34-117" stroke="#63794e" stroke-width="4"/>
+      <path d="m42 166-19-18m16 37 23-19m-29 43-24-16m21 32 30-14m-1-11 20-22m-17 52 32-21m9 15 21-30m-28 51 34-20m14-1 14-27m742-34-24-25m27 41 21-25m-18 43-28-15m33 33 20-26m7-48 15-28m-20 45 24-13m-29 33-15-29m37 49 29-27m-37 55 36-17" stroke="#94a164" stroke-width="3" opacity=".82"/>
+    </g>
+    <path d="M0 281q82-37 174-11l-42 26L0 313Zm1000-9q-54-31-167 0l38 24 129 21Z" fill="#283d32" opacity=".84"/>
   </symbol>
 </svg>

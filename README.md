@@ -10,7 +10,9 @@ The logo, banner and product images come from [Bryan’s YouTube channel](https:
 
 The dive uses original SVG illustrations. Species and habitat references come from the Minnesota DNR’s [Mille Lacs Lake overview](https://www.dnr.state.mn.us/millelacslake/index.html), [yellow perch guide](https://www.dnr.state.mn.us/gofishing/ice-fishing-perch.html), [coontail profile](https://www.dnr.state.mn.us/aquatic_plants/submerged_plants/coontail.html), and [freshwater habitats overview](https://www.dnr.state.mn.us/whaf/about/5-component/habitats.html).
 
-The fishing line ends with a bobber and a red-and-white spoon that links to [Bryan’s Dardevle Short](https://www.youtube.com/shorts/kgUSasaMays). The lure illustration references [Eppinger’s design history](https://dardevle.com/ourtradition/).
+The lakebed footer uses foreground growth, a distant ridge and two of Bryan’s underwater videos. A pike swims toward the lure as the visitor reaches the bottom. The fishing line ends with a bobber and a red-and-white spoon that links to [Bryan’s Dardevle Short](https://www.youtube.com/shorts/kgUSasaMays). The lure illustration references [Eppinger’s design history](https://dardevle.com/ourtradition/).
+
+The lakebed moves decorative layers with [CSS transforms](https://web.dev/articles/animations-guide) and honors [reduced motion](https://www.w3.org/WAI/WCAG21/Understanding/animation-from-interactions).
 
 ## Publish a version
 

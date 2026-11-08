@@ -33,6 +33,7 @@ const episodes = [
     title: "Ice Castle perch on Mille Lacs",
     category: "Mille Lacs",
     art: "ice",
+    featured: true,
     description: "Bryan films yellow perch under the ice on Mille Lacs."
   },
   {
@@ -40,7 +41,6 @@ const episodes = [
     title: "Mississippi River smallmouth from a kayak",
     category: "Kayak fishing",
     art: "light",
-    featured: true,
     description: "Bryan heads to the Mississippi River for smallmouth bass from his kayak."
   },
   {
@@ -164,9 +164,11 @@ motion.addEventListener("click", () => {
 systemMotion.addEventListener("change", applyMotionPreference);
 
 const progress = document.querySelector(".scroll-progress");
-const depthScenes = [...document.querySelectorAll(".surface, .ice, .dive, .library")];
+const depthScenes = [...document.querySelectorAll(".surface, .ice, [data-dive]")];
 
-function updateDepth() {
+const lure = document.querySelector(".footer-lure");
+
+function updateDepth(remaining) {
   if (reduce || systemMotion.matches) return;
 
   // Follow each section as it passes through the viewport, from -1 to 1.
@@ -178,6 +180,8 @@ function updateDepth() {
   depthScenes.forEach((scene, index) => {
     scene.style.setProperty("--depth", positions[index].toFixed(3));
   });
+  const approach = Math.max(0, Math.min(1, 1 - remaining / 420));
+  lure.style.setProperty("--approach", approach.toFixed(3));
 }
 
 let frame = 0;
@@ -188,7 +192,7 @@ function requestScrollUpdate() {
     const total = document.documentElement.scrollHeight - innerHeight;
     const fraction = total > 0 ? Math.max(0, Math.min(1, scrollY / total)) : 0;
     progress.style.setProperty("--scroll", String(fraction));
-    updateDepth();
+    updateDepth(total - scrollY);
   });
 }
 addEventListener("scroll", requestScrollUpdate, { passive: true });
