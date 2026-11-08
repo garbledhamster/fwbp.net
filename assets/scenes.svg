@@ -51,6 +51,7 @@
       </linearGradient>
       <symbol id="bi-walleye" viewBox="0 0 172 66">
         <path d="m45 22 3-17 6 6 4-8 6 8 5-6 6 9 5-4 7 15m5 0 7-11 14 2 9 13" fill="#727e54" stroke="#4d593d" stroke-width="1"/>
+        <path d="m72 13 4 3 5-4 6 9-13-1Z" fill="#313c30"/>
         <path d="m133 33 27-14-3 16-8 7 8 5 5 12-29-14z" fill="#858b61" stroke="#4d593d"/>
         <path d="m151 48 7 5 4 6-12-5z" fill="#fff0cf"/>
         <path d="M13 35C24 30 31 24 45 21c22-6 42-5 64 2l27 10 1 12-23 4c-27 8-57 10-80 0L13 40l9-3z" fill="url(#bi-walleye-scales)" stroke="#4d593d" stroke-width="1.1"/>
@@ -64,7 +65,7 @@
         <path d="m129 31 30-12-5 17-7 4 7 4 5 12-30-11zM62 50l15 3-7 10-18-10m39-1 16-2-6 11-14-4" fill="#bd7a43" stroke="#805436" stroke-width="1"/>
         <path d="M17 34c13-11 26-18 47-18 29-1 42 8 68 16v13c-27 6-36 10-63 11-26 0-45-8-54-17z" fill="#c9a954" stroke="#5b6444" stroke-width="1"/>
         <path d="M17 34c16-12 35-17 54-17 20 0 38 8 61 15v4c-24-7-45-12-65-11-20 1-35 4-50 9Z" fill="#8e8c4c"/>
-        <path d="m43 22 5 20 3-23m9-1 6 31 3-31m11 1 5 28 3-26m11 4 5 21 3-18m9 3 4 14 4-12" fill="#657047"/>
+        <path d="m43 22 5 20 3-23m9-1 6 31 3-31m11 1 5 28 3-26m11 4 5 21 3-18m9 3 4 14 4-12m5 2 3 11 3-9" fill="#657047"/>
         <path d="M37 28c8 6 7 15 2 20m10-8 15 9-13 5" fill="none" stroke="#775a3d" stroke-width="1.2"/>
         <circle cx="30" cy="32" r="4.5" fill="#ead99f"/><circle cx="30" cy="32" r="2.5" fill="#26382e"/>
       </symbol>
