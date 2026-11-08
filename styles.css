@@ -51,7 +51,7 @@ button, a, summary { -webkit-tap-highlight-color: transparent; }
 .mast nav a:hover { text-decoration: underline; }
 .scroll-progress { position: absolute; inset: auto 0 -1px; height: 2px; background: var(--lamp); transform: scaleX(var(--scroll, 0)); transform-origin: left; }
 .surface { position: relative; isolation: isolate; background: var(--tent); padding: clamp(42px, 7vw, 102px) 0 clamp(34px, 5vw, 64px); }
-.surface-art, .below-art { position: absolute; inset: 0; height: 100%; z-index: -1; pointer-events: none; }
+.surface-art { position: absolute; inset: 0; height: 100%; z-index: -1; pointer-events: none; }
 .surface::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, #10252035, #14262200 62%); pointer-events: none; }
 .surface-inner { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.04fr); align-items: center; gap: clamp(22px, 5vw, 64px); }
 .preview-label, .section-mark { display: flex; align-items: center; gap: 9px; font-size: .83rem; letter-spacing: .045em; font-weight: 680; }
@@ -92,7 +92,7 @@ button, a, summary { -webkit-tap-highlight-color: transparent; }
   display: flex; align-items: center; gap: 8px; padding: .38rem .7rem;
   color: #fff7de; background: #173c3e; border-radius: 4px; font-size: .8rem;
 }
-.about { position: relative; isolation: isolate; padding: clamp(92px, 15vw, 215px) 0 clamp(60px, 9vw, 115px); background: var(--lake); }
+.about { position: relative; isolation: isolate; padding: clamp(55px, 8vw, 110px) 0 clamp(48px, 8vw, 95px); background: linear-gradient(#162f2c, var(--lake)); }
 .about-inner { position: relative; }
 .about-inner h2 { margin: 12px 0 15px; }
 .about-inner > p:not(.section-mark) { max-width: 36ch; }
@@ -171,7 +171,6 @@ dialog iframe { display: block; width: 100%; min-height: 200px; max-height: 56dv
   .hero-cover { aspect-ratio: 2; }
   .surface { padding-top: 34px; padding-bottom: 17px; }
   .descent-link { margin-top: 14px; }
-  .about { padding-top: 79px; }
   .video-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
 }
 @media (max-width: 360px) {
@@ -183,13 +182,5 @@ dialog iframe { display: block; width: 100%; min-height: 200px; max-height: 56dv
   .hero-cover-caption { left: 12px; bottom: 12px; }
   .guide-frames figcaption { font-size: .77rem; }
 }
-@supports (animation-timeline: view()) {
-  @media (prefers-reduced-motion: no-preference) {
-    body:not([data-reduced]) .ice-light { animation: ice-light linear both; animation-timeline: view(); animation-range: entry 15% exit 90%; }
-    body:not([data-reduced]) .walleye { animation: swim linear both; animation-timeline: view(); animation-range: entry 0% cover 65%; }
-  }
-}
-@keyframes ice-light { from { transform: translateY(-11%); } to { transform: translateY(12%); } }
-@keyframes swim { from { transform: translateX(18%); } to { transform: translateX(-10%); } }
 @media (prefers-reduced-motion: reduce) { .scroll-progress { display: none; } }
 body[data-reduced] .scroll-progress { display: none; }

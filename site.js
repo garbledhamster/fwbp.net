@@ -164,11 +164,11 @@ motion.addEventListener("click", () => {
 systemMotion.addEventListener("change", applyMotionPreference);
 
 const progress = document.querySelector(".scroll-progress");
-const depthScenes = [...document.querySelectorAll(".surface, .ice, .about, .featured")];
-const brandPicker = document.querySelector("#brand-style");
+const depthScenes = [...document.querySelectorAll(".surface, .ice, .dive, .featured")];
+const divePicker = document.querySelector("#dive-select");
 
 function updateDepth() {
-  if (document.documentElement.dataset.brand !== "northwoods" || reduce || systemMotion.matches) return;
+  if (reduce || systemMotion.matches) return;
 
   // Follow each section as it passes through the viewport, from -1 to 1.
   const viewport = innerHeight;
@@ -195,6 +195,6 @@ function requestScrollUpdate() {
 addEventListener("scroll", requestScrollUpdate, { passive: true });
 addEventListener("resize", requestScrollUpdate);
 addEventListener("popstate", requestScrollUpdate);
-brandPicker.addEventListener("change", requestScrollUpdate);
+divePicker.addEventListener("change", requestScrollUpdate);
 for (const guide of document.querySelectorAll("details")) guide.addEventListener("toggle", requestScrollUpdate);
 applyMotionPreference();

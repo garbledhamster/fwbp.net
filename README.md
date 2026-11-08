@@ -1,12 +1,14 @@
 # Fishing with Bryan Prokuski
 
-Bryan’s videos, illustrated field notes, and a gallery of his former merch. Northwoods Outfitters opens by default. The **Brand preview** menu keeps the other styles available for comparison.
+Bryan’s videos, illustrated field notes, and a gallery of his former merch. Northwoods Outfitters is the site design. Use **Underwater scene** to compare the main dive with Pike Pass, Perch School, Rocky Bottom, Weed Line, and Underwater Camera. Each scene has a shareable `?dive=` URL. Scroll to move through the lake, or use **Reduce motion** in the footer to hold the scene still.
 
 ## Preview and edit
 
 Run `python3 -m http.server 8000 --bind 127.0.0.1` here and open [the local preview](http://127.0.0.1:8000/). The library entries live in `site.js`. To feature a new upload, add its entry there and update the two latest-video links, title and thumbnail in `index.html`.
 
 The logo, banner and product images come from [Bryan’s YouTube channel](https://www.youtube.com/@BryanProkuski) and its [merch shelf](https://www.youtube.com/@BryanProkuski/store). The merch gallery documents designs from the former Spring store. Video players and thumbnails are served by YouTube. The fish guide uses the Minnesota DNR references for [walleye](https://www.dnr.state.mn.us/gofishing/ice-fishing-walleye.html) and [yellow perch](https://www.dnr.state.mn.us/minnaqua/speciesprofile/yellowperch.html).
+
+The dive uses original SVG illustrations. Species and habitat references come from the Minnesota DNR’s [Mille Lacs Lake overview](https://www.dnr.state.mn.us/millelacslake/index.html), [yellow perch guide](https://www.dnr.state.mn.us/gofishing/ice-fishing-perch.html), [coontail profile](https://www.dnr.state.mn.us/aquatic_plants/submerged_plants/coontail.html), and [freshwater habitats overview](https://www.dnr.state.mn.us/whaf/about/5-component/habitats.html).
 
 ## Publish a version
 

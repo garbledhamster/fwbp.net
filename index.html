@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-brand="northwoods">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,10 +9,10 @@
   <meta property="og:title" content="Fishing with Bryan Prokuski">
   <meta property="og:description" content="Go through the ice with Bryan Prokuski. Watch underwater fishing videos and browse illustrated field notes.">
   <link rel="icon" href="./assets/fwbp-logo.jpg" type="image/jpeg">
-  <link rel="stylesheet" href="./styles.css?v=brand">
-  <link rel="stylesheet" href="./brands.css?v=brand">
-  <script type="module" src="./brands.js?v=brand"></script>
-  <script type="module" src="./site.js?v=brand"></script>
+  <link rel="stylesheet" href="./styles.css?v=dive">
+  <link rel="stylesheet" href="./brands.css?v=dive">
+  <script type="module" src="./brands.js?v=dive"></script>
+  <script type="module" src="./site.js?v=dive"></script>
   <title>Fishing with Bryan Prokuski</title>
 </head>
 <body>
@@ -28,15 +28,15 @@
         <a href="#field-notes">Field notes</a>
       </nav>
     </div>
-    <div class="brand-picker" hidden>
-      <label for="brand-style">Brand preview</label>
-      <select id="brand-style">
-        <option value="original">Original · Through the hole</option>
+    <div class="dive-picker" hidden>
+      <label for="dive-select">Underwater scene</label>
+      <select id="dive-select">
         <option value="northwoods" selected>Northwoods Outfitters</option>
-        <option value="sonar">Sonar Lab</option>
-        <option value="icehouse">Icehouse Club</option>
-        <option value="journal">Northern Journal</option>
-        <option value="after-dark">After Dark</option>
+        <option value="pike">Pike Pass</option>
+        <option value="perch">Perch School</option>
+        <option value="rocks">Rocky Bottom</option>
+        <option value="weeds">Weed Line</option>
+        <option value="camera">Underwater Camera</option>
       </select>
     </div>
     <div class="scroll-progress" aria-hidden="true"></div>
@@ -67,10 +67,29 @@
       <div class="ice-light" aria-hidden="true"></div>
       <span class="ice-caption"><span></span> At the ice rim</span>
     </section>
+    <section id="dive" class="dive" data-dive="northwoods" aria-labelledby="dive-heading">
+      <div class="dive-water" aria-hidden="true">
+        <div class="dive-light"></div>
+        <svg class="dive-ceiling" viewBox="0 0 800 110" preserveAspectRatio="none">
+          <use href="./assets/lake-life.svg#ceiling"/>
+        </svg>
+        <svg class="dive-bed" viewBox="0 0 800 150" preserveAspectRatio="none">
+          <use href="./assets/lake-life.svg#lakebed"/>
+        </svg>
+        <div class="dive-actors"></div>
+        <div class="dive-frame"><span>UNDERWATER CAM</span></div>
+      </div>
+      <div class="wrap dive-heading">
+        <p class="section-mark"><span></span> Minnesota lake life</p>
+        <h2 id="dive-heading">Beneath the ice</h2>
+      </div>
+      <div class="wrap dive-footer">
+        <p class="dive-caption" aria-live="polite">A northern pike crosses beneath the ice while perch school above the weeds and a crayfish keeps to the bottom.</p>
+      </div>
+    </section>
     <section id="about" class="about" aria-labelledby="about-heading">
-      <svg class="below-art artwork" viewBox="0 0 400 198" preserveAspectRatio="none" role="img" aria-label="The same opening from beneath the ice, with a fishing line descending through the light"><use href="./assets/scenes.svg#bi-below"/></svg>
       <div class="wrap about-inner">
-        <p class="section-mark"><span></span> Just below the ice</p>
+        <p class="section-mark"><span></span> Ice fishing and open water</p>
         <h2 id="about-heading">About Bryan</h2>
         <p>Bryan fishes Minnesota year-round. In summer he takes the kayak out for smallmouth. When the lakes freeze, he drops a camera through the ice to see what pike, walleye and perch do when a lure comes into view.</p>
         <p class="content-note"><a href="https://www.youtube.com/@BryanProkuski">Bryan’s YouTube channel</a> · <a href="https://www.instagram.com/fishingwithbryan">Instagram</a></p>
