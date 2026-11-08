@@ -265,7 +265,7 @@ function leave() {
   launch.focus({ preventScroll: true });
 }
 
-document.querySelectorAll('.brand, .fish-entry').forEach(entry => entry.addEventListener('click', enter));
+document.querySelectorAll('.game-entry, .fish-entry').forEach(entry => entry.addEventListener('click', enter));
 exit.addEventListener('click', leave);
 document.addEventListener('keydown', event => {
   if (tray.hidden) return;
