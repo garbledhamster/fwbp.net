@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="pike-scales" x2="0" y2="1">
+      <stop stop-color="#4b6440"/>
+      <stop offset=".48" stop-color="#8d9c54"/>
+      <stop offset="1" stop-color="#d2c489"/>
+    </linearGradient>
+    <linearGradient id="bass-scales" x2="0" y2="1">
+      <stop stop-color="#6d5b39"/>
+      <stop offset=".52" stop-color="#aa864e"/>
+      <stop offset="1" stop-color="#d5ba82"/>
+    </linearGradient>
+    <linearGradient id="bottom-color" x2="0" y2="1">
+      <stop stop-color="#53654b"/>
+      <stop offset=".28" stop-color="#3d5140"/>
+      <stop offset="1" stop-color="#172b24"/>
+    </linearGradient>
+    <pattern id="bottom-grain" width="56" height="39" patternUnits="userSpaceOnUse">
+      <path d="M3 12l8-1m24 6 7-1m-26 17 5-1m22-5 9-2" fill="none" stroke="#98a17b" stroke-width="1" opacity=".34"/>
+      <circle cx="17" cy="9" r="1" fill="#cad1a5" opacity=".45"/>
+      <circle cx="35" cy="34" r="1.5" fill="#cad1a5" opacity=".32"/>
+    </pattern>
+    <pattern id="pike-spots" width="21" height="13" patternUnits="userSpaceOnUse">
+      <path d="M3 4q3-3 7 0-4 3-7 0Zm11 6q2-2 5 0-3 2-5 0Z" fill="#d1c990" opacity=".83"/>
+    </pattern>
+  </defs>
+  <symbol id="pike" viewBox="0 0 230 72">
+    <path d="m151 25 10-14 21 2 10 19m-44 16 9 13 20-1 12-12m-67 3-11 11-8-1 6-11m-35-3-13 12-10-3 12-12m121-11 37-15-5 14-10 7 12 9 4 14-38-17Z" fill="#9c8c57" stroke="#4d573b" stroke-width="1.6"/>
+    <path d="M8 37c8-4 22-5 31-9 18-10 52-12 77-9 30 2 53 9 76 13l12 5-12 7c-24 2-47 8-70 9-31 2-53-1-79-5L8 44c-4-1-4-4 0-7Z" fill="url(#pike-scales)" stroke="#3b5039" stroke-width="1.6"/>
+    <path d="M55 25c33-13 84-5 136 9l6 4-8 4c-49 8-95 14-135 4Z" fill="url(#pike-spots)"/>
+    <path d="M7 42c13-2 22-2 35-1m8-11c6 5 8 13 1 19m113-34 17 14m32-4-12 10m14 18-14-10" fill="none" stroke="#4c583a" stroke-width="1.5"/>
+    <path d="m60 43 24 3-13 6-8-3Z" fill="#baaa69" stroke="#5e5e39" stroke-width="1.2"/>
+    <circle cx="39" cy="34" r="5.1" fill="#e2d59c"/><circle cx="39" cy="34" r="2.7" fill="#1b2921"/>
+  </symbol>
+  <symbol id="bass" viewBox="0 0 172 80">
+    <path d="m48 29 3-12 4 5 5-12 5 6 4-9 5 7 6-6 5 9 6-4 5 10 10-8 12 4 11 19m8 2 29-15-6 17-8 5 9 5 4 14-31-14m-58 9-5 12-19-7m50-4-9 10-13-8" fill="#897145" stroke="#484932" stroke-width="1.5"/>
+    <path d="M7 43c8-5 16-8 26-16 12-8 29-11 45-9 26 1 41 13 62 21l8 7-8 8c-22 2-35 9-59 12-28 3-53-2-65-12l-9-4Z" fill="url(#bass-scales)" stroke="#4c5033" stroke-width="1.5"/>
+    <path d="m56 25 1 24 7-26m11-1 1 28 7-26m11 2 1 25 7-21m10 6 1 16 6-12" fill="#675d3a" opacity=".75"/>
+    <path d="M8 48c8-2 16-3 26-3m9-14c10 7 9 19 3 26m10-12 15 7-13 5" fill="none" stroke="#655239" stroke-width="1.6"/>
+    <circle cx="33" cy="37" r="5" fill="#bc7548"/><circle cx="33" cy="37" r="2.6" fill="#242c22"/>
+  </symbol>
+  <symbol id="sprig" viewBox="0 0 138 62">
+    <path d="M5 53Q61 44 133 7" fill="none" stroke="#9eab72" stroke-width="2" stroke-linecap="round"/>
+    <path d="M21 50Q14 31 6 31q4 17 15 19Zm12-3q11 3 19 11-15 4-19-11Zm13-5Q31 20 21 25q4 14 25 17Zm10-4q17 0 28 11-16 5-28-11Zm14-6Q60 7 47 12q6 17 23 20Zm12-6q16-1 27 6-13 9-27-6Zm13-6Q89 3 80 3q2 14 15 17Zm9-4q18-1 26 4-14 8-26-4Z" fill="#8e9e64"/>
+    <path d="M19 49q16-11 25-29m13 18q6 10 15 15m9-24q9-9 8-19" fill="none" stroke="#b7bd82" stroke-width="1.2" opacity=".65"/>
+  </symbol>
+  <symbol id="bubbles" viewBox="0 0 150 125">
+    <g fill="none" stroke="#dae9ca" stroke-width="1.5" opacity=".65">
+      <circle cx="33" cy="96" r="3.5"/><circle cx="56" cy="68" r="5"/><circle cx="49" cy="47" r="2.5"/><circle cx="91" cy="36" r="6"/><circle cx="112" cy="14" r="3.5"/>
+    </g>
+    <path d="M88 34l2-2m-36 34 2-2" fill="none" stroke="#e7eed5" stroke-width="1.3" opacity=".72"/>
+  </symbol>
+  <symbol id="ceiling" viewBox="0 0 800 110">
+    <path d="M0 0h800v34l-80 18-104-11-55 27-62-6-26 12-64-19-41 12-112-22-102 20L0 41Z" fill="#a5c6af" opacity=".78"/>
+    <path d="M403 20c3-13 61-20 109-16 50 2 78 12 65 25-15 12-60 17-97 17-49-1-83-12-77-26Z" fill="#e0d098"/>
+    <path d="M420 20c11-10 48-13 89-12 35 1 61 8 59 14-1 10-29 16-74 16-40 0-82-9-74-18Z" fill="#395148"/>
+  </symbol>
+  <symbol id="silt" viewBox="0 0 300 180">
+    <g fill="#e3dfac">
+      <circle cx="12" cy="25" r="1.5"/><circle cx="43" cy="94" r="2"/><circle cx="56" cy="51" r=".9"/><circle cx="74" cy="122" r="1.4"/><circle cx="86" cy="16" r="2"/><circle cx="102" cy="68" r="1.4"/><circle cx="133" cy="126" r="1.7"/><circle cx="141" cy="28" r="1.3"/><circle cx="158" cy="97" r=".9"/><circle cx="174" cy="151" r="1.6"/><circle cx="191" cy="49" r="1.4"/><circle cx="215" cy="92" r="1.8"/><circle cx="236" cy="149" r="2"/><circle cx="243" cy="33" r=".8"/><circle cx="272" cy="126" r="1.7"/><circle cx="283" cy="62" r="2.1"/>
+    </g>
+  </symbol>
+  <symbol id="lakebed-ridge" viewBox="0 0 1000 240">
+    <path d="M0 164q82-10 121-57 47-36 116-15l93 41q65 22 126-9l108-61q34-19 91-5l87 25q45 5 110-32l89-36 59 17v208H0Z" fill="#263e36"/>
+    <path d="m0 202 112-39 47-36 90-12 92 38 73 11 98-22 123-60 82 9 75 21 114-55 94 10v173H0Z" fill="#355044"/>
+    <path d="m63 165 55-17 47-28 58-8m280 47 49-20 66-39 61-7m138 20 79-26 51-24" fill="none" stroke="#748063" stroke-width="2" opacity=".42"/>
+  </symbol>
+  <symbol id="lakebed-ground" viewBox="0 0 1000 320">
+    <path d="M0 98q46-10 99-4t129-17q92-34 190 5t169-5q85-31 161-8t126 7q66-26 126-4v248H0Z" fill="url(#bottom-color)"/>
+    <path d="M0 104q46-10 99-4t129-17q92-34 190 5t169-5q85-31 161-8t126 7q66-26 126-4v242H0Z" fill="url(#bottom-grain)"/>
+    <path d="m0 138 30-38 38-9 52 30-6 22-68 12Zm125 25 17-27 44-12 36 26-6 19-68 10Zm129-66 13-17 35-12 38 18-7 16-56 5Zm522 42 32-48 52-15 62 23 18 31-24 26-105 3Zm-84-42 15-23 43-8 30 23-14 13-56 4Zm229 95 31-44 48-8v68l-52 2Z" fill="#4e5e4c" stroke="#334839" stroke-width="2"/>
+    <path d="m30 101 37-8 44 28-44 5-28 17-27-5Zm112 36 43-12 35 25-41 4-32 11-12-6Zm671-45 46-15 56 24-35 5-28 22-49 7-20-4Zm-109-13 45-11 29 21-43 5Z" fill="#79836a" opacity=".68"/>
+    <path d="M20 215q113-28 218-4m43 25q99-23 185-8m77-58q109-17 223 7m-56 92q80-20 170-10" fill="none" stroke="#a5a37b" stroke-width="1.6" opacity=".25"/>
+  </symbol>
+  <symbol id="lakebed-growth" viewBox="0 0 1000 350">
+    <g fill="none" stroke-linecap="round">
+      <path d="M26 276q-2-79 35-175m-11 176q34-109 28-177m-69 179Q25 178 8 132m74 133q17-66 74-117m-25 114q13-69 12-91m777 89q-41-84-34-166m65 191q-8-92 30-153m-60 132q-5-112 33-205m-37 202q-37-51-66-72m117 65q-5-62 34-117" stroke="#63794e" stroke-width="4"/>
+      <path d="m42 166-19-18m16 37 23-19m-29 43-24-16m21 32 30-14m-1-11 20-22m-17 52 32-21m9 15 21-30m-28 51 34-20m14-1 14-27m742-34-24-25m27 41 21-25m-18 43-28-15m33 33 20-26m7-48 15-28m-20 45 24-13m-29 33-15-29m37 49 29-27m-37 55 36-17" stroke="#94a164" stroke-width="3" opacity=".82"/>
+    </g>
+    <path d="M0 281q82-37 174-11l-42 26L0 313Zm1000-9q-54-31-167 0l38 24 129 21Z" fill="#283d32" opacity=".84"/>
+  </symbol>
+</svg>
