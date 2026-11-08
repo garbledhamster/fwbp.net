@@ -9,13 +9,20 @@ const milleLacs = [
 ];
 export const lakes = { 'mille-lacs': { name: 'Mille Lacs', fish: milleLacs } };
 export const skills = { quick: 'Quick Bite', control: 'Line Control', lift: 'Lift' };
+export const practiceSkills = {
+  control: '350 ms more to set the hook',
+  lift: 'One fewer pull on a fish that fights',
+};
+const practiceLevelCatches = 2;
+const practiceCatchXp = 10;
+export const practiceLevelXp = practiceLevelCatches * practiceCatchXp;
 
 export function reelWindow(levels) {
   return { from: 550 - levels.quick * 125, until: 2100 + levels.control * 350 };
 }
 export const runLifetime = 20 * 60 * 1000;
 
-export function start(now, random = Math.random, lake = 'mille-lacs') {
+export function start(now, random = Math.random, lake = 'mille-lacs', { practice = false } = {}) {
   const pool = lakes[lake].fish.flatMap((entry, index) => Array(entry.weight).fill(index));
   return {
     lake, skills: { quick: 0, control: 0, lift: 0 }, skillPoints: 0, fight: null,
@@ -28,18 +35,21 @@ export function start(now, random = Math.random, lake = 'mille-lacs') {
     expires: now + runLifetime, last: now - 300, index: 0, score: 0, discoveries: [],
     stage: 'seek', biteAt: 0, catch: null, cue: 'Keep on jigging! Pick a lure and give it a bounce.',
     version: 0, submitted: false,
+    ...(practice && { practice: true }),
   };
 }
 
 export function publicRun(run) {
   const encounter = run.encounters[run.index];
   const target = encounter && lakes[run.lake].fish[encounter.species];
+  const xp = (run.index + Number(run.stage === 'landed')) * practiceCatchXp;
   return {
     fish: target ? { id: target.id, art: target.art, x: encounter.x, y: encounter.y, gilded: encounter.colorRoll >= .97 } : null,
     lake: lakes[run.lake].name, skills: run.skills, skillPoints: run.skillPoints, fight: run.fight, window: reelWindow(run.skills),
     index: run.index, count: run.encounters.length, score: run.score, stage: run.stage,
     version: run.version, discoveries: run.discoveries, catch: run.catch, cue: run.cue,
     submitted: run.submitted,
+    ...(run.practice && { practice: { xp, level: xp >= practiceLevelXp ? 2 : 1 } }),
   };
 }
 
@@ -103,11 +113,13 @@ export function apply(run, input, now) {
       run.cue = 'Loosen up! Let it run.';
     }
   } else if (input.action === 'upgrade' && run.stage === 'landed'
-    && run.skillPoints > 0 && Object.hasOwn(skills, input.skill) && run.skills[input.skill] < 2) {
+    && run.skillPoints > 0 && Object.hasOwn(run.practice ? practiceSkills : skills, input.skill)
+    && run.skills[input.skill] < 2) {
     run.skills[input.skill]++;
     run.skillPoints--;
-    run.cue = `${skills[input.skill]} improved.`;
+    if (!run.practice) run.cue = `${skills[input.skill]} improved.`;
   } else if (input.action === 'next' && run.stage === 'landed') {
+    if (run.practice) run.skillPoints = 0;
     run.index++;
     run.catch = null;
     run.stage = run.index === run.encounters.length ? 'done' : 'seek';
@@ -124,7 +136,7 @@ function land(run, target) {
   const { length, rarity, points, grade, gilded } = run.catch;
   run.fight = null;
   run.score += points;
-  run.skillPoints++;
+  if (!run.practice || run.index === practiceLevelCatches - 1) run.skillPoints++;
   if (!run.discoveries.some(entry => entry.fish === target.name)) {
     run.discoveries.push({ fish: target.name, lure: target.lure });
   }

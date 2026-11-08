@@ -129,3 +129,13 @@ body.fishing .dive-ceiling { transform: none !important; }
   background: var(--lamp); color: var(--ink); border-color: var(--lamp); font-weight: 750;
 }
 .fishing-row[data-practice-fight] :is(.fishing-action, [data-loosen]) { flex: 1 1 0; }
+
+.fishing-practice-progress { color: var(--lamp); font-size: .8rem; font-weight: 700; }
+.fishing-practice-choice { display: grid; gap: 5px; font-size: .82rem; }
+.fishing-practice-choice .fishing-row { align-items: stretch; }
+.fishing-practice-choice button[data-skill] {
+  flex: 1 1 0; flex-direction: column; align-items: flex-start;
+  padding: 6px 8px; text-align: left; line-height: 1.2;
+}
+.fishing-practice-choice button span { display: flex; align-items: center; gap: 4px; font-weight: 750; }
+.fishing-practice-choice small { font-size: .76rem; }

@@ -88,3 +88,44 @@ test('pulling against a surge breaks the line without awarding a catch', () => {
   assert.equal(run.fight, null);
   assert.equal(run.score, 0);
 });
+
+test('Practice earns one Level 2 choice from landed catches', () => {
+  const run = start(1000, () => 0, 'mille-lacs', { practice: true });
+  const move = (action, now, details = {}) => apply(run, { action, ...details }, now);
+  move('jig', 1100, { lure: 'spoon' });
+  assert.deepEqual(publicRun(run).practice, { xp: 0, level: 1 });
+  move('jig', 1400, { lure: 'jig' });
+  move('reel', 1500);
+  assert.equal(publicRun(run).practice.xp, 0);
+  move('jig', 1700, { lure: 'jig' });
+  const first = move('reel', 2300);
+  assert.deepEqual(first.practice, { xp: 10, level: 1 });
+  assert.equal(first.skillPoints, 0);
+  assert.throws(() => move('reel', 2400), /unavailable/);
+  assert.equal(publicRun(run).practice.xp, 10);
+  move('next', 2500);
+  move('jig', 2600, { lure: 'jig' });
+  const second = move('reel', 3200);
+  assert.deepEqual(second.practice, { xp: 20, level: 2 });
+  assert.equal(second.skillPoints, 1);
+  assert.throws(() => move('upgrade', 3300, { skill: 'quick' }), /unavailable/);
+  move('upgrade', 3400, { skill: 'control' });
+  assert.throws(() => move('upgrade', 3500, { skill: 'lift' }), /unavailable/);
+  assert.deepEqual(publicRun(run).window, { from: 550, until: 2450 });
+});
+
+test('skipping Level 2 leaves later Practice catches without a choice', () => {
+  const run = start(1000, () => 0, 'mille-lacs', { practice: true });
+  for (let i = 0; i < 2; i++) {
+    const now = 1100 + i * 1000;
+    apply(run, { action: 'jig', lure: 'jig' }, now);
+    apply(run, { action: 'reel' }, now + 600);
+    apply(run, { action: 'next' }, now + 650);
+  }
+  assert.equal(publicRun(run).skillPoints, 0);
+  apply(run, { action: 'jig', lure: 'jig' }, 3100);
+  const third = apply(run, { action: 'reel' }, 3700);
+  assert.deepEqual(third.practice, { xp: 30, level: 2 });
+  assert.deepEqual(third.skills, { quick: 0, control: 0, lift: 0 });
+  assert.throws(() => apply(run, { action: 'upgrade', skill: 'lift' }, 3800), /unavailable/);
+});
