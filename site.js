@@ -164,8 +164,7 @@ motion.addEventListener("click", () => {
 systemMotion.addEventListener("change", applyMotionPreference);
 
 const progress = document.querySelector(".scroll-progress");
-const depthScenes = [...document.querySelectorAll(".surface, .ice, .dive, .featured")];
-const divePicker = document.querySelector("#dive-select");
+const depthScenes = [...document.querySelectorAll(".surface, .ice, .dive, .library")];
 
 function updateDepth() {
   if (reduce || systemMotion.matches) return;
@@ -195,6 +194,5 @@ function requestScrollUpdate() {
 addEventListener("scroll", requestScrollUpdate, { passive: true });
 addEventListener("resize", requestScrollUpdate);
 addEventListener("popstate", requestScrollUpdate);
-divePicker.addEventListener("change", requestScrollUpdate);
 for (const guide of document.querySelectorAll("details")) guide.addEventListener("toggle", requestScrollUpdate);
 applyMotionPreference();
