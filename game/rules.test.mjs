@@ -52,11 +52,15 @@ test('record and gilded bonuses are awarded once, after lifting', () => {
   assert.equal(run.score, 0);
   assert.equal(run.catch.length, 58.25);
   assert.equal(run.catch.grade, 'Record');
-  assert.equal(run.lifts, 2);
-  apply(run, { action: 'lift' }, 2300);
-  apply(run, { action: 'lift' }, 2600);
+  assert.equal(run.fight.pulls, 3);
+  for (let i = 0; i < 3; i++) {
+    const time = 2300 + i * 600;
+    assert.ok(run.fight.tension >= 60);
+    apply(run, { action: 'loosen' }, time);
+    apply(run, { action: 'lift' }, time + 300);
+  }
   assert.equal(run.score, 165);
-  assert.throws(() => apply(run, { action: 'lift' }, 2900));
+  assert.throws(() => apply(run, { action: 'lift' }, 4300));
   assert.equal(run.score, 165);
 });
 
@@ -72,4 +76,15 @@ test('six completed encounters close the outing', () => {
   assert.equal(run.score, 60);
   assert.equal(publicRun(run).fish, null);
   assert.throws(() => apply(run, { action: 'jig', lure: 'jig' }, 17000));
+});
+
+test('pulling against a surge breaks the line without awarding a catch', () => {
+  const run = start(1000, () => .999);
+  apply(run, { action: 'jig', lure: 'spoon' }, 1300);
+  apply(run, { action: 'reel' }, 2000);
+  apply(run, { action: 'lift' }, 2300);
+  assert.equal(run.stage, 'seek');
+  assert.equal(run.catch, null);
+  assert.equal(run.fight, null);
+  assert.equal(run.score, 0);
 });

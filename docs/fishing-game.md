@@ -46,3 +46,9 @@ The dedicated [Firebase project](https://console.firebase.google.com/project/fwb
 ### Level-up celebration
 
 An outing starts at level 1. Each landed fish raises the level and earns one skill point. On landing, Bryan’s illustrated portrait appears with a ribbon and a burst of small fish silhouettes. The controls stay available during the celebration. Reduced-motion players see the still portrait and ribbon, and the award is announced to screen readers.
+
+### Working the line
+
+The lure hangs from the ice hole on one continuous line. Jig bounces it vertically, and the fish comes to inspect it. The tackle tray and lure share one SVG icon sheet, with labels on the controls.
+
+The first reel still uses the gold timing band. Common fish usually land there. Stronger or trophy fish pull the line tight. Loosen to drop the tension, then Reel when Bryan calls it clear. Pull up on the final turn. Reeling against a tight line raises tension and can break it. Tougher fish surge more often, Lift reduces the number of pulls, and Line Control gives mistakes more room before the line breaks.

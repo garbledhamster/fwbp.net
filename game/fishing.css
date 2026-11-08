@@ -16,17 +16,46 @@
 .fishing-timing { position: relative; height: 6px; background: #31524d; border-radius: 3px; }
 .fishing-timing::before { content: ""; position: absolute; inset: 0 0 0 26.2%; background: var(--lamp); border-radius: 3px; }
 .fishing-timing i { position: absolute; inset: -3px auto -3px var(--position, 0%); width: 3px; background: white; }
-.fishing-target { position: absolute; z-index: 1; left: var(--x); top: var(--y); transform: translate(-50%, -50%); width: clamp(72px, 15vw, 145px); min-height: 48px; padding: 4px; border: 0; background: none; }
+.fishing .lake::before { display: none; }
+body.fishing .dive-ceiling { transform: none !important; }
+.fishing-target {
+  position: absolute; z-index: 1; left: var(--x); top: var(--y);
+  transform: translate(-50%, -50%); width: clamp(72px, 15vw, 145px);
+  pointer-events: none; transition: left .36s ease-out, top .36s ease-out;
+}
 .fishing-target svg { display: block; width: 100%; filter: drop-shadow(0 4px 6px #061d24); }
-.fishing-target[aria-pressed="true"] { outline: 1px dashed var(--lamp); outline-offset: 5px; }
-.fishing-target.is-biting svg { animation: fish-tug .38s ease-out; }
-@keyframes fish-tug { 45% { transform: translateX(10px) rotate(-6deg); } }
-.fishing-bobber { position: fixed; z-index: 9; width: 18px; height: 22px; left: var(--x, -40px); top: var(--y, -40px); transform: translate(-50%, -50%); pointer-events: none; background: linear-gradient(#f5e6c2 48%, #ab4737 48%); border: 1px solid #f6dba1; border-radius: 48%; box-shadow: 0 3px 8px #051c22; }
-.fishing-bobber::before { content: ""; position: absolute; left: 50%; bottom: 100%; height: 35px; border-left: 1px solid #ead7aa; }
+.fishing-target.is-biting { left: var(--line-x); top: 44%; }
+.fishing-target.is-curious:not(.is-biting) { animation: fishing-inspect .65s ease-in-out; }
+@keyframes fishing-inspect {
+  45% { left: calc(var(--x) + (var(--line-x) - var(--x)) * .38); top: calc(var(--y) + (44% - var(--y)) * .38); }
+}
+.fishing-bobber {
+  position: absolute; z-index: 2; left: var(--line-x); top: var(--line-depth, 0px);
+  width: 25px; height: 25px; transform: translate(-50%, 0);
+  color: var(--lamp); pointer-events: none;
+}
+.fishing-bobber::before {
+  content: ""; position: absolute; left: 50%; bottom: calc(100% - 2px);
+  height: calc(var(--line-depth, 0px) - var(--line-start, 0px)); border-left: 1px solid #ead7aa;
+}
 .fishing-bobber.is-jigging { animation: jig-bobber .34s ease-out; }
-@keyframes jig-bobber { 40% { transform: translate(-50%, -95%); } }
-@media (pointer: fine) { .fishing :is(.lake, .fishing-target) { cursor: none; } }
-@media (prefers-reduced-motion: reduce) { .fishing :is(.fishing-target svg, .fishing-bobber) { animation: none; } }
+.fishing-bobber.is-jigging::before { animation: jig-line .34s ease-out; }
+@keyframes jig-bobber { 40% { transform: translate(-50%, -11px); } }
+@keyframes jig-line { 40% { height: calc(var(--line-depth) - var(--line-start) - 11px); } }
+.tackle-icon {
+  width: 18px; height: 18px; flex: none;
+  fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+}
+.fishing-bobber .tackle-icon { width: 100%; height: 100%; }
+.fishing-tray button:has(.tackle-icon) { display: inline-flex; align-items: center; justify-content: center; gap: 4px; }
+.fishing-brand { border-radius: 4px; flex: none; }
+@media (max-width: 420px) {
+  .fishing-tray [data-lure], .fishing-tray [data-skill] { flex-direction: column; padding-inline: 7px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fishing-target { transition: none; }
+  .fishing-target.is-curious, .fishing-bobber.is-jigging, .fishing-bobber.is-jigging::before { animation: none; }
+}
 .fishing-timing::before { left: var(--window-start, 26.2%); }
 .fishing-target.gilded svg { filter: sepia(1) saturate(1.8) drop-shadow(0 3px 7px #e5bc59); }
 .fishing-skills button { flex: 1; font-size: .8rem; }
@@ -84,3 +113,9 @@
   .fishing-celebration, .fishing-splash svg { animation: none; }
   .fishing-splash { display: none; }
 }
+
+.fishing-pressure { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; font-size: .83rem; }
+.fishing-pressure label { display: flex; align-items: center; gap: 6px; }
+.fishing-pressure meter { width: 6rem; }
+.fishing-pressure [data-pulls] { color: var(--lamp); }
+.fishing-tray [data-loosen] { flex: 1; }

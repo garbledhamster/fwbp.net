@@ -1,22 +1,30 @@
-import { apply, lures, publicRun, skills, start } from './rules.mjs';
+import { apply, lures, publicRun, skills, start } from './rules.mjs?v=9';
 
 const endpoint = document.querySelector('meta[name="fishing-api"]')?.content;
 const scenes = [...document.querySelectorAll('.dive[data-dive]')].slice(0, 6);
+const lake = document.querySelector('.lake');
+const iceCeiling = lake.querySelector('.dive-ceiling');
+const icon = id => `<svg class="tackle-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="./assets/tackle-icons.svg#${id}"/></svg>`;
 const tray = document.createElement('section');
 tray.className = 'fishing-tray';
 tray.hidden = true;
 tray.setAttribute('aria-label', 'Fishing controls');
 tray.innerHTML = `
   <div class="fishing-tray-inner">
-    <div class="fishing-row"><strong data-score></strong><button type="button" data-exit>Exit fishing</button></div>
+    <div class="fishing-row"><img class="fishing-brand" src="./assets/fwbp-logo.jpg" alt="" width="27" height="27"><strong data-score></strong><button type="button" data-exit>Exit fishing</button></div>
     <p class="fishing-status" role="status"></p>
     <div class="fishing-timing" aria-hidden="true" hidden><i></i></div>
+    <div class="fishing-pressure" hidden>
+      <label>Line tension <meter min="0" max="100" high="60" optimum="0"></meter></label>
+      <span data-pulls></span>
+    </div>
     <div class="fishing-row" aria-label="Lures and action">
-      ${Object.entries(lures).map(([id, name]) => `<button type="button" data-lure="${id}">${name}</button>`).join('')}
+      ${Object.entries(lures).map(([id, name]) => `<button type="button" data-lure="${id}">${icon(id)}<span>${name}</span></button>`).join('')}
       <button type="button" class="fishing-action"></button>
+      <button type="button" data-loosen hidden>${icon('loosen')}<span>Loosen</span></button>
     </div>
     <div class="fishing-row fishing-skills" hidden aria-label="Spend one skill point">
-      ${Object.entries(skills).map(([id, name]) => `<button type="button" data-skill="${id}">${name}</button>`).join('')}
+      ${Object.entries(skills).map(([id, name]) => `<button type="button" data-skill="${id}">${icon(id)}<span>${name}</span></button>`).join('')}
     </div>
     <details hidden><summary>Catch log</summary><ul></ul></details>
     <form hidden><label>Nickname <input name="nickname" maxlength="20" required></label> <button>Post score</button></form>
@@ -26,6 +34,7 @@ const bobber = document.createElement('div');
 bobber.className = 'fishing-bobber';
 bobber.hidden = true;
 bobber.setAttribute('aria-hidden', 'true');
+lake.append(bobber);
 const celebration = document.createElement('div');
 celebration.className = 'fishing-celebration';
 celebration.hidden = true;
@@ -41,7 +50,7 @@ celebration.innerHTML = `
 const announcement = document.createElement('span');
 announcement.className = 'fishing-announcement';
 announcement.setAttribute('role', 'status');
-document.body.append(tray, bobber, celebration, announcement);
+document.body.append(tray, celebration, announcement);
 
 let celebrationTimer;
 
@@ -60,6 +69,8 @@ function celebrateCatch(level) {
 }
 
 const action = tray.querySelector('.fishing-action');
+const loosen = tray.querySelector('[data-loosen]');
+const pressure = tray.querySelector('.fishing-pressure');
 const timing = tray.querySelector('.fishing-timing');
 const status = tray.querySelector('[role="status"]');
 const exit = tray.querySelector('[data-exit]');
@@ -68,7 +79,7 @@ const log = tray.querySelector('details');
 const board = tray.querySelector('[data-board]');
 const skillRow = tray.querySelector('.fishing-skills');
 const slots = [...tray.querySelectorAll('[data-lure]')];
-let launch, previousScroll, run, state, token, target, selected, busy, failed, biteAt, frame;
+let launch, previousScroll, run, state, token, target, busy, failed, biteAt, frame;
 let lure = 'jig';
 let generation = 0;
 
@@ -81,9 +92,18 @@ async function api(action, data = {}, auth = token) {
   return response.json();
 }
 
-function moveBobber(x, y) {
-  bobber.style.setProperty('--x', `${x}px`);
-  bobber.style.setProperty('--y', `${y}px`);
+function positionLine() {
+  const scene = scenes[state?.index];
+  if (!scene || !state.fish) {
+    bobber.hidden = true;
+    return;
+  }
+  const water = lake.getBoundingClientRect();
+  const encounter = scene.getBoundingClientRect();
+  const hole = iceCeiling.getBoundingClientRect();
+  bobber.style.setProperty('--line-start', `${hole.top - water.top + hole.height * 20 / 110}px`);
+  bobber.style.setProperty('--line-depth', `${encounter.top - water.top + encounter.height * .44}px`);
+  bobber.hidden = tray.hidden;
 }
 
 function animateBite() {
@@ -96,24 +116,16 @@ function animateBite() {
 function placeFish() {
   target?.remove();
   target = null;
-  selected = false;
+  positionLine();
   if (!state.fish) return;
   const { art: [file, symbol, box], x, y } = state.fish;
-  target = document.createElement('button');
-  target.type = 'button';
+  target = document.createElement('div');
   target.className = 'fishing-target';
   target.classList.toggle('gilded', state.fish.gilded);
-  target.setAttribute('aria-label', 'Aim at fish');
+  target.setAttribute('aria-hidden', 'true');
   target.style.setProperty('--x', `${x}%`);
   target.style.setProperty('--y', `${y}%`);
   target.innerHTML = `<svg viewBox="${box}" aria-hidden="true"><use href="./assets/${file}.svg#${symbol}"/></svg>`;
-  target.addEventListener('click', () => {
-    selected = true;
-    const bounds = target.getBoundingClientRect();
-    moveBobber(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
-    render();
-    action.focus({ preventScroll: true });
-  });
   scenes[state.index].append(target);
 }
 
@@ -121,21 +133,39 @@ function render() {
   tray.querySelector('[data-score]').textContent = state
     ? `${state.lake} · ${token ? 'Ranked' : 'Practice'} · ${state.score} pts · ${Math.min(state.index + 1, state.count)}/${state.count}`
     : 'Fishing beneath the ice';
-  status.textContent = failed ? 'Ranking disconnected. You can start a practice outing.' : state?.cue ?? 'Opening the lake…';
-  action.textContent = failed ? 'Practice' : ({ seek: 'Jig', bite: 'Reel', lift: 'Pull up', landed: 'Next fish', done: 'Fish again' }[state?.stage] ?? 'Wait');
-  action.disabled = busy || !state || (!failed && state.stage === 'seek' && !selected);
+  status.textContent = failed ? 'Ranking disconnected. You can start a practice outing.'
+    : state?.stage === 'landed' && state.cue.endsWith('points') ? `All right! ${state.cue}`
+    : state?.cue ?? 'Opening the lake…';
+  const [actionIcon, label] = failed ? ['next', 'Practice'] : ({
+    seek: ['jig', 'Jig'], bite: ['reel', 'Reel'], fight: state?.fight?.pulls === 1 ? ['lift', 'Pull up'] : ['reel', 'Reel'],
+    landed: ['next', 'Next fish'], done: ['next', 'Fish again'],
+  }[state?.stage] ?? ['next', 'Wait']);
+  action.innerHTML = `${icon(actionIcon)}<span>${label}</span>`;
+  action.disabled = busy || !state;
+  if (bobber.dataset.lure !== lure) {
+    bobber.dataset.lure = lure;
+    bobber.innerHTML = icon(lure);
+  }
+  pressure.hidden = !state?.fight || failed;
+  loosen.hidden = pressure.hidden;
+  loosen.disabled = busy;
+  if (state?.fight) {
+    pressure.querySelector('meter').value = state.fight.tension;
+    pressure.querySelector('[data-pulls]').textContent =
+      `${state.fight.tension >= 60 ? 'Tight line' : 'Line clear'} · ${state.fight.pulls} to land`;
+  }
   slots.forEach(slot => {
+    slot.hidden = !pressure.hidden;
     slot.disabled = busy || state?.stage !== 'seek';
     slot.setAttribute('aria-pressed', String(slot.dataset.lure === lure));
   });
-  target?.setAttribute('aria-pressed', String(Boolean(selected)));
-  target?.classList.toggle('is-biting', state?.stage === 'bite');
+  target?.classList.toggle('is-biting', ['bite', 'fight'].includes(state?.stage));
   if (target) target.hidden = state?.stage === 'landed';
   skillRow.hidden = state?.stage !== 'landed' || !state.skillPoints || failed;
   for (const button of skillRow.children) {
     const skill = button.dataset.skill;
     const level = state?.skills[skill] ?? 0;
-    button.textContent = `${skills[skill]} ${level}/2`;
+    button.querySelector('span').textContent = `${skills[skill]} ${level}/2`;
     button.disabled = busy || level === 2;
   }
   if (state) timing.style.setProperty('--window-start', `${state.window.from / state.window.until * 100}%`);
@@ -182,7 +212,7 @@ function enter(event) {
   event.preventDefault();
   launch = event.currentTarget;
   previousScroll = window.scrollY;
-  tray.hidden = bobber.hidden = false;
+  tray.hidden = false;
   document.body.classList.add('fishing');
   exit.focus({ preventScroll: true });
   begin();
@@ -204,9 +234,7 @@ exit.addEventListener('click', leave);
 document.addEventListener('keydown', event => {
   if (!tray.hidden && event.key === 'Escape') leave();
 });
-document.querySelector('.lake').addEventListener('pointermove', event => {
-  if (!tray.hidden && event.pointerType === 'mouse') moveBobber(event.clientX, event.clientY);
-});
+window.addEventListener('resize', positionLine);
 slots.forEach(slot => slot.addEventListener('click', () => {
   lure = slot.dataset.lure;
   render();
@@ -214,11 +242,15 @@ slots.forEach(slot => slot.addEventListener('click', () => {
 
 async function perform(move, input = {}) {
   const prior = state;
+  const focused = document.activeElement;
   const current = generation;
   if (move === 'jig') {
     bobber.classList.remove('is-jigging');
     void bobber.offsetWidth;
     bobber.classList.add('is-jigging');
+    target?.classList.remove('is-curious');
+    if (target) void target.offsetWidth;
+    target?.classList.add('is-curious');
   }
   busy = true;
   render();
@@ -244,12 +276,15 @@ async function perform(move, input = {}) {
   }
   busy = false;
   render();
-  if (move === 'upgrade' && skillRow.hidden) action.focus({ preventScroll: true });
+  if (focused === action || (move === 'upgrade' && skillRow.hidden)) action.focus({ preventScroll: true });
+  if (focused === loosen) (loosen.hidden ? action : loosen).focus({ preventScroll: true });
 }
+
+loosen.addEventListener('click', () => perform('loosen'));
 
 action.addEventListener('click', () => {
   if (failed || state.stage === 'done') return begin(failed);
-  const move = { seek: 'jig', bite: 'reel', lift: 'lift', landed: 'next' }[state.stage];
+  const move = { seek: 'jig', bite: 'reel', fight: 'lift', landed: 'next' }[state.stage];
   return perform(move, move === 'jig' ? { lure } : {});
 });
 for (const button of skillRow.children) {

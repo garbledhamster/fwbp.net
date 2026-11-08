@@ -18,7 +18,7 @@ export const runLifetime = 20 * 60 * 1000;
 export function start(now, random = Math.random, lake = 'mille-lacs') {
   const pool = lakes[lake].fish.flatMap((entry, index) => Array(entry.weight).fill(index));
   return {
-    lake, skills: { quick: 0, control: 0, lift: 0 }, skillPoints: 0, lifts: 0,
+    lake, skills: { quick: 0, control: 0, lift: 0 }, skillPoints: 0, fight: null,
     encounters: Array.from({ length: 6 }, () => ({
       species: pool[Math.floor(random() * pool.length)],
       x: 17 + Math.round(random() * 66),
@@ -26,7 +26,7 @@ export function start(now, random = Math.random, lake = 'mille-lacs') {
       sizeRoll: random(), colorRoll: random(),
     })),
     expires: now + runLifetime, last: now - 300, index: 0, score: 0, discoveries: [],
-    stage: 'seek', biteAt: 0, catch: null, cue: 'Choose a lure and find a fish.',
+    stage: 'seek', biteAt: 0, catch: null, cue: 'Keep on jigging! Pick a lure and give it a bounce.',
     version: 0, submitted: false,
   };
 }
@@ -36,7 +36,7 @@ export function publicRun(run) {
   const target = encounter && lakes[run.lake].fish[encounter.species];
   return {
     fish: target ? { id: target.id, art: target.art, x: encounter.x, y: encounter.y, gilded: encounter.colorRoll >= .97 } : null,
-    lake: lakes[run.lake].name, skills: run.skills, skillPoints: run.skillPoints, lifts: run.lifts, window: reelWindow(run.skills),
+    lake: lakes[run.lake].name, skills: run.skills, skillPoints: run.skillPoints, fight: run.fight, window: reelWindow(run.skills),
     index: run.index, count: run.encounters.length, score: run.score, stage: run.stage,
     version: run.version, discoveries: run.discoveries, catch: run.catch, cue: run.cue,
     submitted: run.submitted,
@@ -46,7 +46,7 @@ export function publicRun(run) {
 export function apply(run, input, now) {
   if (!input || Object.keys(input).some(key => !['action', 'lure', 'skill'].includes(key))) throw Error('Invalid action.');
   if (now >= run.expires) throw Error('This outing expired.');
-  const paced = input.action === 'jig' || input.action === 'lift';
+  const paced = ['jig', 'lift', 'loosen'].includes(input.action);
   if (paced && now - run.last < 250) throw Error('Give the line a moment.');
   const encounter = run.encounters[run.index];
   const target = lakes[run.lake].fish[encounter?.species];
@@ -54,9 +54,9 @@ export function apply(run, input, now) {
     if (input.lure === target.lure) {
       run.stage = 'bite';
       run.biteAt = now;
-      run.cue = 'Bite! Reel when the marker reaches the gold band.';
+      run.cue = 'Yeah, reel it! Wait for the marker to reach the gold band.';
     } else {
-      run.cue = 'It turned to look. Try a different lure.';
+      run.cue = 'Keep on jigging! It looked, but try a different lure.';
     }
   } else if (input.action === 'reel' && run.stage === 'bite') {
     const elapsed = now - run.biteAt;
@@ -69,10 +69,13 @@ export function apply(run, input, now) {
       const gilded = encounter.colorRoll >= .97;
       const points = target.points + (grade === 'Record' ? 60 : grade === 'Trophy' ? 20 : 0) + (gilded ? 30 : 0);
       run.catch = { name: target.name, rarity: target.rarity, points, lure: target.lure, length, grade, gilded };
-      run.lifts = length >= trophy ? Math.max(0, 2 - run.skills.lift) : 0;
-      if (run.lifts) {
-        run.stage = 'lift';
-        run.cue = `Heavy fish! ${run.lifts} more pulls.`;
+      const effort = target.rarity === 'Rare' || grade !== 'Standard' ? 3
+        : target.rarity === 'Uncommon' ? 2 : 0;
+      if (effort) {
+        const surge = effort === 3 ? 80 : 68;
+        run.fight = { pulls: Math.max(1, effort - run.skills.lift), tension: surge, surge };
+        run.stage = 'fight';
+        run.cue = 'Loosen up! Give it some line.';
       } else {
         land(run, target);
       }
@@ -80,10 +83,25 @@ export function apply(run, input, now) {
       run.stage = 'seek';
       run.cue = 'It slipped the hook. Jig again to bring it back.';
     }
-  } else if (input.action === 'lift' && run.stage === 'lift') {
-    run.lifts--;
-    if (run.lifts) run.cue = 'One more pull.';
-    else land(run, target);
+  } else if (run.stage === 'fight' && ['lift', 'loosen'].includes(input.action)) {
+    const fight = run.fight;
+    if (input.action === 'loosen') {
+      fight.tension = Math.max(0, fight.tension - 52);
+      run.cue = fight.pulls === 1 ? 'Pull it up!' : 'Yeah, reel it!';
+    } else if (fight.tension >= 60) {
+      fight.tension = Math.min(100, fight.tension + 30 - run.skills.control * 5);
+      run.cue = 'Loosen up! The line is getting tight.';
+      if (fight.tension === 100) {
+        run.stage = 'seek';
+        run.fight = run.catch = null;
+        run.cue = 'The line snapped. Jig to try again.';
+      }
+    } else if (--fight.pulls === 0) {
+      land(run, target);
+    } else {
+      fight.tension = fight.surge;
+      run.cue = 'Loosen up! Let it run.';
+    }
   } else if (input.action === 'upgrade' && run.stage === 'landed'
     && run.skillPoints > 0 && Object.hasOwn(skills, input.skill) && run.skills[input.skill] < 2) {
     run.skills[input.skill]++;
@@ -104,6 +122,7 @@ export function apply(run, input, now) {
 
 function land(run, target) {
   const { length, rarity, points, grade, gilded } = run.catch;
+  run.fight = null;
   run.score += points;
   run.skillPoints++;
   if (!run.discoveries.some(entry => entry.fish === target.name)) {
