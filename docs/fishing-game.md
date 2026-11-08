@@ -1,10 +1,10 @@
 # Fishing beneath the ice
 
-Visitors click Bryan’s name or logo to fish in the lake they were already scrolling through. The site content gives way to open water. A little red-and-cream bobber follows the mouse, and on touch the lure moves to the selected fish. Players discover which lure works by watching how a fish responds and seeing the pairing when they land it.
+Choose **Play fishing game** to fish in the lake beneath the site. The site content gives way to open water. A fixed line hangs from the ice hole, and the lure bounces up and down when you jig. Watch how the fish responds to learn which lure works. The catch log records the pairing after you land it.
 
 ## Strategy
 
-The first outing should teach itself in about a minute. Give players an immediate response when they jig, a visible tug when a fish bites, and the fish’s name, rarity and points when it lands. Keep the nickname prompt at the end. The same lake, fish illustrations and warm lamp color make the game feel like part of Bryan’s site.
+The first outing should teach itself in about a minute. Show how the fish responds to a jig, cue the player when it bites, and show its name, rarity and points when it lands. Ranked play offers a nickname prompt at the end. The same lake, fish illustrations and warm lamp color make the game feel like part of Bryan’s site.
 
 An outing has six encounters in the existing dive sections. Pick one of three lures, find the fish, jig, and reel when the line is ready. A weak lure gets a response and leaves room to switch. The catch record reveals successful pairings. A player can start a new outing or leave at any point.
 
@@ -37,7 +37,7 @@ Rollback by reverting the site feature and publishing a fresh numbered version. 
 
 Mille Lacs is the first lake. Keep its roster and encounter weights in a lake profile so a future outing can choose another profile at the start. This release has no lake picker. Start with yellow perch, rock bass, walleye, northern pike, smallmouth bass and muskellunge. The odds, lure pairings and size bands are game rules. The two record catches used as reference are a 58¼-inch muskie and a 46¼-inch northern pike from Mille Lacs. [Minnesota DNR species report](https://files.dnr.state.mn.us/publications/fisheries/special_reports/151.pdf) · [Minnesota DNR catch-and-release records](https://www.dnr.state.mn.us/fishing/catch-and-release.html)
 
-Each fish has a length and grade. Trophy and record lengths score more. A rare gilded color adds its own bonus and is a fictional game variant. Let players invest points earned from catches into Quick Bite, Line Control or Lift. Quick Bite brings the reel band forward, Line Control keeps the band open longer, and Lift reduces the extra pulls needed for large fish. Skills are earned within the six-encounter outing so every ranked outing starts on equal footing.
+Each fish has a length and grade. Trophy and record lengths score more. A rare gilded color adds its own bonus and is a fictional game variant. In Ranked, players can invest the point from each catch in Quick Bite, Line Control, or Lift. Quick Bite opens the reel window sooner. Line Control keeps it open longer, and Lift reduces the extra pulls for fish that fight. Ranks reset for each outing.
 
 ### Ranked deployment
 
@@ -45,10 +45,15 @@ The dedicated [Firebase project](https://console.firebase.google.com/project/fwb
 
 ### Level-up celebration
 
-An outing starts at level 1. Each landed fish raises the level and earns one skill point. On landing, Bryan’s illustrated portrait appears with a ribbon and a burst of small fish silhouettes. The controls stay available during the celebration. Reduced-motion players see the still portrait and ribbon, and the award is announced to screen readers.
+In Practice, each landed fish earns 10 XP toward Level 2, separate from its score. The second catch reaches Level 2 and brings up Bryan’s portrait, ribbon, and fish silhouettes. With reduced motion, the portrait and ribbon stay still. The tray announces the milestone and keeps the choice visible after the celebration fades. Choose one rank of **Line Control** for 350 ms more to set the hook, or **Lift** for one fewer pull on a fish that fights, down to one. **Next fish** skips the choice for this outing. A new Practice outing starts at Level 1 with fresh XP and ranks. In Ranked, the celebration still appears on each catch.
 
 ### Working the line
 
 The lure hangs from the ice hole on one continuous line. Jig bounces it vertically, and the fish comes to inspect it. The tackle tray and lure share one SVG icon sheet, with labels on the controls.
 
-The first reel still uses the gold timing band. Common fish usually land there. Stronger or trophy fish pull the line tight. Loosen to drop the tension, then Reel when Bryan calls it clear. Pull up on the final turn. Reeling against a tight line raises tension and can break it. Tougher fish surge more often, Lift reduces the number of pulls, and Line Control gives mistakes more room before the line breaks.
+The first reel uses the gold timing band. In Practice, Bryan tells you to wait at the bite and calls “Yeah, reel it!” when the window opens. If it closes, press **Reel** to resolve the attempt, then jig for the same fish. Common fish usually land on the first reel. Stronger or trophy fish pull the line tight. **Loosen** to drop the tension, then **Reel** when the line clears. Use **Pull up** on the last turn. Reeling against a tight line raises tension and can break it. Tougher fish surge more often. The ranked server still decides accepted timing and points.
+
+
+### Run the game checks
+
+Run `node --test game/rules.test.mjs` for the shared rules. To replay the seeded browser checks, start the local site as described in the README. Set `FISHING_QA_URL` to that URL and run `node game/cues.browser.mjs` and `node game/milestone.browser.mjs`. If Playwright is installed outside the checkout, set `PLAYWRIGHT_MODULE` to its module path. Use `CHROME_PATH` if you need to point Playwright to an installed Chrome.

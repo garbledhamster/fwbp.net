@@ -1,4 +1,4 @@
-import { apply, lures, practiceLevelXp, practiceSkills, publicRun, skills, start } from './rules.mjs?v=9';
+import { apply, lures, practiceLevelXp, practiceSkills, publicRun, skills, start } from './rules.mjs?v=11';
 
 const endpoint = document.querySelector('meta[name="fishing-api"]')?.content;
 const scenes = [...document.querySelectorAll('.dive[data-dive]')].slice(0, 6);
@@ -28,7 +28,7 @@ tray.innerHTML = `
       ${Object.entries(skills).map(([id, name]) => `<button type="button" data-skill="${id}">${icon(id)}<span>${name}</span></button>`).join('')}
     </div>
     <div class="fishing-practice-choice" role="group" aria-label="Choose a skill" hidden>
-      <p>Choose a skill, or skip with Next fish.</p>
+      <p>Next fish skips the choice.</p>
       <div class="fishing-row">
         ${Object.entries(practiceSkills).map(([id, description]) =>
           `<button type="button" data-skill="${id}"><span>${icon(id)} ${skills[id]}</span><small>${description}</small></button>`).join('')}
@@ -53,7 +53,7 @@ celebration.innerHTML = `
         <path d="M1 3l7 3C14 0 24 1 31 9c-7 8-17 9-23 3l-7 3 3-6z"/>
       </svg>`).join('')}
   </div>
-  <img src="./assets/bryan-level-up.webp" alt="" width="320" height="320" loading="lazy">
+  <img src="./assets/bryan-level-up.webp" alt="" width="320" height="320">
   <div class="fishing-ribbon"><strong data-level></strong><span>+1 skill point</span></div>`;
 const announcement = document.createElement('span');
 announcement.className = 'fishing-announcement';
@@ -207,9 +207,11 @@ function render() {
   loosen.hidden = pressure.hidden;
   loosen.disabled = busy;
   if (state?.fight) {
-    pressure.querySelector('meter').value = state.fight.tension;
-    pressure.querySelector('[data-pulls]').textContent =
-      `${state.fight.tension >= 60 ? 'Tight line' : 'Line clear'} · ${state.fight.pulls} to land`;
+    const { tension, pulls } = state.fight;
+    pressure.querySelector('meter').value = tension;
+    pressure.querySelector('[data-pulls]').textContent = practiceFight
+      ? `${pulls} ${pulls === 1 ? 'pull' : 'pulls'} left`
+      : `${tension >= 60 ? 'Tight line' : 'Line clear'} · ${pulls} to land`;
   }
   slots.forEach(slot => {
     slot.hidden = !pressure.hidden;
