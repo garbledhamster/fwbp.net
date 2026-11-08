@@ -56,7 +56,7 @@ button, a, summary { -webkit-tap-highlight-color: transparent; }
 .surface-inner { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.04fr); align-items: center; gap: clamp(22px, 5vw, 64px); }
 .preview-label, .section-mark { display: flex; align-items: center; gap: 9px; font-size: .83rem; letter-spacing: .045em; font-weight: 680; }
 .preview-label { color: #f8deab; }
-.preview-label span, .section-mark span, .ice-caption span { width: 7px; height: 7px; border-radius: 50%; background: var(--lamp); flex: none; }
+.preview-label span, .section-mark span { width: 7px; height: 7px; border-radius: 50%; background: var(--lamp); flex: none; }
 .intro h1 { font-size: clamp(52px, 10vw, 132px); line-height: .87; color: #fff1d2; letter-spacing: -.064em; margin: 17px 0 16px; }
 .intro-line { font-size: clamp(17px, 2.1vw, 23px); color: #e6eee0; }
 .hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 17px; margin-top: 23px; }
@@ -87,11 +87,6 @@ button, a, summary { -webkit-tap-highlight-color: transparent; }
 .ice { position: relative; isolation: isolate; overflow: hidden; height: clamp(180px, 34vw, 425px); background: var(--ice); }
 .ice-art { height: 100%; }
 .ice-light { position: absolute; inset: -15% -10%; pointer-events: none; background: radial-gradient(ellipse at 75% 32%, #fbe5a240, transparent 27%); }
-.ice-caption {
-  position: absolute; bottom: 19px; left: max(var(--space), (100% - var(--measure)) / 2);
-  display: flex; align-items: center; gap: 8px; padding: .38rem .7rem;
-  color: #fff7de; background: #173c3e; border-radius: 4px; font-size: .8rem;
-}
 .about-inner { position: relative; }
 .about-inner .content-note { margin-top: 11px; color: #d0e7da; font-size: .8rem; }
 .channel-banner { display: block; width: min(100%, 560px); height: auto; margin-top: 20px; border: 1px solid var(--rule); border-radius: 4px; }
@@ -106,7 +101,7 @@ button, a, summary { -webkit-tap-highlight-color: transparent; }
 .episode-meta { display: block; color: var(--muted); font-size: .77rem; margin: 8px 0 2px; font-weight: 650; }
 .episode-name { display: block; font-size: clamp(.92rem, 1.8vw, 1.22rem); line-height: 1.25; }
 .episode-trigger:hover .episode-name { text-decoration: underline; }
-.library { background: var(--deep); border-top: 1px solid var(--rule); padding: clamp(35px, 7vw, 76px) 0 clamp(45px, 9vw, 100px); }
+.library { padding: clamp(35px, 7vw, 76px) 0 clamp(45px, 9vw, 100px); }
 .section-heading { display: flex; align-items: end; justify-content: space-between; flex-wrap: wrap; gap: 14px 25px; }
 .section-heading p { margin-top: 10px; color: var(--muted); }
 .filters { display: flex; gap: 6px; flex-wrap: wrap; }

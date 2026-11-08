@@ -34,44 +34,19 @@
 
 }
 
-.dive {
-  --water-top: #355e51;
-  --water-bottom: #162f2c;
-  --beam-x: 61%;
+.lake {
   position: relative;
   isolation: isolate;
-  display: grid;
-  align-content: space-between;
-  gap: 14px;
-  min-height: clamp(340px, 59svh, 560px);
-  padding: clamp(28px, 5vw, 62px) 0 clamp(24px, 4vw, 44px);
-  background: var(--water-bottom);
+  overflow: clip;
+  background:
+    radial-gradient(ellipse 95% 720px at 62% 0%, #c5cb9168, transparent 82%),
+    radial-gradient(ellipse 83% 990px at 15% 40%, #72946a38, transparent 85%),
+    linear-gradient(168deg, #355d54, #25463d 34%, #1a3734 70%, #142c2b);
 }
-.dive-water { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; background: linear-gradient(var(--water-top), var(--water-bottom) 85%); }
-.dive .dive-water::after {
-  content: ""; position: absolute; inset: 0; z-index: 4;
-  background: linear-gradient(#0d2725bd, transparent 33%, transparent 66%, #102322dc),
-              radial-gradient(ellipse at 50% 45%, transparent 22%, #102c2875 100%);
-}
-.dive-heading h2 { margin-top: 8px; color: #fff2cf; text-wrap: balance; }
-.dive-footer { position: relative; }
-.dive-caption {
-  max-width: min(48ch, 100%);
-  width: fit-content;
-  padding: 8px 12px;
-  background: #102724e8;
-  color: #f5e7c5;
-  border: 1px solid #acb69471;
-  border-radius: 4px;
-  font-size: .88rem;
-  line-height: 1.45;
-}
-.dive-light {
-  position: absolute; inset: -16% -7% 4%;
-  background: radial-gradient(ellipse at var(--beam-x) 0%, #e8d797bb, #b5c79a38 36%, transparent 66%);
-}
-.dive-ceiling { position: absolute; inset: -9px 0 auto; width: 100%; height: 18%; opacity: .64; }
-.dive-bed { position: absolute; left: 0; bottom: -30px; width: 100%; height: 48%; opacity: .72; }
+.dive, .lake > .library { position: relative; }
+.dive { min-height: clamp(245px, 42svh, 450px); }
+.dive-water { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+.dive-ceiling { position: absolute; inset: -6px 0 auto; width: 100%; height: 25%; opacity: .56; }
 .dive-actors { position: absolute; inset: 0; }
 .dive-actor {
   position: absolute;
@@ -83,61 +58,41 @@
 .dive-actor[data-layer="far"] { z-index: 1; opacity: .35; }
 .dive-actor[data-layer="middle"] { z-index: 2; opacity: .77; }
 .dive-actor[data-layer="near"] { z-index: 3; }
-.dive-frame { display: none; }
-.dive[data-dive="pike"] { --water-top: #3c6054; --water-bottom: #1a3836; --beam-x: 69%; }
-.dive[data-dive="perch"] { --water-top: #1a3836; --water-bottom: #234239; --beam-x: 45%; }
-.dive[data-dive="rocks"] { --water-top: #283b2e; --water-bottom: #182e2b; --beam-x: 50%; }
-.dive[data-dive="rocks"] .dive-bed { height: 67%; opacity: 1; }
-.dive[data-dive="weeds"] { --water-top: #234239; --water-bottom: #283b2e; --beam-x: 43%; }
-.dive[data-dive="camera"] { --water-top: #182e2b; --water-bottom: #162d2a; --beam-x: 54%; }
-.dive[data-dive="camera"] .dive-frame {
-  position: absolute; inset: 26% var(--space) 12%; z-index: 5; display: block;
-  border: 1px solid #f0e8c26b; box-shadow: 0 0 0 100vmax #1025253d;
-}
-.dive-frame span {
-  position: absolute; right: 10px; top: 8px;
-  color: #f3eaca; font: 650 .72rem ui-monospace, monospace; letter-spacing: .07em;
-}
-.dive-frame span::before { content: "●"; margin-right: 7px; color: #e58e68; }
 @media (prefers-reduced-motion: no-preference) {
   body:not([data-reduced]) .dive-actor {
     transform: translate(calc(var(--depth, 0) * var(--swim-x)), calc(var(--depth, 0) * var(--swim-y)));
   }
-  body:not([data-reduced]) .dive-light { transform: translateY(calc(var(--depth, 0) * 90px)); }
   body:not([data-reduced]) .dive-ceiling { transform: translateY(calc(var(--depth, 0) * 12px)); }
-  body:not([data-reduced]) .dive-bed { transform: translateY(calc(var(--depth, 0) * 30px)); }
 }
 
 /* The aligned segments sit above the water and behind the page content. */
 .fishing-route > section { position: relative; isolation: isolate; }
-.fishing-route > section::before, .footer::before {
+.fishing-route > section::before, .lake::before, .footer::before {
   content: ""; position: absolute; z-index: 0; inset: 0 auto 0 var(--line-x);
   width: 1px; background: #e9d6a355; pointer-events: none;
 }
 .fishing-route > .surface::before { background: linear-gradient(transparent 40%, #e9d6a355); }
-.fishing-route > section > .wrap { position: relative; z-index: 1; }
+.fishing-route > section > .wrap, .lake .wrap { position: relative; z-index: 1; }
 .ice-art, .ice-light { position: relative; z-index: -1; }
 .ice-light { position: absolute; }
-.ice-caption { z-index: 1; }
-
-.dive-right .dive-heading { text-align: right; }
-.dive-right .section-mark { justify-content: flex-end; }
-.dive-right .dive-caption { margin-left: auto; }
-.dive[data-dive="weeds"], .dive[data-dive="camera"] { min-height: clamp(510px, 72svh, 700px); }
+.dive[data-dive="weeds"], .dive[data-dive="camera"] {
+  display: grid;
+  align-content: center;
+  min-height: clamp(385px, 52svh, 560px);
+  padding-block: clamp(34px, 6vw, 68px);
+}
 .dive-panel {
   position: relative; max-width: 660px; margin-left: auto; padding: clamp(15px, 2.5vw, 28px);
   border: 1px solid #a9a78178; border-radius: 5px;
   background: #142923c9; box-shadow: 0 12px 42px #0c211e45;
 }
-.dive-panel h3 { margin: 0 0 12px; font: 500 clamp(24px, 4vw, 37px)/1.1 Georgia, serif; }
+.dive-panel h2 { margin: 0 0 12px; font: 500 clamp(24px, 4vw, 37px)/1.1 Georgia, serif; }
 .dive-panel.about-inner { max-width: 490px; border-left: 3px solid var(--lamp); }
 .dive-panel.about-inner > p:not(.content-note) { max-width: 42ch; }
 .dive-panel .channel-banner { margin-top: 14px; }
 .dive[data-dive="camera"] .dive-panel { margin-left: 0; }
 .dive-panel .episode-trigger { background: #182e28; border-radius: 14px 4px 4px; padding-bottom: 10px; }
 .dive-panel .episode-meta, .dive-panel .episode-name { padding-inline: 8px; }
-.library[data-dive] { background: #162d2a; }
-.library .dive-water { background: linear-gradient(#162d2a, #24392d); }
 .library .episode-trigger { background: #192d27f5; border-radius: 14px 4px 4px; padding-bottom: 10px; }
 .library .episode-meta, .library .episode-name { padding-inline: 8px; }
 .fishing-route > .field-notes::before { opacity: .52; background: #785d2b68; }
@@ -154,8 +109,7 @@
 .footer-lure:hover .footer-lure-copy > span:last-child { color: var(--lamp); }
 
 @media (max-width: 560px) {
-  .dive[data-dive="weeds"] { min-height: 530px; }
-  .dive[data-dive="camera"] { min-height: 505px; }
+  .dive[data-dive="weeds"], .dive[data-dive="camera"] { padding-block-start: 115px; }
   .dive-content .dive-panel { margin-left: 0; }
   .dive-panel .episode-name, .library .episode-name { font-size: .92rem; }
 }

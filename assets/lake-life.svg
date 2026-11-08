@@ -10,10 +10,6 @@
       <stop offset=".52" stop-color="#aa864e"/>
       <stop offset="1" stop-color="#d5ba82"/>
     </linearGradient>
-    <linearGradient id="bed" x2="0" y2="1">
-      <stop stop-color="#5c6047"/>
-      <stop offset="1" stop-color="#262d23"/>
-    </linearGradient>
     <pattern id="pike-spots" width="21" height="13" patternUnits="userSpaceOnUse">
       <path d="M3 4q3-3 7 0-4 3-7 0Zm11 6q2-2 5 0-3 2-5 0Z" fill="#d1c990" opacity=".83"/>
     </pattern>
@@ -33,31 +29,16 @@
     <path d="M8 48c8-2 16-3 26-3m9-14c10 7 9 19 3 26m10-12 15 7-13 5" fill="none" stroke="#655239" stroke-width="1.6"/>
     <circle cx="33" cy="37" r="5" fill="#bc7548"/><circle cx="33" cy="37" r="2.6" fill="#242c22"/>
   </symbol>
-  <symbol id="crayfish" viewBox="0 0 150 95">
-    <g stroke="#b87d4f" stroke-width="2.5" fill="none" stroke-linecap="round">
-      <path d="M75 44 50 18 29 8M77 44l15-27 18-11m-51 42L31 43 17 29m70 18 22-8 20-17M65 54 42 56 28 68m37-9L46 69l-7 15m30-19L54 77l-5 11m35-34 23 5 14 12M83 62l18 9 8 15m-29-19 11 11 6 11"/>
+  <symbol id="sprig" viewBox="0 0 138 62">
+    <path d="M5 53Q61 44 133 7" fill="none" stroke="#9eab72" stroke-width="2" stroke-linecap="round"/>
+    <path d="M21 50Q14 31 6 31q4 17 15 19Zm12-3q11 3 19 11-15 4-19-11Zm13-5Q31 20 21 25q4 14 25 17Zm10-4q17 0 28 11-16 5-28-11Zm14-6Q60 7 47 12q6 17 23 20Zm12-6q16-1 27 6-13 9-27-6Zm13-6Q89 3 80 3q2 14 15 17Zm9-4q18-1 26 4-14 8-26-4Z" fill="#8e9e64"/>
+    <path d="M19 49q16-11 25-29m13 18q6 10 15 15m9-24q9-9 8-19" fill="none" stroke="#b7bd82" stroke-width="1.2" opacity=".65"/>
+  </symbol>
+  <symbol id="bubbles" viewBox="0 0 150 125">
+    <g fill="none" stroke="#dae9ca" stroke-width="1.5" opacity=".65">
+      <circle cx="33" cy="96" r="3.5"/><circle cx="56" cy="68" r="5"/><circle cx="49" cy="47" r="2.5"/><circle cx="91" cy="36" r="6"/><circle cx="112" cy="14" r="3.5"/>
     </g>
-    <path d="M52 45 31 38 19 24c-8-12-3-18 1-19l9 18 9-4c12 6 10 17 6 20m52 6 21-11 12-16c4-10 0-15-3-16l-7 17-10-4c-10 6-10 17-5 21" fill="#ab6746" stroke="#714b34" stroke-width="2"/>
-    <path d="M59 45c3-10 28-13 34-1l-4 19-5 14 12 9-9 6-11-5-14 5-9-5 11-11-5-15Z" fill="#a56b48" stroke="#684a36" stroke-width="2"/>
-    <path d="M60 57c10 5 20 5 30-1m-27 9c10 4 15 4 24 0m-22 8c7 4 12 4 20 0" fill="none" stroke="#d59664" stroke-width="2"/>
-    <circle cx="65" cy="42" r="3" fill="#202b25"/><circle cx="86" cy="41" r="3" fill="#202b25"/>
-  </symbol>
-  <symbol id="weeds" viewBox="0 0 140 180">
-    <g fill="none" stroke-linecap="round">
-      <path d="M52 179Q37 114 46 47m23 133Q62 85 82 7m-4 172q12-51 46-76m-86 75Q30 123 6 101" stroke="#697647" stroke-width="3"/>
-      <path d="M78 26 60 14m16 24 23-16M73 56 52 40m20 27 24-20M68 82 48 65m21 27 26-18M68 113 49 97m20 28 28-19m-29 41-18-16m22 29 25-13m-52-84L28 51m17 24 14-11m-15 27L22 72m23 32 17-13m-17 30-17-14m20 31 16-16m-14 31-14-10m71-25 4-17m-9 27 20-2m-28 14 1-17m-7 30 20-4m-85-33-13-4m18 19 3-15m5 30-16-8" stroke="#8b9254" stroke-width="3"/>
-      <path d="M80 179q15-58 41-106M42 179Q35 126 11 89M65 179Q54 97 64 40" stroke="#43583e" stroke-width="3"/>
-    </g>
-  </symbol>
-  <symbol id="stones" viewBox="0 0 220 90">
-    <path d="m4 78 14-29 38-13 28 13 13 26 19-23 25-12 30 8 7 29 11-20 18 8 9 15-11 10H12Z" fill="#505b4b" stroke="#313f33" stroke-width="2"/>
-    <path d="m57 42 18 6 12 21-38 7-27-17 21-9Zm74 10 14-6 22 8 6 17-20 7-30-10Z" fill="#77806a"/>
-    <path d="m14 80 18-6 16 9m41-2 15-4 13 4m55 1 16-8 21 9" fill="none" stroke="#9b9979" stroke-width="2"/>
-  </symbol>
-  <symbol id="lakebed" viewBox="0 0 800 150">
-    <path d="M0 69Q78 33 154 69t165 5q124-37 225 7t256-15v84H0Z" fill="#3b4f40"/>
-    <path d="M0 106q94-39 186-6t186-4q91-33 179-8t249 5v57H0Z" fill="url(#bed)"/>
-    <path d="M42 125h39m88-11h26m60 20h51m100-19h33m53 17h31m143-14h67m-110 22h22" stroke="#aba27b" stroke-width="2" opacity=".4"/>
+    <path d="M88 34l2-2m-36 34 2-2" fill="none" stroke="#e7eed5" stroke-width="1.3" opacity=".72"/>
   </symbol>
   <symbol id="ceiling" viewBox="0 0 800 110">
     <path d="M0 0h800v34l-80 18-104-11-55 27-62-6-26 12-64-19-41 12-112-22-102 20L0 41Z" fill="#a5c6af" opacity=".78"/>

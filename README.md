@@ -1,6 +1,6 @@
 # Fishing with Bryan Prokuski
 
-Bryan’s videos, illustrated field notes, and a gallery of his former merch. Northwoods Outfitters is the site design. The scroll passes through five scenes in order: Pike Pass, Perch School, Weed Line, Rocky Bottom, and Through the Lens. Use **Reduce motion** in the footer to hold the illustrations still.
+Bryan’s videos, illustrated field notes, and a gallery of his former merch. Northwoods Outfitters is the site design. The fish share one continuous underwater backdrop, with bubbles, silt, and plant fragments drifting behind the content. Use **Reduce motion** in the footer to hold the illustrations still.
 
 ## Preview and edit
 

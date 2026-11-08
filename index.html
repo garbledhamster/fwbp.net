@@ -9,10 +9,10 @@
   <meta property="og:title" content="Fishing with Bryan Prokuski">
   <meta property="og:description" content="Go through the ice with Bryan Prokuski. Watch underwater fishing videos and browse illustrated field notes.">
   <link rel="icon" href="./assets/fwbp-logo.jpg" type="image/jpeg">
-  <link rel="stylesheet" href="./styles.css?v=rows">
-  <link rel="stylesheet" href="./brands.css?v=rows">
-  <script type="module" src="./brands.js?v=rows"></script>
-  <script type="module" src="./site.js?v=rows"></script>
+  <link rel="stylesheet" href="./styles.css?v=lake">
+  <link rel="stylesheet" href="./brands.css?v=lake">
+  <script type="module" src="./brands.js?v=lake"></script>
+  <script type="module" src="./site.js?v=lake"></script>
   <title>Fishing with Bryan Prokuski</title>
 </head>
 <body>
@@ -54,90 +54,61 @@
     <section id="ice" class="ice" aria-label="Crossing the ice">
       <svg class="ice-art artwork" viewBox="0 0 400 177" preserveAspectRatio="none" role="img" aria-label="A fishing line and warm light pass through a chipped opening in the ice"><use href="./assets/scenes.svg#bi-rim"/></svg>
       <div class="ice-light" aria-hidden="true"></div>
-      <span class="ice-caption"><span></span> At the ice rim</span>
     </section>
-    <section id="dive" class="dive" data-dive="pike" aria-labelledby="pike-heading">
-      <div class="dive-water" aria-hidden="true">
-        <div class="dive-light"></div>
-        <svg class="dive-ceiling" viewBox="0 0 800 110" preserveAspectRatio="none"><use href="./assets/lake-life.svg#ceiling"/></svg>
-        <div class="dive-actors"></div>
-      </div>
-      <div class="wrap dive-heading">
-        <p class="section-mark"><span></span> 01 / Just beneath the ice</p>
-        <h2 id="pike-heading">Pike pass</h2>
-      </div>
-      <div class="wrap dive-footer"><p class="dive-caption">One northern pike glides close while another crosses farther back.</p></div>
-    </section>
-    <section id="perch" class="dive dive-right" data-dive="perch" aria-labelledby="perch-heading">
-      <div class="dive-water" aria-hidden="true">
-        <div class="dive-light"></div>
-        <div class="dive-actors"></div>
-      </div>
-      <div class="wrap dive-heading">
-        <p class="section-mark"><span></span> 02 / In the open water</p>
-        <h2 id="perch-heading">Perch school</h2>
-      </div>
-      <div class="wrap dive-footer"><p class="dive-caption">Yellow perch cross the light in loose formation.</p></div>
-    </section>
-    <section id="weeds" class="dive" data-dive="weeds" aria-labelledby="weeds-heading">
-      <div class="dive-water" aria-hidden="true">
-        <div class="dive-light"></div>
-        <div class="dive-actors"></div>
-      </div>
-      <div class="wrap dive-heading">
-        <p class="section-mark"><span></span> 03 / Where fish find cover</p>
-        <h2 id="weeds-heading">Along the weed line</h2>
-      </div>
-      <div class="wrap dive-content">
-        <section id="about" class="dive-panel about-inner" aria-labelledby="about-heading">
-          <h3 id="about-heading">About Bryan</h3>
-          <p>Bryan fishes Minnesota year-round. In summer he takes the kayak out for smallmouth. When the lakes freeze, he drops a camera through the ice to see what pike, walleye and perch do when a lure comes into view.</p>
-          <p class="content-note"><a href="https://www.youtube.com/@BryanProkuski">Bryan’s YouTube channel</a> · <a href="https://www.instagram.com/fishingwithbryan">Instagram</a></p>
-          <img class="channel-banner" src="./assets/fwbp-channel-banner.jpg" width="2048" height="339" loading="lazy" decoding="async" alt="Bryan’s channel banner shows four underwater fishing scenes.">
-        </section>
-      </div>
-    </section>
-    <section id="rocks" class="dive dive-right" data-dive="rocks" aria-labelledby="rocks-heading">
-      <div class="dive-water" aria-hidden="true">
-        <div class="dive-light"></div>
-        <svg class="dive-bed" viewBox="0 0 800 150" preserveAspectRatio="none"><use href="./assets/lake-life.svg#lakebed"/></svg>
-        <div class="dive-actors"></div>
-      </div>
-      <div class="wrap dive-heading">
-        <p class="section-mark"><span></span> 04 / Down on the lakebed</p>
-        <h2 id="rocks-heading">Rocky bottom</h2>
-      </div>
-      <div class="wrap dive-footer"><p class="dive-caption">Crayfish work along the rocks while smallmouth and walleye pass overhead.</p></div>
-    </section>
-    <section id="camera" class="dive" data-dive="camera" aria-labelledby="camera-heading">
-      <div class="dive-water" aria-hidden="true">
-        <div class="dive-light"></div>
-        <div class="dive-actors"></div>
-        <div class="dive-frame"><span>UNDERWATER CAM</span></div>
-      </div>
-      <div class="wrap dive-heading">
-        <p class="section-mark"><span></span> 05 / In the camera beam</p>
-        <h2 id="camera-heading">Through the lens</h2>
-      </div>
-      <div class="wrap dive-content">
-        <section id="featured" class="dive-panel" aria-labelledby="featured-heading">
-          <h3 id="featured-heading">Featured videos</h3>
-          <div class="featured-grid" id="featured-grid"></div>
-        </section>
-      </div>
-    </section>
-    <section id="videos" class="library" data-dive="library" aria-labelledby="library-heading">
-      <div class="dive-water" aria-hidden="true"><div class="dive-actors"></div></div>
-      <div class="wrap">
-        <div class="section-heading">
-          <div><h2 id="library-heading">Video library</h2><p>From underwater strikes to summer kayak trips.</p></div>
-          <div class="filters" aria-label="Filter videos"></div>
+    <div class="lake">
+      <div id="dive" class="dive" data-dive="pike">
+        <div class="dive-water" aria-hidden="true">
+          <svg class="dive-ceiling" viewBox="0 0 800 110" preserveAspectRatio="none"><use href="./assets/lake-life.svg#ceiling"/></svg>
+          <div class="dive-actors"></div>
         </div>
-        <p class="library-status" id="library-status" role="status"></p>
-        <div class="video-grid" id="video-grid"></div>
-        <a class="library-channel" href="https://www.youtube.com/@BryanProkuski/videos">See all uploads on YouTube ↗</a>
       </div>
-    </section>
+      <div id="perch" class="dive" data-dive="perch">
+        <div class="dive-water" aria-hidden="true">
+          <div class="dive-actors"></div>
+        </div>
+      </div>
+      <div id="weeds" class="dive" data-dive="weeds">
+        <div class="dive-water" aria-hidden="true">
+          <div class="dive-actors"></div>
+        </div>
+        <div class="wrap dive-content">
+          <section id="about" class="dive-panel about-inner" aria-labelledby="about-heading">
+            <h2 id="about-heading">About Bryan</h2>
+            <p>Bryan fishes Minnesota year-round. In summer he takes the kayak out for smallmouth. When the lakes freeze, he drops a camera through the ice to see what pike, walleye and perch do when a lure comes into view.</p>
+            <p class="content-note"><a href="https://www.youtube.com/@BryanProkuski">Bryan’s YouTube channel</a> · <a href="https://www.instagram.com/fishingwithbryan">Instagram</a></p>
+            <img class="channel-banner" src="./assets/fwbp-channel-banner.jpg" width="2048" height="339" loading="lazy" decoding="async" alt="Bryan’s channel banner shows four underwater fishing scenes.">
+          </section>
+        </div>
+      </div>
+      <div id="rocks" class="dive" data-dive="midwater">
+        <div class="dive-water" aria-hidden="true">
+          <div class="dive-actors"></div>
+        </div>
+      </div>
+      <div id="camera" class="dive" data-dive="camera">
+        <div class="dive-water" aria-hidden="true">
+          <div class="dive-actors"></div>
+        </div>
+        <div class="wrap dive-content">
+          <section id="featured" class="dive-panel" aria-labelledby="featured-heading">
+            <h2 id="featured-heading">Featured videos</h2>
+            <div class="featured-grid" id="featured-grid"></div>
+          </section>
+        </div>
+      </div>
+      <section id="videos" class="library" data-dive="library" aria-labelledby="library-heading">
+        <div class="dive-water" aria-hidden="true"><div class="dive-actors"></div></div>
+        <div class="wrap">
+          <div class="section-heading">
+            <div><h2 id="library-heading">Video library</h2><p>From underwater strikes to summer kayak trips.</p></div>
+            <div class="filters" aria-label="Filter videos"></div>
+          </div>
+          <p class="library-status" id="library-status" role="status"></p>
+          <div class="video-grid" id="video-grid"></div>
+          <a class="library-channel" href="https://www.youtube.com/@BryanProkuski/videos">See all uploads on YouTube ↗</a>
+        </div>
+      </section>
+    </div>
     <section id="field-notes" class="field-notes" aria-labelledby="notes-heading">
       <div class="wrap">
         <div class="section-heading">
