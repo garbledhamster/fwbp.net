@@ -228,7 +228,8 @@ export function start(now, random = Math.random, lake = 'mille-lacs', { practice
 
 export function publicRun(run) {
   const encounter = run.encounters[run.index];
-  const target = run.stage !== 'missed' && encounter && lakes[run.lake].fish[encounter.species];
+  const target = run.stage !== 'missed' && (!run.holes || run.stage !== 'seek')
+    && encounter && lakes[run.lake].fish[encounter.species];
   const xp = (run.landed ?? (run.index + Number(run.stage === 'landed'))) * practiceCatchXp;
   return {
     fish: target ? { id: target.id, art: target.art, depth: encounter.depth ?? searchDepths[run.index], x: encounter.x, y: encounter.y, gilded: encounter.colorRoll >= .97 } : null,
@@ -239,7 +240,12 @@ export function publicRun(run) {
     submitted: run.submitted,
     ...(run.practice && { practice: { xp, level: xp >= practiceLevelXp ? 2 : 1 } }),
     ...(run.campaign && { area: campaignAreas[run.campaign.area].name }),
-    ...(run.holes && { hole: run.campaign.hole, committed: run.committed, candidates: run.holes[run.campaign.holeId].candidates.map((fish, slot) => ({ slot, selected: slot === run.holes[run.campaign.holeId].selected, ...lakes[run.lake].fish[fish.species], depth: fish.depth, x: fish.x, y: fish.y })) }),
+    ...(run.holes && {
+      hole: run.campaign.hole, committed: run.committed,
+      candidates: run.holes[run.campaign.holeId].candidates.map((fish, slot) => ({
+        ...lakes[run.lake].fish[fish.species], slot, depth: fish.depth, x: fish.x, y: fish.y,
+      })),
+    }),
     ...((run.campaign || run.practice) && {
       lineStrength: run.campaign?.lineStrength ?? starterLineStrength,
       snap: run.snap, fight: run.fight && { ...run.fight },
@@ -267,12 +273,11 @@ export function apply(run, input, now, { campaignElapsedMs = run.campaign?.elaps
   const encounter = run.encounters[run.index];
   const target = lakes[run.lake].fish[encounter?.species];
   if (jig) {
-    if (run.holes && !run.committed) { run.committed = true; run.seekUntil = seekDeadline(run, now); }
-    if (input.lure === target.lure) {
-      if (run.campaign || run.practice) run.reaction = null;
-      run.stage = 'bite';
-      run.biteAt = now;
-      run.cue = 'Yeah, reel it! Wait for the marker to reach the gold band.';
+    if (run.holes) {
+      run.waterJig = { lure: input.lure };
+      run.reaction = null;
+    } else if (input.lure === target.lure) {
+      startBite(run, now);
     } else if (run.campaign || run.practice) {
       run.wrongLures++;
       if (run.wrongLures >= (target.rarity === 'Rare' ? 2 : 3) + (run.campaign?.lureWorkRank ?? 0)) {
@@ -372,6 +377,13 @@ export function apply(run, input, now, { campaignElapsedMs = run.campaign?.elaps
   return publicRun(run);
 }
 
+function startBite(run, now) {
+  if (run.campaign || run.practice) run.reaction = null;
+  run.stage = 'bite';
+  run.biteAt = now;
+  run.cue = 'Yeah, reel it! Wait for the marker to reach the gold band.';
+}
+
 function seekExpired(run, now) {
   return Number.isFinite(run.seekUntil) && now >= run.seekUntil;
 }
@@ -420,13 +432,89 @@ function prepareHoleFish(run, elapsedMs = 0) {
     });
     saved.generation++;
   }
-  saved.selected = Math.min(saved.selected, saved.candidates.length - 1);
-  run.encounters[run.index] = { ...saved.candidates[saved.selected] };
+  run.swimming = run.waterJig = undefined;
 }
+
 function consumeHoleFish(run) {
   const saved = run.holes[run.campaign.holeId];
-  saved.candidates.splice(saved.selected, 1);
-  saved.selected = 0;
+  if (saved.active !== undefined) saved.candidates.splice(saved.active, 1);
+  saved.active = undefined;
+}
+
+// The renderer and line share lake-relative CSS pixels. Each swimmer's point
+// is its mouth, so contact uses the same position as the visible lure eye.
+export function stepCampaignFish(run, now, { width, bands, lure, eye, reducedMotion = false }) {
+  const saved = run.holes[run.campaign.holeId];
+  const swimming = run.swimming ??= { since: now, last: now, fish: [] };
+  const elapsed = Math.min(64, Math.max(0, now - swimming.last));
+  const t = (now - swimming.since) / 1000;
+  swimming.last = now;
+  const jig = run.waterJig;
+  const newJig = jig && !jig.eye;
+  if (newJig) jig.eye = { ...eye };
+  const seeking = run.stage === 'seek' && now < run.expires && !seekExpired(run, now);
+  const reach = Math.min(420, width * .37);
+  let first;
+  const fish = saved.candidates.flatMap((candidate, slot) => {
+    if (slot === saved.active && run.stage !== 'seek') return [];
+    const band = bands[candidate.depth];
+    if (!band?.height) return [];
+    const centerX = width * candidate.x / 100;
+    const centerY = band.top + band.height * candidate.y / 100;
+    const verticalReach = Math.max(64, Math.min(98, band.height * .18));
+    const fish = swimming.fish[slot] ??= { x: centerX, y: centerY, right: slot !== 2 };
+    const dx = eye.x - fish.x;
+    const dy = eye.y - fish.y;
+    if (newJig && seeking && lure === jig.lure && Math.abs(dx) <= reach && Math.abs(dy) <= verticalReach) {
+      const likesLure = lakes[run.lake].fish[candidate.species].lure === lure;
+      if (likesLure && (saved.active === undefined || saved.active === slot)) {
+        fish.approach = jig;
+        fish.away = undefined;
+      } else if (!likesLure) {
+        fish.approach = undefined;
+        fish.away = { until: now + 480, x: fish.x + (dx < 0 ? 40 : -40), y: fish.y + (dy < 0 ? 22 : -22) };
+      }
+    }
+    const approaching = seeking && fish.approach && fish.approach === jig && lure === jig.lure
+      && Math.abs(eye.y - jig.eye.y) <= verticalReach && Math.abs(dy) <= verticalReach * 1.35;
+    if (!approaching) fish.approach = undefined;
+    const away = !approaching && now < fish.away?.until ? fish.away : undefined;
+    const amplitude = reducedMotion ? .40 : 1;
+    const path = {
+      x: centerX + width * .115 * amplitude * Math.sin(t * (1.02 + slot * .09) * (slot === 2 ? -1 : 1)),
+      y: centerY + Math.min(42, band.height * .085) * amplitude * Math.sin(t * (1.57 + slot * .13)),
+    };
+    const next = approaching ? eye : away ?? path;
+    const distance = Math.hypot(next.x - fish.x, next.y - fish.y);
+    const speed = approaching ? Math.max(.17, Math.min(.32, width * .00032))
+      : away ? .13 : Math.max(.085, width * .00021);
+    const amount = distance ? Math.min(1, speed * elapsed / distance) : 1;
+    const oldX = fish.x;
+    fish.x += (next.x - fish.x) * amount;
+    fish.y += (next.y - fish.y) * amount;
+    if (Math.abs(fish.x - oldX) > .01) fish.right = fish.x > oldX;
+    if (approaching && amount === 1 && (!first || distance < first.distance)) {
+      first = { slot, candidate, band, distance };
+    }
+    return [{ slot, x: fish.x, y: fish.y, right: fish.right, mood: approaching ? 'approach' : away ? 'away' : null,
+      near: Math.abs(eye.x - fish.x) <= reach && Math.abs(eye.y - fish.y) <= verticalReach,
+    }];
+  });
+  if (first) {
+    saved.active = first.slot;
+    const depth = bands.findIndex(band => band.height && eye.y >= band.top && eye.y <= band.top + band.height);
+    const band = bands[depth] ?? first.band;
+    run.encounters[run.index] = { ...first.candidate, depth: depth < 0 ? first.candidate.depth : depth,
+      y: Math.min(100, Math.max(0, (eye.y - band.top) / band.height * 100)) };
+    if (!run.committed) {
+      run.committed = true;
+      run.seekUntil = seekDeadline(run, now);
+    }
+    run.waterJig = undefined;
+    startBite(run, now);
+    run.version++;
+  }
+  return { fish, contact: Boolean(first), slot: first?.slot };
 }
 export function moveToHole(run, hole, now, elapsedMs = 0) {
   if (!run.holes || !hole?.id || !Object.hasOwn(campaignAreas, hole.area) || !Number.isFinite(hole.depthFt)) throw Error('Choose a valid Campaign hole.');
@@ -436,18 +524,9 @@ export function moveToHole(run, hole, now, elapsedMs = 0) {
   run.campaign.holeId = holeId;
   run.campaign.hole = structuredClone(hole);
   run.campaign.area = hole.area;
-  run.holes[holeId] ??= { candidates: [], selected: 0, generation: 0 };
+  run.holes[holeId] ??= { candidates: [], generation: 0 };
   prepareHoleFish(run, elapsedMs);
   run.seekUntil = null;
-  run.version++;
-  return publicRun(run);
-}
-export function selectHoleFish(run, slot) {
-  if (!run.holes || run.stage !== 'seek' || run.committed) throw Error('End the current attempt before changing fish.');
-  const saved = run.holes[run.campaign.holeId];
-  if (!Number.isInteger(slot) || !saved.candidates[slot]) throw Error('Choose a fish in this hole.');
-  saved.selected = slot;
-  prepareHoleFish(run);
   run.version++;
   return publicRun(run);
 }
@@ -461,7 +540,7 @@ export function abandonHoleFish(run, now, elapsedMs = 0) {
   run.wrongLures = 0;
   run.last = now - moveIntervalMs;
   if (run.stage === 'seek') prepareHoleFish(run, elapsedMs);
-  run.cue = run.stage === 'done' ? 'Outing complete.' : 'Attempt ended. Choose another fish.';
+  run.cue = run.stage === 'done' ? 'Outing complete.' : 'Attempt ended. Jig near another fish.';
   run.version++;
   return publicRun(run);
 }

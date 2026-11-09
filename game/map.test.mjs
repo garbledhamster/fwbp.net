@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import data from './lake-map-data.mjs';
-import { start, apply, publicRun, moveToHole, selectHoleFish, abandonHoleFish, lakes } from './rules.mjs';
+import * as rules from './rules.mjs';
+const { start, apply, publicRun, moveToHole, abandonHoleFish, stepCampaignFish } = rules;
 const shore = data.cells.find((c) => c.area === 'starter-shore');
 const reef = data.cells.find((c) => c.depthFt >= 30);
 const setup = (hole = shore) =>
@@ -19,49 +20,160 @@ test('map cells and bathymetry stay in the shared coordinate system', () => {
     assert.ok(c.depthFt > 0);
   }
 });
-test('hole selection and moves preserve attempts, expiry, equipment and candidates before jig', () => {
+const bands = Array.from({ length: 6 }, (_, depth) => ({ top: 100 + 400 * depth, height: 400 }));
+const swim = (r, now, lure = 'jig', eye = { x: 520, y: 420 }, reducedMotion = true) =>
+  stepCampaignFish(r, now, { width: 1000, bands, lure, eye, reducedMotion });
+const jig = (r, now, lure = 'jig') => apply(r, { action: 'jig', lure }, now);
+const reel = (r, now) => apply(r, { action: 'reel' }, now);
+function nextBite(r, startAt, fish) {
+  const eye = { x: 1000 * fish.x / 100 + 32, y: bands[fish.depth].top + 4 * fish.y };
+  swim(r, startAt, fish.lure, eye);
+  jig(r, startAt, fish.lure);
+  for (let now = startAt + 16; now <= startAt + 2000; now += 16) {
+    if (swim(r, now, fish.lure, eye).contact) return now;
+  }
+  assert.fail('the fish never reached the nearby matching jig');
+}
+
+test('moving holes preserves attempts, expiry, equipment and fish after trying a lure', () => {
   const r = setup();
-  const initial = structuredClone(r.holes[shore.id]);
+  const initial = structuredClone(publicRun(r).candidates);
   const expires = r.expires;
+  jig(r, 1500, 'minnow');
+  assert.equal(r.stage, 'seek');
+  assert.equal(r.committed, false);
   assert.equal(r.seekUntil, null);
-  assert.equal(publicRun(r).candidates.length, 3);
-  selectHoleFish(r, 1);
-  assert.equal(r.index, 0);
   moveToHole(r, reef, 2000, 40000);
   assert.equal(r.index, 0);
   assert.equal(r.expires, expires);
   assert.equal(r.campaign.lineStrength, 12);
-  assert.notDeepEqual(r.holes[reef.id].candidates, initial.candidates);
+  assert.notDeepEqual(publicRun(r).candidates, initial);
   moveToHole(r, shore, 3000, 60000);
-  assert.deepEqual(r.holes[shore.id].candidates, initial.candidates);
-  assert.equal(r.holes[shore.id].selected, 1);
+  assert.deepEqual(publicRun(r).candidates, initial);
 });
-test('first jig starts rarity timer; target change requires abandonment and counts once', () => {
+
+test('swimming changes both coordinates and eventually turns to face the direction of travel', () => {
   const r = setup();
-  const target = lakes[r.lake].fish[r.encounters[0].species];
-  apply(r, { action: 'jig', lure: target.lure }, 4000);
-  assert.equal(r.committed, true);
-  assert.ok(r.seekUntil >= 24000);
-  assert.throws(() => selectHoleFish(r, 1), /End/);
-  assert.throws(() => moveToHole(r, reef, 4100), /End/);
-  abandonHoleFish(r, 4200);
-  assert.equal(r.index, 1);
+  let before = swim(r, 1000).fish[0];
+  let moved = false;
+  let turned = false;
+  for (let now = 1016; now <= 8500; now += 16) {
+    const after = swim(r, now).fish[0];
+    const dx = after.x - before.x;
+    if (Math.abs(dx) > .1) assert.equal(after.right, dx > 0);
+    moved ||= Math.abs(dx) > .1 && Math.abs(after.y - before.y) > .04;
+    turned ||= after.right !== before.right;
+    before = after;
+  }
+  assert.ok(moved && turned);
+});
+
+test('a matching jig can draw fish but only contact commits the attempt and starts gold', () => {
+  const r = setup();
+  const [, fish] = publicRun(r).candidates;
+  const eye = { x: 575, y: bands[fish.depth].top + 4 * fish.y };
+  swim(r, 4000, fish.lure, eye);
+  jig(r, 4000, fish.lure);
+  assert.equal(r.stage, 'seek');
   assert.equal(r.committed, false);
   assert.equal(r.seekUntil, null);
-  assert.throws(() => abandonHoleFish(r, 4300), /No committed/);
+  const first = swim(r, 4016, fish.lure, eye);
+  assert.equal(first.contact, false);
+  assert.equal(first.fish.find(f => f.slot === fish.slot).mood, 'approach');
+  let biteAt;
+  for (let now = 4032; now < 6000; now += 16) {
+    if (swim(r, now, fish.lure, eye).contact) { biteAt = now; break; }
+  }
+  assert.ok(biteAt);
+  assert.equal(r.committed, true);
+  assert.equal(publicRun(r).fish.id, fish.id);
+  assert.ok(r.seekUntil > biteAt);
+  assert.throws(() => moveToHole(r, reef, biteAt + 100), /End/);
+  assert.equal(reel(r, biteAt + 549).stage, 'seek');
+  assert.equal(r.committed, true);
+  assert.equal(swim(r, biteAt + 800, fish.lure, eye).contact, false, 'the missed hook needs a fresh jig');
+  assert.equal(r.stage, 'seek');
+  const retry = nextBite(r, biteAt + 1800, fish);
+  assert.equal(reel(r, retry + 550).stage, 'fight');
+  abandonHoleFish(r, retry + 650);
   assert.equal(r.index, 1);
+  assert.equal(r.committed, false);
+  assert.equal(publicRun(r).candidates.length, 2);
+  assert.equal(r.seekUntil, null);
+  assert.throws(() => abandonHoleFish(r, retry + 750), /No committed/);
 });
+
+test('the first matching swimmer to reach the jig gets the bite', () => {
+  const r = setup();
+  const [fish] = r.holes[shore.id].candidates;
+  const lure = publicRun(r).candidates[0].lure;
+  r.holes[shore.id].candidates = [
+    { ...fish, x: 46, y: 50 },
+    { ...fish, x: 48, y: 50 },
+  ];
+  const eye = { x: 500, y: bands[fish.depth].top + 200 };
+  swim(r, 4000, lure, eye);
+  jig(r, 4000, lure);
+  const approaching = swim(r, 4016, lure, eye);
+  assert.deepEqual(approaching.fish.map(f => f.mood), ['approach', 'approach']);
+  assert.equal(approaching.contact, false);
+  let contact;
+  for (let now = 4032; now < 4300; now += 16) {
+    const step = swim(r, now, lure, eye);
+    if (step.contact) { contact = step; break; }
+  }
+  assert.equal(contact?.slot, 1);
+  assert.equal(r.committed, true);
+  const late = r.biteAt + publicRun(r).window.until + 1;
+  assert.equal(reel(r, late).reaction, 'slipped-hook');
+  assert.equal(r.stage, 'seek');
+  assert.equal(r.committed, true);
+});
+
+test('bait changes and moving out of reach end approaches without spending attempts', () => {
+  for (const cancel of ['bait', 'depth']) {
+    const r = setup();
+    const [, fish] = publicRun(r).candidates;
+    const eye = { x: 580, y: bands[fish.depth].top + 4 * fish.y };
+    const wrongLure = fish.lure === 'jig' ? 'spoon' : 'jig';
+    swim(r, 4000, fish.lure, eye);
+    jig(r, 4000, fish.lure);
+    assert.equal(swim(r, 4016, fish.lure, eye).fish[1].mood, 'approach');
+    swim(r, 4032, cancel === 'bait' ? wrongLure : fish.lure,
+      cancel === 'depth' ? { ...eye, y: eye.y + 300 } : eye);
+    for (let now = 4048; now <= 5300; now += 16) {
+      assert.equal(swim(r, now, fish.lure, eye).contact, false);
+    }
+    assert.equal(r.stage, 'seek');
+    assert.equal(r.committed, false);
+    assert.equal(r.index, 0);
+  }
+});
+
+test('the wrong lure can make a nearby fish back away without starting the hook timer', () => {
+  const r = setup();
+  const [, fish] = publicRun(r).candidates;
+  const eye = { x: 525, y: bands[fish.depth].top + 4 * fish.y };
+  const wrongLure = fish.lure === 'jig' ? 'spoon' : 'jig';
+  swim(r, 4000, wrongLure, eye);
+  jig(r, 4000, wrongLure);
+  const first = swim(r, 4016, wrongLure, eye);
+  assert.equal(first.fish[1].mood, 'away');
+  assert.equal(first.contact, false);
+  assert.equal(r.seekUntil, null);
+  assert.equal(r.committed, false);
+});
+
 test('release a hooked fish before moving; six shared attempts finish the outing', () => {
   const r = setup();
   for (let n = 0; n < 6; n++) {
-    const now = 5000 + n * 3000;
-    const fish = lakes[r.lake].fish[r.encounters[r.index].species];
-    apply(r, { action: 'jig', lure: fish.lure }, now);
-    apply(r, { action: 'reel' }, now + 700);
-    assert.equal(r.stage, 'fight');
-    assert.throws(() => moveToHole(r, reef, now + 800), /End/);
-    abandonHoleFish(r, now + 900);
-    if (n < 5) moveToHole(r, n % 2 ? shore : reef, now + 1000);
+    const now = 5000 + n * 4000;
+    const [fish] = publicRun(r).candidates;
+    const biteAt = nextBite(r, now, fish);
+    assert.equal(reel(r, biteAt + 700).stage, 'fight');
+    assert.throws(() => moveToHole(r, reef, biteAt + 800), /End/);
+    abandonHoleFish(r, biteAt + 900);
+    if (n < 5) moveToHole(r, n % 2 ? shore : reef, biteAt + 1000);
   }
   assert.equal(r.index, 6);
   assert.equal(r.stage, 'done');
