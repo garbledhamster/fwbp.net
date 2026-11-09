@@ -36,7 +36,7 @@ for (const width of [320, 1200]) {
         assert.equal(await link.count(), 1, `Missing Field Notes video ${id}`);
         await link.focus();
         await page.keyboard.press('Enter');
-        const frame = page.locator('#player[open] iframe');
+        const frame = page.locator('#player iframe');
         await frame.waitFor();
         assert.equal(new URL(await frame.getAttribute('src')).pathname, `/embed/${id}`);
         await page.getByRole('button', { name: 'Close video' }).press('Enter');
