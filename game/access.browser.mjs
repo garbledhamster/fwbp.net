@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { practicePage, withBrowser } from './browser-qa.mjs';
 
 async function checkAccess(browser, mobile) {
-  const { page, launch, tray, action, status, button, enter, press, tick, findFish, errors, reelToHole } =
+  const { leave, page, launch, tray, action, status, button, enter, press, tick, findFish, errors, reelToHole } =
     await practicePage(browser, { mobile });
   const picker = page.getByRole('dialog', { name: 'Choose an outing' });
   const shop = page.getByRole('dialog', { name: 'Tackle shop' });
@@ -12,7 +12,7 @@ async function checkAccess(browser, mobile) {
   const license = shop.locator('[data-item="deep-reef-license"]');
   const starter = shop.locator('[data-item="starter-license"]');
   const buy = license.getByRole('button', { name: 'Buy Deep Reef permit' });
-  const back = shop.getByRole('button', { name: /Back to (outings|areas)/ });
+  const back = shop.getByRole('button', { name: /^(?:Back|Back to (?:outings|areas))$/ });
   const score = tray.locator('[data-score]');
   const wallet = tray.locator('[data-wallet]');
 
@@ -102,7 +102,7 @@ async function checkAccess(browser, mobile) {
     else assert.doesNotMatch(await status.textContent(), /Lake Regular/i, 'the badge is announced on the second committed catch only');
     if (balance < 30) await press(action);
   }
-  await press(button('Exit fishing'));
+  await leave();
   await openPicker();
   await press(reef);
   await page.waitForFunction(() => !document.querySelector('[data-permit-shop]').disabled);
@@ -132,7 +132,7 @@ async function checkAccess(browser, mobile) {
   assert.match(await score.textContent(), /Mille Lacs.*Deep Reef/);
   await land(/Rock bass/i, 20);
   assert.doesNotMatch(await status.textContent(), /Lake Regular/i, 'reload and further catches do not repeat the badge');
-  await press(button('Exit fishing'));
+  await leave();
 
   await seed(.2);
   await enter('Campaign');

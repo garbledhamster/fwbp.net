@@ -6,7 +6,7 @@ async function checkBite(browser) {
   const keyboard = page.keyboard;
   const cue = () => status.textContent();
   await enter();
-  assert.equal(await page.locator(':focus').textContent(), 'Exit fishing');
+  assert.equal(await page.locator(':focus').textContent(), 'Menu');
   await findFish();
   await keyboard.press('Tab');
   await keyboard.press('Tab');
@@ -65,6 +65,7 @@ async function checkBite(browser) {
   assert.match(await cue(), /yellow perch.*\+10 points/i);
   assert.equal(await action.evaluate(el => el === document.activeElement), true);
   await keyboard.press('Escape');
+  await press(page.locator('.fishing-pause').getByRole('button', { name: 'Leave outing', exact: true }));
   assert.equal(await launch.evaluate(el => el === document.activeElement), true);
   await enter();
   await findFish();
@@ -73,6 +74,7 @@ async function checkBite(browser) {
   await keyboard.press('Space');
   assert.match(await cue(), /wait for gold/i);
   await keyboard.press('Escape');
+  await press(page.locator('.fishing-pause').getByRole('button', { name: 'Leave outing', exact: true }));
   await enter();
   await tick(2200);
   assert.match(await cue(), /scroll.*find the fish/i);

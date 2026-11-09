@@ -9,7 +9,7 @@ await withBrowser(async browser => {
       { width: 720, height: 320 },
     ]) {
       const mobile = viewport.width !== 1200;
-      const { page, action, enter, findFish, button, press, tick, errors } = await practicePage(browser, { mobile });
+      const { leave, page, action, enter, findFish, button, press, tick, errors } = await practicePage(browser, { mobile });
       await page.setViewportSize(viewport);
       const ambient = page.locator('.fishing-background-fish');
       assert.equal(await ambient.filter({ visible: true }).count(), 0, 'the site keeps its own illustrated fish');
@@ -49,7 +49,7 @@ await withBrowser(async browser => {
       const active = await target.boundingBox();
       assert.ok(water.flat().every(fish => fish.width < active.width), 'the active fish is larger than the background fish');
 
-      await press(button('Exit fishing'));
+      await leave();
       assert.equal(await ambient.filter({ visible: true }).count(), 0, 'leaving restores the illustrated site');
       assert.deepEqual(errors, []);
       await page.close();

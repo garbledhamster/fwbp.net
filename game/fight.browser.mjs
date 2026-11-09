@@ -19,7 +19,7 @@ async function fightGeometry(page) {
 }
 
 async function checkFight(browser, mobile, mode) {
-  const { page, tray, action, button, status, press, enter, tick, findFish, errors } =
+  const { leave, page, tray, action, button, status, press, enter, tick, findFish, errors } =
     await practicePage(browser, { mobile });
   // Seed the first encounter with a standard muskie.
   await page.evaluate(() => {
@@ -91,7 +91,7 @@ async function checkFight(browser, mobile, mode) {
   await press(action);
   await tray.getByText(/Muskie.*75 points/i).waitFor();
 
-  await press(button('Exit fishing'));
+  await leave();
   await hook();
   await tick(800);
   await press(action);

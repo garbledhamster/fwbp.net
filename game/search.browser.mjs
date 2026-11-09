@@ -81,18 +81,19 @@ async function checkDesktop(browser) {
   });
   assert.ok(await scrollY(page) < below, 'find the third fish by scrolling back up');
   await page.keyboard.press('Escape');
+    await press(page.locator('.fishing-pause').getByRole('button', { name: 'Leave outing', exact: true }));
   await page.waitForTimeout(400); // Let any native PageUp animation finish.
   assert.equal(await scrollY(page), saved, 'exit restores the site scroll position');
   assert.equal(await launch.evaluate(el => el === document.activeElement), true);
   assert.equal(await tray.isHidden(), true);
 
-  const guide = page.getByRole('button', { name: 'Fishing with Bryan, fish guide' });
+  const guide = page.getByRole('button', { name: 'Fishing with Bryan, Your Lake' });
   await guide.click();
   const perch = page.getByRole('button', { name: 'Yellow perch' }).first();
   await press(perch, 'Enter');
   const card = page.getByRole('dialog');
   assert.equal(await card.getByRole('heading', { name: 'Yellow perch' }).isVisible(), true);
-  assert.match(await card.textContent(), /\/ 23/);
+  assert.match(await card.textContent(), /Try Jig|Learn this tip|Tip learned/);
   assert.deepEqual(errors, []);
   await page.close();
 }

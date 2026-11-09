@@ -32,7 +32,7 @@ const legacy = {
 };
 
 await withBrowser(async browser => {
-  const { page, launch, tray, press, button, errors } = await practicePage(browser);
+  const { leave, page, launch, tray, press, button, errors } = await practicePage(browser);
   const fresh = await command(page);
   assert.equal(fresh.coins, 0);
   assert.deepEqual(fresh.equipped, { line: 'starter-line', hook: 'starter-hook' });
@@ -71,7 +71,7 @@ await withBrowser(async browser => {
   await press(reef);
   await tray.locator('[data-wallet]').waitFor();
   assert.match(await tray.locator('[data-score]').textContent(), /Deep Reef/);
-  await press(button('Exit fishing'));
+  await leave();
 
   // An area can become unavailable between rendering the picker and activation.
   await press(launch, 'Enter');

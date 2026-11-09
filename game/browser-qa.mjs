@@ -20,9 +20,9 @@ export async function withBrowser(check) {
   }
 }
 
-export async function practicePage(browser, { mobile = false, configure } = {}) {
+export async function practicePage(browser, { mobile = false, viewport, configure } = {}) {
   const page = await browser.newPage({
-    viewport: { width: mobile ? 320 : 1200, height: 720 },
+    viewport: viewport ?? { width: mobile ? 320 : 1200, height: 720 },
     hasTouch: mobile,
     isMobile: mobile,
     reducedMotion: mobile ? 'reduce' : 'no-preference',
@@ -60,12 +60,33 @@ export async function practicePage(browser, { mobile = false, configure } = {}) 
   async function chooseMode(name = 'Practice') {
     const picker = page.getByRole('dialog', { name: 'Choose an outing' });
     await press(picker.getByRole('button', { name, exact: true }), 'Enter');
-    if (name === 'Campaign') await tray.locator('[data-wallet]').waitFor();
+    if (name === 'Campaign') {
+      const permit = page.locator('.fishing-permit');
+      await page.waitForFunction(() => document.querySelector('.fishing-permit[open]') ||
+        !document.querySelector('.fishing-tray').hidden);
+      if (await permit.isVisible()) {
+        await press(permit.getByRole('button', { name: 'Get this permit' }), 'Enter');
+        const shop = page.getByRole('dialog', { name: 'Tackle shop' });
+        await press(shop.locator('[data-item="starter-license"]').getByRole('button', { name: /^(?:Buy|Claim) Starter Shore permit$/ }), 'Enter');
+        await shop.locator('[data-item="starter-license"]').getByText('Owned', { exact: true }).waitFor();
+        await press(shop.locator('[data-shop-back]'), 'Enter');
+        await picker.waitFor();
+        await press(picker.getByRole('button', { name, exact: true }), 'Enter');
+      }
+      await tray.locator('[data-wallet]').waitFor();
+    }
   }
 
   async function enter(name = 'Practice') {
     await press(launch, 'Enter');
     await chooseMode(name);
+  }
+
+  async function leave() {
+    if (await button('Menu').isVisible()) {
+      await press(button('Menu'), 'Enter');
+      await press(page.locator('.fishing-pause').getByRole('button', { name: 'Leave outing', exact: true }), 'Enter');
+    } else await press(button('Exit fishing'), 'Enter');
   }
 
   async function findFish() {
@@ -95,7 +116,7 @@ export async function practicePage(browser, { mobile = false, configure } = {}) 
   }
 
   return {
-    page, tray, action, launch, button, press, errors, findFish, chooseMode, enter, reelToHole,
+    page, tray, action, launch, button, press, leave, errors, findFish, chooseMode, enter, reelToHole,
     status: tray.getByRole('status'),
     timing: tray.locator('.fishing-timing'),
     tick: ms => page.clock.runFor(ms),

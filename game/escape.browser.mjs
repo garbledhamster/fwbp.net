@@ -55,7 +55,7 @@ async function checkOuting(browser, mobile) {
   await press(action);
   await expectSeconds(30);
   await advance(29000);
-  await press(button('Exit fishing'));
+  await leave();
   assert.equal(await tray.isHidden(), true);
   await enter();
   await advance(1000);
@@ -67,7 +67,7 @@ async function checkOuting(browser, mobile) {
 }
 
 async function checkLateJig(browser) {
-  const { enter, page, action, press, findFish, status, timing, errors } = await practicePage(browser);
+  const { leave, enter, page, action, press, findFish, status, timing, errors } = await practicePage(browser);
   await enter();
   await findFish();
   // Simulate a late callback by moving wall time without running any timers.

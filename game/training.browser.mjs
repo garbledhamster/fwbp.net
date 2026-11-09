@@ -2,14 +2,14 @@ import assert from 'node:assert/strict';
 import { practicePage, withBrowser } from './browser-qa.mjs';
 
 async function checkTraining(browser, mobile) {
-  const { enter, page, tray, action, press, tick, findFish, launch, button, status, errors, reelToHole } =
+  const { leave, enter, page, tray, action, press, tick, findFish, launch, button, status, errors, reelToHole } =
     await practicePage(browser, { mobile });
   const picker = page.getByRole('dialog', { name: 'Choose an outing' });
   const shop = page.getByRole('dialog', { name: 'Tackle shop' });
   const hook = shop.locator('[data-item="finesse-hook"]');
   const training = shop.locator('[data-item="line-control"]');
   const balance = shop.locator('[data-shop-balance]');
-  const buyHook = hook.getByRole('button', { name: 'Buy Fine-wire hook' });
+  const buyHook = hook.getByRole('button', { name: 'Buy Fine-wire jig setup' });
   const buyTraining = training.getByRole('button', { name: 'Buy Line Control' });
 
   async function select(control) {
@@ -21,7 +21,8 @@ async function checkTraining(browser, mobile) {
     await select(launch);
     await select(picker.getByRole('button', { name: 'Tackle shop' }));
     await shop.locator('[data-item="starter-line"]').waitFor();
-    assert.equal(await hook.isVisible(), true, 'the shop lists the Fine-wire hook');
+    while (!await hook.isVisible()) await select(shop.getByRole('button', { name: 'Next hook', exact: true }));
+    assert.equal(await hook.isVisible(), true, 'the hook carousel reaches the Fine-wire jig setup');
     assert.equal(await training.isVisible(), true, 'the shop lists Line Control training');
   }
 
@@ -49,7 +50,7 @@ async function checkTraining(browser, mobile) {
     } else {
       assert.match(await status.textContent(), /slipped the hook/i);
     }
-    await select(button('Exit fishing'));
+    await leave();
   }
 
   await openShop();
@@ -74,14 +75,14 @@ async function checkTraining(browser, mobile) {
   await openShop();
   await select(buyHook);
   await hook.getByText('Owned', { exact: true }).waitFor();
-  await select(hook.getByRole('button', { name: 'Equip Fine-wire hook' }));
+  await select(hook.getByRole('button', { name: 'Equip Fine-wire jig setup' }));
   await hook.getByText('Equipped', { exact: true }).waitFor();
   assert.equal(await balance.textContent(), '20 coins');
   await closeShop();
 
   await tryBite(.05, 'Jig', 2250, true);
   await tryBite(.55, 'Minnow', 2250, false);
-  await tryBite(.05, 'Jig', 2400, false);
+  await tryBite(.05, 'Jig', 2500, false);
 
   await openShop();
   await select(buyTraining);

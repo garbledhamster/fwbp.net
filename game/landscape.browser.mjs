@@ -20,7 +20,7 @@ async function fightView(page) {
 }
 
 async function checkLandscape(browser, mode) {
-  const { page, tray, action, button, status, launch, press, enter, tick, findFish, errors } =
+  const { leave, page, tray, action, button, status, launch, press, enter, tick, findFish, errors } =
     await practicePage(browser, { mobile: true });
   await page.evaluate(() => {
     const rolls = [.98, .2, .5, .4, .1];
@@ -77,7 +77,7 @@ async function checkLandscape(browser, mode) {
   assert.ok(afterScroll.fishTop < beforeScroll.fishTop - 15 && afterScroll.gap < 1,
     'manual scrolling still moves the view with the hook attached');
 
-  await press(button('Exit fishing'));
+  await leave();
   await press(launch, 'Enter');
   await press(page.getByRole('button', { name: 'Tackle shop', exact: true }));
   const shop = page.getByRole('dialog', { name: 'Tackle shop' });

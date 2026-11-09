@@ -31,7 +31,7 @@ async function search(page, tray, action, mobile) {
 }
 
 async function checkShop(browser, mobile) {
-  const { page, launch, tray, action, status, button, enter, press, tick, errors, reelToHole } =
+  const { leave, page, launch, tray, action, status, button, enter, press, tick, errors, reelToHole } =
     await practicePage(browser, { mobile });
   const picker = page.getByRole('dialog', { name: 'Choose an outing' });
   const shop = page.getByRole('dialog', { name: 'Tackle shop' });
@@ -106,7 +106,7 @@ async function checkShop(browser, mobile) {
   await capture('catch');
   await tick(30000);
   await phase.filter({ hasText: 'Dusk' }).waitFor();
-  await press(button('Exit fishing'));
+  await leave();
 
   await startWith(.98, 'Spoon');
   assert.equal(await phase.textContent(), 'Dusk');
@@ -117,7 +117,7 @@ async function checkShop(browser, mobile) {
   assert.match(await status.textContent(), /line snapped.*9\.7 lb.*8 lb/i);
   assert.match(await wallet.textContent(), /10 coins/, 'a snap pays no coins');
   await capture('snap');
-  await press(button('Exit fishing'));
+  await leave();
 
   await openShop();
   await press(buy);
@@ -149,7 +149,7 @@ async function checkShop(browser, mobile) {
   assert.equal(await meter.evaluate(el => el.value), 9.7, 'the same surge holds on 12 lb line');
   assert.match(await wallet.textContent(), /0 coins/);
   await capture('held');
-  await press(button('Exit fishing'));
+  await leave();
   const savedProfile = () => page.evaluate(async () => {
     const { loadProfile } = await import('./game/profile.mjs?v=16');
     return loadProfile();
@@ -162,8 +162,12 @@ async function checkShop(browser, mobile) {
   await press(action);
   await textVisible(tray, /Yellow perch.*\+10 points/i);
   await textVisible(tray, /10 \/ 20 XP/);
-  await press(button('Exit fishing'));
-  assert.deepEqual(await savedProfile(), beforePractice, 'a Practice catch does not change the Campaign profile');
+  await leave();
+  const afterPractice = await savedProfile();
+  for (const field of ['coins', 'owned', 'equipped', 'elapsedMs', 'awards']) {
+    assert.deepEqual(afterPractice[field], beforePractice[field], `Practice preserves Campaign ${field}`);
+  }
+  assert.ok(afterPractice.caughtSpecies.includes('perch'), 'Practice keeps the landed species in Your Lake');
   assert.deepEqual(errors, []);
   await page.close();
 }

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { practicePage, withBrowser } from './browser-qa.mjs';
 
 await withBrowser(async browser => {
-  const { page, tray, launch, action, button, status, press, enter, tick, findFish, errors, reelToHole } =
+  const { leave, page, tray, launch, action, button, status, press, enter, tick, findFish, errors, reelToHole } =
     await practicePage(browser);
   const label = tray.locator('[data-phase]');
   const lake = page.locator('.lake');
@@ -32,7 +32,7 @@ await withBrowser(async browser => {
   await reelToHole();
   await press(action);
   await status.filter({ hasText: /yellow perch.*10 coins/i }).waitFor();
-  await press(button('Exit fishing'));
+  await leave();
 
   await press(launch, 'Enter');
   await press(page.getByRole('button', { name: 'Tackle shop', exact: true }));
@@ -57,7 +57,7 @@ await withBrowser(async browser => {
   await expectPhase('Day');
   assert.equal(await color(), daylight);
 
-  await press(button('Exit fishing'));
+  await leave();
   const beforePractice = await savedProfile();
   await enter('Practice');
   await expectPhase('Day');
@@ -66,7 +66,7 @@ await withBrowser(async browser => {
   assert.equal(await color(), dusk);
   await tick(30000);
   await expectPhase('Night');
-  await press(button('Exit fishing'));
+  await leave();
   assert.deepEqual(await savedProfile(), beforePractice, 'Practice does not write to the Campaign profile');
   assert.equal((await savedProfile()).revision, beforePractice.revision, 'clock saves do not change shop revisions');
   const afterStaleWrite = await page.evaluate(async elapsedMs => {

@@ -7,7 +7,7 @@ await withBrowser(async browser => {
   const token = 'a'.repeat(43);
   const requests = [];
   let run;
-  const { enter, page, tray, action, press, tick, findFish, errors } = await practicePage(browser, {
+  const { leave, enter, page, tray, action, press, tick, findFish, errors } = await practicePage(browser, {
     async configure(page) {
       await page.route(url, async route => {
         const response = await route.fetch();
@@ -32,7 +32,7 @@ await withBrowser(async browser => {
     },
   });
 
-  const profileBefore = await page.evaluate(async () => {
+  let profileBefore = await page.evaluate(async () => {
     const { applyProfile } = await import(new URL('./game/profile.mjs', location.href));
     const award = await applyProfile({ type: 'award', key: 'campaign-fixture:0', outcome: 'landed', catch: { points: 35 } });
     const buy = await applyProfile({ type: 'buy', id: 'stronger-line', revision: award.profile.revision });
@@ -45,7 +45,8 @@ await withBrowser(async browser => {
   await enter('Campaign');
   await press(tray.locator('[data-lure="spoon"]'));
   assert.equal(await tray.locator('[data-lure="spoon"]').getAttribute('aria-pressed'), 'true');
-  await press(tray.getByRole('button', { name: 'Exit fishing' }));
+  await leave();
+  profileBefore = await page.evaluate(async () => (await import('./game/profile.mjs')).loadProfile());
 
   await enter('Ranked');
   await tray.getByText(/Mille Lacs · Ranked · 0 pts/).waitFor();

@@ -50,14 +50,14 @@ async function scrollStep(page, direction, mobile) {
 }
 
 async function checkTray(browser, mobile) {
-  const { page, tray, launch, action, button, status, press, tick, findFish, errors, reelToHole } =
+  const { page, tray, launch, action, button, status, press, tick, findFish, chooseMode, errors, reelToHole } =
     await practicePage(browser, { mobile });
   await press(launch);
   const picker = page.getByRole('dialog', { name: 'Choose an outing' });
   assert.equal(await picker.isVisible(), true, 'the site entry offers a choice of outings');
   assert.equal(await picker.getByRole('button', { name: 'Practice', exact: true }).isVisible(), true);
   assert.equal(await picker.getByRole('button', { name: 'Ranked', exact: true }).count(), 0);
-  await press(picker.getByRole('button', { name: 'Campaign', exact: true }));
+  await chooseMode('Campaign');
   await tray.locator('[data-wallet]').waitFor();
   assert.match(await tray.locator('[data-score]').textContent(), /Mille Lacs.*Campaign/);
   assert.equal(await action.isDisabled(), true);
@@ -108,6 +108,7 @@ async function checkTray(browser, mobile) {
   if (!mobile) {
     assert.equal(await action.evaluate(el => el === document.activeElement && el.matches(':focus-visible')), true);
     await page.keyboard.press('Escape');
+    await press(page.locator('.fishing-pause').getByRole('button', { name: 'Leave outing', exact: true }));
     assert.equal(await launch.evaluate(el => el === document.activeElement), true);
   }
   assert.deepEqual(errors, []);

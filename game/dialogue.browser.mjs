@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { practicePage, withBrowser } from './browser-qa.mjs';
 
 async function checkDialogue(browser, mobile) {
-  const { page, tray, status, enter, action, button, press, tick, findFish, reelToHole, errors } =
+  const { leave, page, tray, status, enter, action, button, press, tick, findFish, reelToHole, errors } =
     await practicePage(browser, { mobile });
   if (mobile) await page.setViewportSize({ width: 320, height: 568 });
   const speech = tray.locator('.fishing-speech');
@@ -68,7 +68,7 @@ async function checkDialogue(browser, mobile) {
   assert.equal(await speech.getByRole('button', { name: 'Next fish' }).count(), 1);
   await expectPortrait('headshot');
   await capture('expired');
-  await press(button('Exit fishing'));
+  await leave();
 
   await page.evaluate(() => {
     const rolls = [.98, .2, .5, .4, .1];
