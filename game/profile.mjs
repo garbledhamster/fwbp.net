@@ -4,7 +4,8 @@ export const shopItems = [
   { id: 'starter-hook', category: 'hook', name: 'Starter hook', cost: 0, effect: 'Works with Jig, Spoon, and Minnow.' },
   { id: 'finesse-hook', category: 'hook', name: 'Fine-wire hook', cost: 15, effect: '200 ms more to set the hook with Jig.', lure: 'jig', windowMs: 200 },
   { id: 'line-control', category: 'training', name: 'Line Control', cost: 20, effect: 'Rank 1 gives you 350 ms more to set the hook with any lure.', rank: 1 },
-  { id: 'starter-license', category: 'license', name: 'Starter license', cost: 0, effect: 'Opens the starter water on Mille Lacs.' },
+  { id: 'starter-license', category: 'license', name: 'Starter license', cost: 0, effect: 'Covers Starter Shore on Mille Lacs.', area: 'starter-shore' },
+  { id: 'deep-reef-license', category: 'license', name: 'Deep Reef license', cost: 25, effect: 'Opens Deep Reef on Mille Lacs.', area: 'deep-reef' },
 ];
 
 const storeName = 'profile';

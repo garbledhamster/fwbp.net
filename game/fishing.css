@@ -174,6 +174,12 @@ body.fishing .dive-ceiling { transform: none !important; }
   background: #25473a;
 }
 .fishing-picker [data-mode="campaign"] { background: #f2ba58; border-color: #f2ba58; color: #18332a; font-weight: 700; }
+.fishing-picker [data-area="deep-reef"][aria-disabled="true"] {
+  background: #213c31;
+  border-color: #738359;
+  color: #e4e4c7;
+  cursor: default;
+}
 .fishing-picker p { color: #ebebcd; font-size: .875rem; line-height: 1.35; }
 .fishing-picker form { margin-block-start: 18px; }
 .fishing-shop { width: min(510px, calc(100% - 24px)); }
@@ -378,6 +384,15 @@ body.fishing:has(.fishing-tray[data-mode="campaign"]) .fishing-target:is(.is-bit
 
 @media (max-width: 700px) {
   .fishing-tray[data-mode="campaign"] { width: calc(100% - 16px); padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+  [data-mode="campaign"] .fishing-heading { gap: 5px; padding-inline: 2px; }
+  [data-mode="campaign"] .fishing-heading [data-score] { font-size: .83rem; }
+  [data-mode="campaign"] .fishing-heading [data-water] { letter-spacing: -.015em; }
+  [data-mode="campaign"] .fishing-score-progress {
+    display: block;
+    margin-top: 3px;
+    font: 680 .72rem/1.2 system-ui, sans-serif;
+  }
+  [data-mode="campaign"] .fishing-score-divider { display: none; }
   [data-mode="campaign"] .fishing-rack {
     grid-template-columns: minmax(140px, 1fr) minmax(113px, .8fr);
     grid-template-areas: "tension tension" "lures actions";
@@ -386,7 +401,7 @@ body.fishing:has(.fishing-tray[data-mode="campaign"]) .fishing-target:is(.is-bit
   }
   [data-mode="campaign"] .fishing-pressure { border: 0; padding-inline: 2px; }
   .fishing-tray[data-mode="campaign"] :is([data-lure], .fishing-action, [data-loosen]) { padding-inline: 0; }
-  .fishing-tray[data-mode="campaign"] [data-exit] { font-size: .8rem; }
+  .fishing-tray[data-mode="campaign"] [data-exit] { padding-inline: 6px; font-size: .8rem; }
 }
 
 .lake[data-fishing-light="dusk"] {

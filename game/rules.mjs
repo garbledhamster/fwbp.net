@@ -14,6 +14,15 @@ export const practiceSkills = {
   lift: 'One fewer pull on a fish that fights',
 };
 const searchDepths = [1, 3, 2, 5, 4, 0];
+export const starterArea = 'starter-shore';
+export const campaignAreas = {
+  [starterArea]: { name: 'Starter Shore' },
+  'deep-reef': {
+    name: 'Deep Reef',
+    depths: [3, 4, 2, 5, 1, 0],
+    weightBonus: { 'rock-bass': 4, walleye: 2, pike: 3, smallmouth: 2, muskie: 2 },
+  },
+};
 const seekWindows = { Common: 30000, Uncommon: 25000, Rare: 20000 };
 const phaseWeights = {
   dusk: { perch: 2, 'rock-bass': 2, walleye: 8, pike: 2, smallmouth: 2, muskie: 1 },
@@ -27,15 +36,18 @@ export function campaignPhase(elapsedMs = 0) {
   return 'night';
 }
 
-function encounterPool(lake, phase) {
-  return lakes[lake].fish.flatMap((fish, index) =>
-    Array(phaseWeights[phase]?.[fish.id] ?? fish.weight).fill(index));
+function encounterPool(lake, phase, area) {
+  return lakes[lake].fish.flatMap((fish, index) => {
+    const phaseWeight = phaseWeights[phase]?.[fish.id] ?? fish.weight;
+    const areaBonus = campaignAreas[area]?.weightBonus?.[fish.id] ?? 0;
+    return Array(phaseWeight + areaBonus).fill(index);
+  });
 }
 
 function chooseCampaignSpecies(run, elapsedMs) {
   if (!run.campaign) return;
   const encounter = run.encounters[run.index];
-  const pool = encounterPool(run.lake, campaignPhase(elapsedMs));
+  const pool = encounterPool(run.lake, campaignPhase(elapsedMs), run.campaign.area);
   encounter.species = pool[Math.floor(encounter.speciesRoll * pool.length)];
 }
 const practiceLevelCatches = 2;
@@ -132,9 +144,11 @@ function seekDeadline(run, now) {
 
 export function start(now, random = Math.random, lake = 'mille-lacs', { practice = false, campaign } = {}) {
   const pool = encounterPool(lake, 'day');
+  const area = Object.hasOwn(campaignAreas, campaign?.area) ? campaign.area : starterArea;
+  const depths = campaignAreas[area].depths ?? searchDepths;
   const run = {
     lake, skills: { quick: 0, control: 0, lift: 0 }, skillPoints: 0, fight: null,
-    encounters: searchDepths.map(depth => {
+    encounters: depths.map(depth => {
       const speciesRoll = random();
       return {
         depth,
@@ -149,7 +163,7 @@ export function start(now, random = Math.random, lake = 'mille-lacs', { practice
     version: 0, submitted: false,
     ...(practice && { practice: true, landed: 0 }),
     ...(campaign && {
-      campaign: { ...campaign, hook: campaign.hook && { ...campaign.hook }, lineStrength: campaign.lineStrength ?? 8 },
+      campaign: { ...campaign, area, hook: campaign.hook && { ...campaign.hook }, lineStrength: campaign.lineStrength ?? 8 },
       snap: null,
     }),
   };
@@ -171,6 +185,7 @@ export function publicRun(run) {
     submitted: run.submitted,
     ...(run.practice && { practice: { xp, level: xp >= practiceLevelXp ? 2 : 1 } }),
     ...(run.campaign && {
+      area: campaignAreas[run.campaign.area].name,
       lineStrength: run.campaign.lineStrength, snap: run.snap, fight: run.fight && { ...run.fight },
     }),
   };

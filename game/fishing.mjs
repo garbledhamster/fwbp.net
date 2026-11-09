@@ -1,4 +1,4 @@
-import { advanceCampaignFight, apply, campaignPhase, lures, practiceLevelXp, practiceSkills, publicRun, skills, start } from './rules.mjs?v=15';
+import { advanceCampaignFight, apply, campaignAreas, campaignPhase, lures, practiceLevelXp, practiceSkills, publicRun, skills, start, starterArea } from './rules.mjs?v=15';
 import { applyProfile, loadProfile, shopItems } from './profile.mjs?v=15';
 
 const endpoint = document.querySelector('meta[name="fishing-api"]')?.content;
@@ -6,14 +6,19 @@ const scenes = [...document.querySelectorAll('.dive[data-dive]')].slice(0, 6);
 const lake = document.querySelector('.lake');
 const iceCeiling = lake.querySelector('.dive-ceiling');
 const icon = id => `<svg class="tackle-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="./assets/tackle-icons.svg#${id}"/></svg>`;
+const reefArea = 'deep-reef';
+const reefLicense = shopItems.find(item => item.area === reefArea);
+const reefRequirement = `Requires the ${reefLicense.name}, ${reefLicense.cost} coins at the tackle shop.`;
 const picker = document.createElement('dialog');
 picker.className = 'fishing-picker';
 picker.setAttribute('aria-labelledby', 'fishing-picker-title');
 picker.innerHTML = `
   <h2 id="fishing-picker-title">Choose an outing</h2>
   <div class="fishing-picker-options">
-    <button type="button" data-mode="campaign" aria-describedby="campaign-description">Campaign</button>
-    <p id="campaign-description">Fish Mille Lacs with your own tackle.</p>
+    <button type="button" data-mode="campaign" data-area="${starterArea}" aria-describedby="campaign-description">Campaign</button>
+    <p id="campaign-description">Fish ${campaignAreas[starterArea].name} on Mille Lacs with your own tackle.</p>
+    <button type="button" data-mode="campaign" data-area="${reefArea}" aria-describedby="reef-description" aria-disabled="true">${campaignAreas[reefArea].name}</button>
+    <p id="reef-description">${reefRequirement}</p>
     <button type="button" data-open-shop aria-describedby="shop-description">Tackle shop</button>
     <p id="shop-description">Spend coins and choose your gear between outings.</p>
     <button type="button" data-mode="practice" aria-describedby="practice-description">Practice</button>
@@ -39,7 +44,11 @@ tray.hidden = true;
 tray.setAttribute('aria-label', 'Fishing controls');
 tray.innerHTML = `
   <div class="fishing-tray-inner">
-    <div class="fishing-row fishing-heading"><img class="fishing-brand" src="./assets/fwbp-logo.jpg" alt="" width="27" height="27"><strong data-score></strong><button type="button" data-exit>Exit fishing</button></div>
+    <div class="fishing-row fishing-heading">
+      <img class="fishing-brand" src="./assets/fwbp-logo.jpg" alt="" width="27" height="27">
+      <strong data-score><span data-water></span><span class="fishing-score-progress"><span class="fishing-score-divider" aria-hidden="true"> · </span><span data-run-progress></span></span></strong>
+      <button type="button" data-exit>Exit fishing</button>
+    </div>
     <p class="fishing-status" role="status"></p>
     <div class="fishing-row fishing-encounter">
       <p class="fishing-wallet" data-wallet hidden></p>
@@ -144,6 +153,9 @@ const skillRow = tray.querySelector('.fishing-skills');
 const practiceChoice = tray.querySelector('.fishing-practice-choice');
 const practiceProgress = tray.querySelector('.fishing-practice-progress');
 const wallet = tray.querySelector('[data-wallet]');
+const waterName = tray.querySelector('[data-water]');
+const scoreProgress = tray.querySelector('.fishing-score-progress');
+const runProgress = tray.querySelector('[data-run-progress]');
 const phaseLabel = tray.querySelector('[data-phase]');
 const countdown = tray.querySelector('.fishing-countdown');
 const practiceButtons = [...practiceChoice.querySelectorAll('button')];
@@ -151,6 +163,8 @@ const slots = [...tray.querySelectorAll('[data-lure]')];
 let launch, previousScroll, run, state, token, target, busy, failed, biteAt, frame;
 let mode, rigFrame, fightFrame, jigAt = -Infinity;
 let profile, outingId, catchReward;
+let campaignArea = starterArea;
+let pickerGeneration = 0;
 let clock, clockWrite, suspendedClock;
 let shopBusy = false;
 let shopGeneration = 0;
@@ -216,6 +230,29 @@ const shopLabels = { line: 'Fishing line', hook: 'Hooks', training: 'Training', 
 const shopBalance = shop.querySelector('[data-shop-balance]');
 const shopMessage = shop.querySelector('[data-shop-message]');
 const shopList = shop.querySelector('[data-shop-items]');
+const reefEntry = picker.querySelector(`[data-area="${reefArea}"]`);
+const reefDescription = picker.querySelector('#reef-description');
+
+function hasAreaAccess(savedProfile, area) {
+  const license = shopItems.find(item => item.area === area);
+  return Boolean(license && savedProfile.owned.includes(license.id));
+}
+
+function showOutingPicker() {
+  const current = ++pickerGeneration;
+  picker.showModal();
+  void loadProfile().then(savedProfile => {
+    if (current !== pickerGeneration || !picker.open) return;
+    const unlocked = hasAreaAccess(savedProfile, reefArea);
+    if (unlocked) reefEntry.removeAttribute('aria-disabled');
+    else reefEntry.setAttribute('aria-disabled', 'true');
+    reefDescription.textContent = unlocked ? 'Look for fish around a deeper reef on Mille Lacs.' : reefRequirement;
+  }).catch(() => {
+    if (current !== pickerGeneration || !picker.open) return;
+    reefEntry.setAttribute('aria-disabled', 'true');
+    reefDescription.textContent = 'Couldn’t read your license. Close the picker and try again.';
+  });
+}
 
 function shopItem(item) {
   const owned = profile.owned.includes(item.id);
@@ -270,7 +307,7 @@ async function openShop() {
 
 shop.addEventListener('close', () => {
   shopGeneration++;
-  picker.showModal();
+  showOutingPicker();
   picker.querySelector('[data-open-shop]').focus();
 });
 
@@ -569,10 +606,12 @@ function placeFish() {
 function render() {
   const campaign = mode === 'campaign';
   const modeName = { campaign: 'Campaign', practice: 'Practice', ranked: 'Ranked' }[mode];
+  const areaName = state?.area ? ` · ${state.area}` : '';
   tray.dataset.mode = mode;
-  tray.querySelector('[data-score]').textContent = state
-    ? `${state.lake} · ${modeName} · ${state.score} pts · ${Math.min(state.index + 1, state.count)}/${state.count}`
-    : 'Fishing beneath the ice';
+  waterName.textContent = state ? `${state.lake}${areaName}` : 'Fishing beneath the ice';
+  scoreProgress.hidden = !state;
+  runProgress.textContent = state
+    ? `${modeName} · ${state.score} pts · ${Math.min(state.index + 1, state.count)}/${state.count}` : '';
   const practiceFight = !campaign && !token && state?.stage === 'fight';
   const tight = campaign ? state?.fight?.tight : practiceFight && state.fight.tension >= 60;
   const pullUp = campaign ? state?.fight?.pullUp : state?.fight?.pulls === 1;
@@ -658,7 +697,7 @@ function render() {
   updateSearch();
 }
 
-async function begin(selectedMode = mode) {
+async function begin(selectedMode = mode, selectedArea = campaignArea) {
   const clockSaved = stopCampaignClock();
   const fromAction = document.activeElement === action;
   dismissCelebration();
@@ -686,6 +725,7 @@ async function begin(selectedMode = mode) {
       const loaded = await loadProfile();
       if (current !== generation) return;
       profile = loaded;
+      campaignArea = hasAreaAccess(loaded, selectedArea) ? selectedArea : starterArea;
       outingId = crypto.randomUUID();
     } catch {
       if (current !== generation) return;
@@ -713,7 +753,7 @@ async function begin(selectedMode = mode) {
     const elapsedMs = profile?.elapsedMs ?? 0;
     run = start(Date.now(), undefined, undefined, {
       practice: mode === 'practice',
-      campaign: mode === 'campaign' ? { lineStrength, hook, lineControlRank, elapsedMs } : undefined,
+      campaign: mode === 'campaign' ? { area: campaignArea, lineStrength, hook, lineControlRank, elapsedMs } : undefined,
     });
     state = publicRun(run);
     if (mode === 'campaign') startCampaignClock(elapsedMs);
@@ -730,15 +770,15 @@ function enter(event) {
   event.preventDefault();
   launch = event.currentTarget;
   previousScroll = window.scrollY;
-  picker.showModal();
+  showOutingPicker();
 }
 
-function startSelected(selectedMode) {
+function startSelected(selectedMode, selectedArea) {
   picker.close();
   tray.hidden = false;
   document.body.classList.add('fishing');
   exit.focus({ preventScroll: true });
-  begin(selectedMode);
+  begin(selectedMode, selectedArea);
 }
 
 function leave() {
@@ -762,8 +802,8 @@ function leave() {
 document.querySelectorAll('.game-entry, .fish-entry').forEach(entry => entry.addEventListener('click', enter));
 picker.addEventListener('click', event => {
   if (event.target.closest('[data-open-shop]')) return openShop();
-  const choice = event.target.closest('button[data-mode]');
-  if (choice) startSelected(choice.dataset.mode);
+  const choice = event.target.closest('button[data-mode]:not([aria-disabled="true"])');
+  if (choice) startSelected(choice.dataset.mode, choice.dataset.area);
 });
 exit.addEventListener('click', leave);
 window.addEventListener('pagehide', () => {
