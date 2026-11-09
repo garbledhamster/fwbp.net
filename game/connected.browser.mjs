@@ -60,7 +60,7 @@ async function connected(browser, viewport, mobile) {
 
   // The empty collection is reached from the site's ordinary player entry.
   await press(page.locator('#fish-guide-toggle'), 'Enter');
-  await page.locator('.fish-guide-hint').filter({ hasText: /0 \/ 6/ }).waitFor();
+  await page.locator('.fish-mode-hint').filter({ hasText: /0 \/ 6/ }).waitFor();
   assert.equal(await page.locator('.fish-target:visible').count(), 0);
   await press(page.locator('#fish-guide-toggle'), 'Enter');
   await seed(.55); // Walleye in the shipped day pool; no profile/award injection.
@@ -116,7 +116,7 @@ async function connected(browser, viewport, mobile) {
   await press(action); // Later fish, same outing and lure; newly studied cue appears.
   await tick(300);
   await findFish();
-  await page.locator('.fishing-learned-cue').filter({ hasText: /Minnow/ }).waitFor();
+  await page.locator('.fishing-studied-cue').filter({ hasText: /Minnow/ }).waitFor();
   assert.equal(await selected(), 'minnow');
   await press(tray.getByRole('button', { name: 'Menu', exact: true }));
   const pauseLake = pause.getByRole('button', { name: 'Your Lake', exact: true });
