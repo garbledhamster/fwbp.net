@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { practicePage, withBrowser } from './browser-qa.mjs';
+import { lineDepth, practicePage, withBrowser } from './browser-qa.mjs';
 
 async function attachedLine(page) {
   return page.locator('.fishing-line-path').evaluate(path => {
@@ -27,7 +27,7 @@ async function assertAttached(page) {
 }
 
 async function scrollStep(page, direction, mobile) {
-  const start = await page.locator('.fishing-route').evaluate(el => el.scrollTop);
+  const start = await lineDepth(page);
   if (mobile) {
     const touch = await page.context().newCDPSession(page);
     const send = (type, y) => touch.send('Input.dispatchTouchEvent', {
@@ -46,7 +46,7 @@ async function scrollStep(page, direction, mobile) {
     await page.keyboard.press('ArrowUp');
   }
   await page.clock.runFor(650);
-  const current = await page.locator('.fishing-route').evaluate(el => el.scrollTop);
+  const current = await lineDepth(page);
   assert.ok((current - start) * direction > 0, 'depth changes within the game viewport');
 }
 
@@ -100,7 +100,10 @@ async function checkTray(browser, mobile) {
   await press(action);
   await tick(110);
   const jiggled = await assertAttached(page);
-  if (!mobile) assert.ok(jiggled.endY < still.endY - 3, 'the lure and line rise together during a jig');
+  if (!mobile) {
+    assert.ok(jiggled.depth < still.depth - 3, 'the lure and line rise together during a jig');
+    assert.ok(Math.abs(jiggled.endY - still.endY) < 1, 'the camera stays centered while jigging');
+  }
   assert.match(await status.textContent(), /try a different lure/i);
   assert.equal(await tray.getByRole('timer').isVisible(), false, 'a wrong lure leaves the attempt unspent');
 
@@ -113,9 +116,9 @@ async function checkTray(browser, mobile) {
   await press(action);
   await tick(16);
   assert.match(await status.textContent(), /slipped the hook/i);
-  await tick(28600);
-  await findFish({ species: 'perch' });
-  assert.match(await tray.getByRole('timer').textContent(), /[12]s/);
+  await tick(mobile ? 28600 : 27800);
+  await findFish({ species: 'perch', depthTolerance: 54 });
+  assert.match(await tray.getByRole('timer').textContent(), /[1-3]s/);
   await press(action);
   await waitForBite();
   const secondBite = await page.evaluate(() => Date.now());

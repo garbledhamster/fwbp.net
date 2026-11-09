@@ -6,7 +6,8 @@ await withBrowser(async browser => {
     await practicePage(browser);
   const label = tray.locator('[data-phase]');
   const lake = page.locator('.lake');
-  const color = () => lake.evaluate(el => getComputedStyle(el).backgroundImage);
+  const color = () => lake.evaluate(el => getComputedStyle(el,
+    document.body.hasAttribute('data-campaign-camera') ? '::before' : null).backgroundImage);
   const expectPhase = async name => {
     await label.filter({ hasText: name }).waitFor();
     assert.equal(await label.getAttribute('data-phase'), name.toLowerCase());
@@ -21,8 +22,8 @@ await withBrowser(async browser => {
   await expectPhase('Day');
   const daylight = await color();
   const dayStarted = await page.evaluate(() => Date.now());
-  await tick(28700);
-  await findFish({ species: 'perch' });
+  await tick(27800);
+  await findFish({ species: 'perch', depthTolerance: 54 });
   await page.keyboard.press('j');
   await waitForBite();
   await expectPhase('Day');

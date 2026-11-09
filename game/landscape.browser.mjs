@@ -15,6 +15,7 @@ async function fightView(page) {
       trayTop: tray.top,
       fishTop: fish.top,
       fishBottom: fish.bottom,
+      centerGap: Math.hypot(hook.x - innerWidth / 2, hook.y - tray.top / 2),
       gap: Math.hypot(hook.x - fish.left - fish.width * mouthX,
         hook.y - fish.top - fish.height * 42 / 72),
     };
@@ -97,22 +98,17 @@ async function checkLandscape(browser, mode) {
   else await press(loosen);
   assert.match(await status.textContent(), /reel it up toward the hole/i);
   assert.ok(await load.evaluate(el => el.value) < beforeRotation);
-  const beforeScroll = await fightView(page);
-  const shift = await page.evaluate(() => {
-    if (!document.body.hasAttribute('data-campaign-camera')) {
-      scrollBy(0, 24);
-      return 24;
-    }
-    const viewport = document.querySelector('.fishing-route');
-    const before = viewport.scrollTop;
-    const roomBelow = viewport.scrollHeight - viewport.clientHeight - before;
-    viewport.scrollTop += roomBelow >= 24 ? 24 : -24;
-    return viewport.scrollTop - before;
-  });
-  await tick(32);
-  const afterScroll = await fightView(page);
-  assert.ok(Math.abs(shift) >= 23 && Math.abs(afterScroll.fishTop - beforeScroll.fishTop + shift) < 10 && afterScroll.gap < 1,
-    'manual scrolling still moves the view with the hook attached');
+  if (campaign) {
+    const view = await fightView(page);
+    assert.ok(view.centerGap < 1 && view.gap < 1, 'after rotation the camera follows the hook attached to the fish');
+  } else {
+    const beforeScroll = await fightView(page);
+    await page.evaluate(() => scrollBy(0, 24));
+    await tick(32);
+    const afterScroll = await fightView(page);
+    assert.ok(Math.abs(afterScroll.fishTop - beforeScroll.fishTop + 24) < 10 && afterScroll.gap < 1,
+      'manual scrolling still moves the view with the hook attached');
+  }
 
   await leave();
   await press(launch, 'Enter');

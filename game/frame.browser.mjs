@@ -5,7 +5,7 @@ const evidence = process.env.FISHING_EVIDENCE;
 if (evidence) await mkdir(evidence, { recursive: true });
 await withBrowser(async browser => {
   for (const viewport of [{width:1200,height:720},{width:320,height:720},{width:720,height:320}]) {
-    const {page,press,enter,tray,errors} = await practicePage(browser, {viewport,mobile:viewport.width<800});
+    const {page,press,enter,tray,closeDialog,errors} = await practicePage(browser, {viewport,mobile:viewport.width<800});
     await enter('Campaign');
     await press(tray.locator('[data-exit]'));
     const pause=page.locator('.fishing-pause');
@@ -30,7 +30,7 @@ await withBrowser(async browser => {
     await collection.locator('.collection-grid').waitFor();
     assert.equal(await collection.locator('.collection-grid button').count(),6);
     if(evidence) await page.screenshot({path:`${evidence}/lake-${viewport.width}x${viewport.height}.png`});
-    await press(collection.locator('[data-close]'));
+    await closeDialog(collection, collection.locator('[data-close]'));
     await press(pause.locator('[data-action="shop"]'));
     const shop=page.locator('.fishing-shop');
     const tile=shop.locator('[data-shop-select="stronger-line"]');

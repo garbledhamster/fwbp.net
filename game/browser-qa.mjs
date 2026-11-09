@@ -3,6 +3,11 @@ import assert from 'node:assert/strict';
 const defaultUrl = 'http://127.0.0.1:9867/';
 const clockStart = Date.UTC(2026, 0, 1);
 
+export function lineDepth(page) {
+  return page.locator('.fishing-line-path').evaluate(path =>
+    path.getPointAtLength(path.getTotalLength()).y - path.getPointAtLength(0).y);
+}
+
 // Standard perch, rock bass, walleye, muskie, perch, rock bass.
 const outingSeed = [.05, .35, .55, .98, .05, .35].flatMap(species =>
   [species, .2, .5, .4, .1]);
@@ -141,7 +146,7 @@ export async function practicePage(browser, { mobile = false, viewport, configur
     await tray.waitFor({ state: 'hidden' });
   }
 
-  async function findFish({ species } = {}) {
+  async function findFish({ species, depthTolerance = 12 } = {}) {
     if (await tray.getAttribute('data-mode') === 'campaign') {
       const swimmers = page.locator(species
         ? `.fishing-swimmer[data-species="${species}"]`
@@ -150,8 +155,8 @@ export async function practicePage(browser, { mobile = false, viewport, configur
       // Aiming is setup for these checks. The jig, hook and reel still use
       // the same player inputs as the rest of the test.
       let alignment;
-      for (let frame = 0; frame < 90; frame++) {
-        alignment = await swimmers.evaluateAll(fish => {
+      for (let attempt = 0; attempt < 18; attempt++) {
+        alignment = await swimmers.evaluateAll((fish, tolerance) => {
           const lake = document.querySelector('.lake').getBoundingClientRect();
           const rig = document.querySelector('.fishing-line-rig');
           const lure = new DOMPoint(0, 0).matrixTransform(rig.getScreenCTM());
@@ -160,15 +165,21 @@ export async function practicePage(browser, { mobile = false, viewport, configur
             y: lake.top + parseFloat(el.style.getPropertyValue('--y')),
             species: el.dataset.species,
           }));
-          const nearest = positions.sort((a, b) => Math.abs(a.x - lure.x) - Math.abs(b.x - lure.x))[0];
+          const withinReach = positions.filter(fish => Math.abs(fish.x - lure.x) <= lake.width * .54);
+          const nearest = withinReach.sort((a, b) => Math.abs(a.y - lure.y) - Math.abs(b.y - lure.y))[0]
+            ?? positions.sort((a, b) => Math.abs(a.x - lure.x) - Math.abs(b.x - lure.x))[0];
           const depthGap = nearest.y - lure.y;
-          if (Math.abs(depthGap) > 6) document.querySelector('.fishing-route').scrollTop += depthGap;
+          if (Math.abs(depthGap) > tolerance) {
+            document.querySelector('.fishing-route').dispatchEvent(new WheelEvent('wheel', {
+              deltaY: depthGap / .54, bubbles: true, cancelable: true,
+            }));
+          }
           return { depthGap, horizontalGap: Math.abs(nearest.x - lure.x), width: lake.width, species: nearest.species };
-        });
-        if (Math.abs(alignment.depthGap) <= 12 && alignment.horizontalGap <= alignment.width * .54) {
+        }, depthTolerance);
+        if (Math.abs(alignment.depthGap) <= depthTolerance && alignment.horizontalGap <= alignment.width * .54) {
           return alignment.species;
         }
-        await page.clock.runFor(16);
+        await page.clock.runFor(Math.ceil(Math.abs(alignment.depthGap) / .82) + 650);
       }
       assert.fail(`could not bring the Campaign lure near ${species ?? 'a fish'}: ${JSON.stringify(alignment)}`);
     }

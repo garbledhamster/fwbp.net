@@ -12,7 +12,9 @@ async function fightGeometry(page) {
     const mouthX = target.hasAttribute('data-facing-right') ? 238 / 245 : 7 / 245;
     const tray = document.querySelector('.fishing-tray').getBoundingClientRect();
     return {
-      x: point.x, y: point.y, distanceToHole: Math.hypot(point.x - start.x, point.y - start.y),
+      x: point.x, y: point.y, holeX: start.x,
+      depth: point.y - start.y, distanceToHole: Math.hypot(point.x - start.x, point.y - start.y),
+      centerGap: Math.hypot(point.x - innerWidth / 2, point.y - tray.top / 2),
       gap: Math.hypot(point.x - fish.left - fish.width * mouthX,
         point.y - fish.top - fish.height * 42 / 72),
       fishInView: fish.left >= 0 && fish.right <= innerWidth && fish.top >= 0 && fish.bottom < tray.top,
@@ -58,8 +60,14 @@ async function checkFight(browser, mobile, mode) {
 
   await tick(800);
   const surge = await fightGeometry(page);
-  assert.ok(surge.x > initial.x + 5 && surge.y > initial.y + 5,
-    'the fish pulls sideways and deeper without input');
+  if (mode === 'Campaign') {
+    assert.ok(surge.holeX < initial.holeX - 5 && surge.depth > initial.depth + 5,
+      'the lake moves as the fish pulls sideways and deeper without input');
+    assert.ok(surge.centerGap < 1, 'the camera keeps the hook centered through the surge');
+  } else {
+    assert.ok(surge.x > initial.x + 5 && surge.y > initial.y + 5,
+      'the fish pulls sideways and deeper without input');
+  }
   assert.ok(surge.gap < 1 && surge.fishInView, 'the line follows the mouth and stays in the playable water');
   const surgeLoad = await load.evaluate(meter => meter.value);
   assert.ok(surgeLoad > initialLoad);
@@ -70,23 +78,38 @@ async function checkFight(browser, mobile, mode) {
   const reelSlot = await action.boundingBox();
   await capture('haul-start');
 
-  await page.evaluate(() => {
-    if (document.body.hasAttribute('data-campaign-camera')) document.querySelector('.fishing-route').scrollTop += 36;
-    else scrollBy(0, 36);
-  });
-  await tick(32);
-  const scrolled = await fightGeometry(page);
-  assert.ok(scrolled.y < surge.y - 20 && scrolled.gap < 1, 'scroll changes the view without moving the hook off the mouth');
+  if (mode !== 'Campaign') {
+    await page.evaluate(() => scrollBy(0, 36));
+    await tick(32);
+    const scrolled = await fightGeometry(page);
+    assert.ok(scrolled.y < surge.y - 20 && scrolled.gap < 1, 'scroll changes the view without moving the hook off the mouth');
+  }
   await press(loosen);
   assert.ok(await load.evaluate(meter => meter.value) < surgeLoad);
   assert.match(await status.textContent(), /reel it up toward the hole/i);
-  const looseDepth = (await fightGeometry(page)).y;
+  const looseDepth = (await fightGeometry(page)).depth;
+  if (mode === 'Campaign' && !mobile) {
+    await tick(300);
+    const before = await fightGeometry(page);
+    await press(action);
+    const frames = [await fightGeometry(page)];
+    for (let i = 0; i < 13; i++) {
+      await tick(16);
+      frames.push(await fightGeometry(page));
+    }
+    assert.ok(Math.abs(frames[0].depth - before.depth) < 2, 'the reel does not jump on input');
+    assert.ok(frames.filter((frame, i) => i && frame.depth < frames[i - 1].depth - 1).length > 4,
+      'the line winds in across several frames');
+    assert.ok(frames.every(frame => frame.centerGap < 1 && frame.gap < 1),
+      'the camera tracks the hook and keeps it attached while reeling');
+  }
   await reelToHole();
-  assert.ok((await fightGeometry(page)).y < looseDepth, 'reeling a clear line brings the fish up');
+  assert.ok((await fightGeometry(page)).depth < looseDepth, 'reeling a clear line brings the fish up');
   assert.equal(await action.textContent(), 'Pull up');
   const atHole = await fightGeometry(page);
   assert.ok(atHole.distanceToHole < 1 && atHole.gap < 1, 'Pull up is offered only at the ice hole');
   assert.ok(atHole.y >= 0, 'the camera follows the fish back to the visible hole');
+  if (mode === 'Campaign') assert.ok(atHole.centerGap < 1, 'the hook stays centered at the hole');
   assert.equal((await action.boundingBox()).x, reelSlot.x);
   assert.match(await status.textContent(), /pull it up/i);
   await capture('haul-hole');

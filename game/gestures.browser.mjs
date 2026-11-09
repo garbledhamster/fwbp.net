@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { practicePage, withBrowser } from './browser-qa.mjs';
+import { lineDepth, practicePage, withBrowser } from './browser-qa.mjs';
 
 const layouts = [
   { name: 'desktop click and wheel', viewport: { width: 1200, height: 720 } },
@@ -20,10 +20,7 @@ async function checkGestures(browser, layout) {
 
   const scrollY = () => page.evaluate(() => document.body.hasAttribute('data-campaign-camera')
     ? document.querySelector('.fishing-route').scrollTop : window.scrollY);
-  const depth = () => page.locator('.fishing-line-path').evaluate(path => {
-    const end = path.getPointAtLength(path.getTotalLength());
-    return end.y - path.getPointAtLength(0).y;
-  });
+  const depth = () => lineDepth(page);
   const load = () => tray.locator('meter').evaluate(meter => meter.value);
   const settleInput = async () => {
     // Wheel timestamps use the Playwright clock; native touch scrolling uses real time.
@@ -69,11 +66,11 @@ async function checkGestures(browser, layout) {
   }
 
   await enter('Campaign');
-  const originalScroll = await scrollY();
+  const originalDepth = await depth();
   // End the browse swipe with the finger held still so a native fling cannot swallow the next tap.
   await gesture(await waterPoint(), 0, touch ? -65 : 115, { hold: true });
   await settleInput();
-  assert.ok(await scrollY() > originalScroll + 5, 'depth browsing works outside the lure');
+  assert.ok(await depth() > originalDepth + 5, 'depth browsing works outside the lure');
   await tick(600);
   assert.equal(await action.textContent(), 'Jig');
   await findFish({ species: 'muskie' });
@@ -104,10 +101,10 @@ async function checkGestures(browser, layout) {
   const fish = page.locator('.fishing-swimmer[data-species="muskie"]');
   const biteRipple = page.locator('.fishing-bite-ripple');
   const pause = page.getByRole('dialog', { name: 'Paused' });
-  const beforeScroll = await scrollY();
+  const beforeDepth = await depth();
   await gesture(await markerPoint(), 0, touch ? -45 : 60, { hold: true });
   await settleInput();
-  assert.ok(await scrollY() > beforeScroll, 'a wheel or swipe over the lure still browses depth');
+  assert.ok(await depth() > beforeDepth, 'a wheel or swipe over the lure still browses depth');
   assert.notEqual(await fish.getAttribute('data-swim'), 'approach', 'scrolling does not jig');
   await tick(600);
   await findFish({ species: 'muskie' });
@@ -190,12 +187,12 @@ async function checkGestures(browser, layout) {
     const beforeDepth = await depth();
     const tight = /line’s tight/i.test(await status.textContent());
     await gesture(await waterPoint(), 0, tight ? 65 : -65);
-    if (!tight) assert.ok(await depth() < beforeDepth, 'reeling anywhere in the water raises the fish');
     if (!touch && await action.textContent() === 'Pull up') {
       await gesture(await waterPoint(), 0, -65);
       assert.equal(await action.textContent(), 'Pull up', 'wheel momentum cannot turn the last reel into a lift');
     }
     await tick(300);
+    if (!tight) assert.ok(await depth() < beforeDepth, 'reeling anywhere in the water raises the fish');
     await settleInput();
   }
 
@@ -233,10 +230,10 @@ async function checkKeyboard(browser) {
     Math.random = () => .98;
   });
   await enter('Campaign');
-  const startingDepth = await page.locator('.fishing-route').evaluate(el => el.scrollTop);
+  const startingDepth = await lineDepth(page);
   await page.keyboard.press('ArrowDown');
   await tick(620);
-  assert.ok(await page.locator('.fishing-route').evaluate(el => el.scrollTop) > startingDepth, 'Arrow Down lowers the lure');
+  assert.ok(await lineDepth(page) > startingDepth, 'Arrow Down lowers the lure');
   await findFish({ species: 'muskie' });
   const fish = page.locator('.fishing-swimmer[data-species="muskie"]');
   const pause = page.getByRole('dialog', { name: 'Paused' });
