@@ -566,6 +566,22 @@ body.fishing:has(.fishing-tray[data-line-physics]) .fishing-target:is(.is-biting
     gap: 3px 10px;
   }
   [data-line-physics] .fishing-tray-inner > :not(.fishing-heading, .fishing-dialogue) { grid-column: 1 / -1; }
+  [data-line-physics][data-mode="campaign"] .fishing-tray-inner {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  [data-line-physics][data-mode="campaign"] .fishing-heading [data-score] { font-size: .84rem; }
+  [data-line-physics][data-mode="campaign"] .fishing-score-progress {
+    display: block;
+    margin-top: 3px;
+    font: 680 .72rem/1.2 system-ui, sans-serif;
+  }
+  [data-line-physics][data-mode="campaign"] .fishing-score-divider { display: none; }
+  .fishing-tray[data-line-physics][data-mode="campaign"] :is([data-exit], [data-open-map]) {
+    min-width: 44px;
+    padding-inline: 6px;
+    font-size: .8rem;
+    white-space: nowrap;
+  }
   [data-line-physics] .fishing-dialogue { grid-template-columns: 36px minmax(0, 1fr); gap: 7px; }
   [data-line-physics] .fishing-speech { padding: 3px 7px; min-width: 0; }
   [data-line-physics] .fishing-status { font-size: .82rem; }
@@ -589,6 +605,21 @@ body.fishing:has(.fishing-tray[data-line-physics]) .fishing-target:is(.is-biting
     font-size: .72rem;
   }
   .fishing-tray[data-line-physics] :is([data-lure], .fishing-action, [data-loosen]) .tackle-icon { width: 18px; }
+}
+
+[data-campaign-bait-only] .fishing-rack {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "lures";
+}
+[data-campaign-bait-only] .fishing-rack:has(.fishing-pressure:not([hidden])) {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas: "lures tension";
+}
+@media (max-width: 479px), (max-width: 700px) and (min-height: 421px) {
+  [data-campaign-bait-only] .fishing-rack:has(.fishing-pressure:not([hidden])) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "tension" "lures";
+  }
 }
 
 .fishing-tray[data-line-physics] .fishing-speech > .fishing-action {

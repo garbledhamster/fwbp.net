@@ -20,7 +20,7 @@ export async function withBrowser(check) {
   }
 }
 
-export async function practicePage(browser, { mobile = false, viewport, configure, seeded = true } = {}) {
+export async function practicePage(browser, { mobile = false, viewport, configure, seeded = true, campaignLiveButtons = false } = {}) {
   const page = await browser.newPage({
     viewport: viewport ?? { width: mobile ? 320 : 1200, height: 720 },
     hasTouch: mobile,
@@ -37,7 +37,9 @@ export async function practicePage(browser, { mobile = false, viewport, configur
     Math.random = () => seed[draw++ % seed.length];
   }, outingSeed);
   await configure?.(page);
-  const response = await page.goto(process.env.FISHING_QA_URL ?? defaultUrl, { waitUntil: 'domcontentloaded' });
+  const url = new URL(process.env.FISHING_QA_URL ?? defaultUrl);
+  if (campaignLiveButtons) url.searchParams.set('campaign-live-buttons', '1');
+  const response = await page.goto(url.href, { waitUntil: 'domcontentloaded' });
   assert.ok(response?.ok(), 'the site must load');
   const tray = page.getByRole('region', { name: 'Fishing controls' });
   const button = name => tray.getByRole('button', { name, exact: true });
@@ -124,7 +126,7 @@ export async function practicePage(browser, { mobile = false, viewport, configur
     }, null, { polling: 25 });
   }
 
-  async function reelToHole() {
+  async function reelToHole({ keyboard = false } = {}) {
     let reels = 0;
     for (let move = 0; move < 24; move++) {
       await page.clock.runFor(300);
@@ -134,7 +136,8 @@ export async function practicePage(browser, { mobile = false, viewport, configur
       const cue = await tray.getByRole('status').textContent();
       const tight = /line’s tight/i.test(cue);
       if (!tight) reels++;
-      await press(tight ? button('Loosen') : action);
+      if (keyboard) await page.keyboard.press(tight ? 'l' : 'r');
+      else await press(tight ? button('Loosen') : action);
     }
     assert.fail('the fish did not reach the ice hole');
   }

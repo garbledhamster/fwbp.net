@@ -51,7 +51,7 @@ async function scrollStep(page, direction, mobile) {
 
 async function checkTray(browser, mobile) {
   const { page, tray, launch, action, button, status, press, tick, findFish, chooseMode, errors, reelToHole } =
-    await practicePage(browser, { mobile });
+    await practicePage(browser, { mobile, campaignLiveButtons: true });
   await press(launch);
   const picker = page.getByRole('dialog', { name: 'Choose an outing' });
   assert.equal(await picker.isVisible(), true, 'the site entry offers a choice of outings');

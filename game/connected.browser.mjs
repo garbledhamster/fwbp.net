@@ -7,7 +7,7 @@ import { practicePage, withBrowser } from './browser-qa.mjs';
 // parent-pause release, duplicate payouts and accidental next-outing gear application.
 async function connected(browser, viewport, mobile) {
   const { page, tray, action, status, launch, enter, leave, press, closeDialog, tick, findFish, reelToHole, errors } =
-    await practicePage(browser, { mobile, viewport, configure: async page => {
+    await practicePage(browser, { mobile, viewport, campaignLiveButtons: true, configure: async page => {
       // Playback availability is separately audited against public YouTube. Here a
       // blocked embed exercises our real dialog, public fallback and cleanup.
       await page.route('https://www.youtube-nocookie.com/embed/**', route => route.abort());

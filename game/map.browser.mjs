@@ -10,7 +10,7 @@ await withBrowser(async (browser) => {
     { width: 720, height: 320 },
   ]) {
     const qa = await practicePage(browser, { mobile: viewport.width !== 1200, viewport });
-    const { page, press, tray, enter, errors, findFish, tick, action } = qa;
+    const { page, press, tray, enter, errors, findFish, tick } = qa;
     await enter('Campaign');
     assert.equal(await page.locator('.fishing-candidate').count(), 2);
     assert.equal(await tray.locator('.fishing-countdown').isVisible(), false);
@@ -47,7 +47,7 @@ await withBrowser(async (browser) => {
     assert.equal(await page.locator('.fishing-drill').isVisible(), false);
     await findFish();
     // Any jig commits, including a wrong lure. A later target selection must confirm.
-    await press(action);
+    await page.keyboard.press('j');
     await tick(300);
     await press(page.locator('.fishing-candidate').first(), 'Enter');
     await page.locator('.fishing-end-attempt').waitFor();

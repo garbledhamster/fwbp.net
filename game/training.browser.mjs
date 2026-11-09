@@ -3,7 +3,7 @@ import { practicePage, withBrowser } from './browser-qa.mjs';
 
 async function checkTraining(browser, mobile) {
   const { leave, enter, page, tray, action, press, tick, findFish, launch, button, status, errors, reelToHole } =
-    await practicePage(browser, { mobile });
+    await practicePage(browser, { mobile, campaignLiveButtons: true });
   const picker = page.getByRole('dialog', { name: 'Choose an outing' });
   const shop = page.getByRole('dialog', { name: 'Tackle shop' });
   const hook = shop.locator('[data-item="finesse-hook"]');

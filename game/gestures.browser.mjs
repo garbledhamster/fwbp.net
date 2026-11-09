@@ -29,6 +29,9 @@ async function checkGestures(browser, layout) {
     await Promise.all([tick(170), page.waitForTimeout(170)]);
   };
   const marker = page.locator('[data-line-gesture-marker]');
+  const up = marker.locator('[data-line-gesture-up]');
+  const down = marker.locator('[data-line-gesture-down]');
+  const wait = marker.locator('[data-line-gesture-wait]');
   const markerPoint = async () => {
     // Fall back to the lure's coordinates so the pre-feature failure is a missed jig.
     const box = await marker.count() ? await marker.boundingBox() : undefined;
@@ -70,17 +73,23 @@ async function checkGestures(browser, layout) {
   assert.equal(await marker.evaluate(el => el.tabIndex), -1, 'the marker adds no keyboard stop');
   if (!touch) {
     await button('Menu').focus();
-    for (let step = 0; step < 6 && !await action.evaluate(el => el === document.activeElement); step++) {
+    const visited = new Set();
+    for (let step = 0; step < 10; step++) {
       await page.keyboard.press('Tab');
       assert.equal(await marker.evaluate(el => el.contains(document.activeElement)), false, 'Tab skips the marker');
+      assert.equal(await action.evaluate(el => el === document.activeElement), false, 'Tab skips the live Jig action');
+      const lure = await page.evaluate(() => document.activeElement.dataset.lure);
+      if (lure) visited.add(lure);
     }
-    assert.equal(await action.evaluate(el => el === document.activeElement), true, 'Tab can still reach Jig');
+    assert.deepEqual([...visited], ['jig', 'spoon', 'minnow'], 'Tab reaches every bait slot');
   }
   await press(button('Spoon'));
+  await findFish();
+  await marker.waitFor();
   const selected = await button('Spoon').getAttribute('aria-pressed');
   const preJigScroll = await scrollY();
   await gesture(await markerPoint(), 0, -70);
-  assert.equal(await action.textContent(), 'Reel', 'an upward line gesture jigs the selected lure');
+  assert.equal(await wait.isVisible(), true, 'an upward line gesture jigs the selected lure');
   assert.equal(await scrollY(), preJigScroll, 'jig does not browse depths');
   assert.equal(await button('Spoon').getAttribute('aria-pressed'), selected, 'a gesture does not change tackle on release');
 
@@ -101,6 +110,8 @@ async function checkGestures(browser, layout) {
   await tick(800);
   const tightLoad = await load();
   assert.match(await status.textContent(), /line’s tight/i);
+  assert.equal(await up.isVisible(), false, 'a tight line offers no upward cue');
+  assert.match(await down.innerText(), /↓ Loosen/, 'the downward cue stays visible under load');
   await settleInput();
   const tightScroll = await scrollY();
   await gesture(await waterPoint(), 0, 65);

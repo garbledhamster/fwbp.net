@@ -3,7 +3,7 @@ import { practicePage, withBrowser } from './browser-qa.mjs';
 
 async function checkAccess(browser, mobile) {
   const { leave, page, launch, tray, action, status, button, enter, press, tick, findFish, errors, reelToHole } =
-    await practicePage(browser, { mobile });
+    await practicePage(browser, { mobile, campaignLiveButtons: true });
   const picker = page.getByRole('dialog', { name: 'Choose an outing' });
   const shop = page.getByRole('dialog', { name: 'Tackle shop' });
   const guide = page.locator('.fishing-permit');
