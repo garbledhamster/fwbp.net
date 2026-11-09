@@ -1,71 +1,69 @@
 import assert from 'node:assert/strict';
 import { practicePage, withBrowser } from './browser-qa.mjs';
-import map from './lake-map-data.mjs';
-const shore = map.cells.find((cell) => cell.area === 'starter-shore');
-const reef = map.cells.find((cell) => cell.depthFt >= 30);
-const visibleWaterBands = (page) =>
-  page.locator('.lake > .dive:visible').count();
-const snapshot = (page) =>
-  page
-    .locator('.fishing-target, .fishing-candidate')
-    .evaluateAll((els) =>
-      els.map((el) => ({
-        art: el.querySelector('use').getAttribute('href'),
-        band: el.parentElement.dataset.dive,
-        x: el.style.getPropertyValue('--x'),
-        y: el.style.getPropertyValue('--y'),
-      })),
-    );
+
 async function seedWallet(page) {
   await page.evaluate(async () => {
-    const { loadProfile } = await import('./game/profile.mjs');
-    const saved = await loadProfile();
-    saved.coins = 100;
-    saved.awards['earlier-outing:0'] = 10;
-    saved.owned.push('starter-license');
-    await new Promise((resolve, reject) => {
-      const request = indexedDB.open('fwbp-campaign', 1);
-      request.onsuccess = () => {
-        const db = request.result;
-        const tx = db.transaction('profile', 'readwrite');
-        tx.objectStore('profile').put(saved, 'campaign');
-        tx.oncomplete = () => {
-          db.close();
-          resolve();
-        };
-        tx.onerror = () => reject(tx.error);
-      };
-    });
+    const { applyProfile } = await import('./game/profile.mjs');
+    const { profile } = await applyProfile({ type: 'award', key: 'earlier-outing:0', outcome: 'landed', catch: { points: 100 } });
+    await applyProfile({ type: 'buy', id: 'starter-license', revision: profile.revision });
   });
 }
+
 await withBrowser(async (browser) => {
   const conditions = [];
   for (const skip of [false, true]) {
-    const qa = await practicePage(browser);
+    const qa = await practicePage(browser, { mobile: skip });
     const { page, press, tray } = qa;
     await seedWallet(page);
     await press(qa.launch, 'Enter');
     await press(page.locator('[data-mode="campaign"][data-area="starter-shore"]'), 'Enter');
-    await press(page.locator('[data-map-drill]'), 'Enter');
-    if (skip) await press(page.locator('[data-drill-skip]'), 'Enter');
+    const map = page.locator('.fishing-map');
+    const drill = page.locator('.fishing-drill');
+    const drillProgress = drill.getByRole('progressbar');
+    const cell = id => map.locator(`[data-map-cell="${id}"]`);
+    const open = map.locator('[data-map-drill]');
+
+    if (skip) await press(cell('E4'), 'Enter');
+    else await cell('E4').click();
+    assert.match(await map.locator('[data-map-info]').textContent(), /10 ft/);
+    await press(open, 'Enter');
+    const shallowTurns = Number(await drillProgress.getAttribute('max'));
+    await press(drill.locator('[data-drill-turn]'));
+    assert.equal(await drillProgress.getAttribute('value'), '1');
+    await press(drill.locator('[data-drill-back]'), 'Enter');
+    assert.equal(await map.locator('[data-hole-open]').count(), 0);
+    assert.match(await map.locator('[data-map-allowance]').textContent(), /1 of 1 new holes/);
+
+    await press(cell('A3'), 'Enter');
+    await press(open, 'Enter');
+    const weedTurns = Number(await drillProgress.getAttribute('max'));
+    assert.ok(weedTurns > shallowTurns, 'the two shore spots require different effort');
+    assert.equal(await drillProgress.getAttribute('value'), '0');
+    if (skip) await press(drill.locator('[data-drill-skip]'), 'Enter');
     else {
-      for (let i = 0; i < 7; i++) await press(page.locator('[data-drill-turn]'), 'Space');
-      assert.equal(await page.locator('.fishing-drill progress').getAttribute('value'), '7');
+      for (let i = 0; i < weedTurns - 1; i++) await press(drill.locator('[data-drill-turn]'));
+      assert.equal(await drillProgress.getAttribute('value'), String(weedTurns - 1));
       if (process.env.FISHING_EVIDENCE_DIR)
         await page.screenshot({ path: `${process.env.FISHING_EVIDENCE_DIR}/drilling.png` });
-      await press(page.locator('[data-drill-turn]'), 'Space');
+      await press(drill.locator('[data-drill-turn]'));
     }
     await tray.locator('[data-exit]:enabled').waitFor();
-    conditions.push(await snapshot(page));
-    assert.match(
-      await tray.locator('[data-water]').textContent(),
-      new RegExp(`${shore.id}.*${shore.depthFt} ft`),
-    );
-    const firstHole = await snapshot(page);
-    const shoreBands = await visibleWaterBands(page);
-    // The matching permit is bought through Rowan, then the same selection resumes.
+    const water = await tray.locator('[data-water]').textContent();
+    const bands = await page.locator('.lake > .dive:visible').count();
+    assert.match(water, /A3.*15 ft.*Weed edge/);
+    conditions.push({ water, bands });
+    assert.equal(await tray.locator('meter').getAttribute('max'), '8');
+
     await press(tray.locator('[data-open-map]'), 'Enter');
-    await press(page.locator(`[data-map-cell="${reef.id}"]`), 'Enter');
+    await map.waitFor();
+    assert.equal(await cell('A3').getAttribute('data-hole-open'), '');
+    await press(cell('E4'), 'Enter');
+    assert.equal(await open.isDisabled(), true);
+    assert.match(await map.locator('[data-map-message]').textContent(), /opened all your new holes/);
+
+    await press(cell('C1'), 'Enter');
+    assert.match(await map.locator('[data-map-permit]').textContent(), /Deep Reef permit.*Required/);
+    await press(open, 'Enter');
     await press(page.locator('[data-permit-shop]'), 'Enter');
     const shop = page.locator('.fishing-shop');
     const permit = await qa.selectTackle('deep-reef-license');
@@ -76,30 +74,27 @@ await withBrowser(async (browser) => {
     await press(line.getByRole('button', { name: 'Equip Stronger line', exact: true }), 'Enter');
     await line.getByText('Equipped for next outing', { exact: true }).waitFor();
     await qa.closeDialog(shop, shop.locator('[data-shop-back]'));
-    assert.equal(await page.locator(`[data-map-cell="${reef.id}"]`).getAttribute('aria-pressed'), 'true');
-    await press(page.locator('[data-map-drill]'), 'Enter');
-    await press(page.locator('[data-drill-skip]'), 'Enter');
-    assert.notDeepEqual(await snapshot(page), firstHole);
-    assert.ok(await visibleWaterBands(page) > shoreBands, 'deep holes extend the playable water');
-    assert.match(
-      await tray.locator('[data-water]').textContent(),
-      new RegExp(`${reef.id}.*${reef.depthFt} ft`),
-    );
-    assert.equal(await tray.locator('meter').getAttribute('max'), '8', 'moving preserves active line');
+    await map.waitFor();
+    assert.equal(await cell('C1').getAttribute('aria-pressed'), 'true');
+    assert.match(await map.locator('[data-map-permit]').textContent(), /Deep Reef permit.*Owned/);
+    assert.equal(await open.isDisabled(), true, 'buying a permit leaves the daily allowance fixed');
+
+    await press(cell('A3'), 'Enter');
+    await press(open, 'Enter');
+    await tray.locator('[data-open-map]:enabled').waitFor();
+    assert.equal(await drill.isVisible(), false);
+    assert.equal(await tray.locator('[data-water]').textContent(), water);
+    assert.equal(await tray.locator('meter').getAttribute('max'), '8', 'returning to an open hole keeps the active line');
     assert.match(await tray.locator('[data-run-progress]').textContent(), /1\/6/);
-    await press(tray.locator('[data-open-map]'), 'Enter');
-    await press(page.locator(`[data-map-cell="${shore.id}"]`), 'Enter');
-    await press(page.locator('[data-map-drill]'), 'Enter');
-    assert.equal(await page.locator('.fishing-drill').isVisible(), false);
-    assert.deepEqual(await snapshot(page), firstHole, 'revisit never rerolls candidates');
-    assert.equal(await visibleWaterBands(page), shoreBands, 'revisit restores the original depth');
+
     await qa.leave();
-    assert.equal(await visibleWaterBands(page), 7, 'leaving restores the entire site lake');
-    await qa.enter('Campaign');
+    assert.equal(await page.locator('.lake > .dive:visible').count(), 7, 'leaving restores the site lake');
+    await qa.enter('Deep Reef');
     assert.equal(await tray.locator('meter').getAttribute('max'), '12', 'new equipment applies next outing');
+    assert.ok(await page.locator('.lake > .dive:visible').count() > bands, 'deep holes extend the playable water');
     assert.deepEqual(qa.errors, []);
     await page.close();
   }
-  assert.deepEqual(conditions[0], conditions[1], 'drill and skip open identical fish and depths');
+  assert.deepEqual(conditions[0], conditions[1], 'drill and skip open identical hole conditions');
 });
-console.log('Drill/skip parity, reef purchase, contrasting holes, stable revisits and equipment passed.');
+console.log('Mouse, keyboard and touch drill progress, cancellation, skip parity, permit flow and gear passed.');

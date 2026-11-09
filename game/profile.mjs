@@ -1,4 +1,5 @@
 import { lakes } from './rules.mjs?v=mille-lacs-campaign';
+import lakeMap from './lake-map-data.mjs';
 
 const speciesIds = new Set(lakes['mille-lacs'].fish.map(fish => fish.id));
 export const shopItems = [
@@ -53,6 +54,15 @@ export function shopAvailability(profile, item) {
   const locked = !owned && campaignProgress(profile).level < level;
   const shortfall = Math.max(0, item.cost - (profile?.coins ?? 0));
   return { level, owned, equipped, locked, shortfall, status: owned ? equipped ? 'equipped' : 'owned' : locked ? 'locked' : shortfall ? 'unaffordable' : 'available' };
+}
+
+export function areaPermit(area) {
+  return shopItems.find(item => item.category === 'license' && item.area === area);
+}
+
+export function hasAreaAccess(profile, area) {
+  const permit = areaPermit(area);
+  return Boolean(permit && profile?.owned.includes(permit.id));
 }
 
 // The payout ledger holds Campaign awards only; Practice collection credit lives separately.
@@ -214,10 +224,37 @@ function shop(profile, { type, id, revision }) {
   };
 }
 
-function saveClock(profile, elapsedMs) {
+function saveClock(profile, { elapsedMs, dayId }) {
+  if (dayId !== undefined && profile.day?.id !== dayId) return { profile, status: 'stale-day' };
   if (!Number.isSafeInteger(elapsedMs) || elapsedMs < 0) return { profile, status: 'invalid' };
   if (elapsedMs <= profile.elapsedMs) return { profile, status: 'clock-current' };
   return { profile: { ...profile, elapsedMs }, status: 'clock-saved' };
+}
+
+function updateDay(profile, { type, dayId, cellId }) {
+  const { day } = profile;
+  if (type === 'begin-day') {
+    if (day) return { profile, status: 'day-current' };
+    return {
+      profile: { ...profile, revision: profile.revision + 1, day: { id: crypto.randomUUID(), allowance: 1, opened: [] } },
+      status: 'day-started',
+    };
+  }
+  if (!day || day.id !== dayId) return { profile, status: 'stale-day' };
+  if (type === 'end-day') {
+    const next = { ...profile, revision: profile.revision + 1 };
+    delete next.day;
+    return { profile: next, status: 'day-ended' };
+  }
+  const cell = lakeMap.cells.find(cell => cell.id === cellId);
+  if (!cell) return { profile, status: 'invalid' };
+  if (!hasAreaAccess(profile, cell.area)) return { profile, status: 'permit-required' };
+  if (day.opened.includes(cellId)) return { profile, status: 'hole-current' };
+  if (day.opened.length >= day.allowance) return { profile, status: 'daily-limit' };
+  return {
+    profile: { ...profile, revision: profile.revision + 1, day: { ...day, opened: [...day.opened, cellId] } },
+    status: 'hole-opened',
+  };
 }
 
 function train(profile, { type, id, revision, betweenOutings }) {
@@ -232,7 +269,8 @@ function train(profile, { type, id, revision, betweenOutings }) {
 export function applyProfile(command) {
   return readProfile(profile => {
     if (['learn', 'reset-skills'].includes(command?.type)) return train(profile, command);
-    if (command?.type === 'clock') return saveClock(profile, command.elapsedMs);
+    if (command?.type === 'clock') return saveClock(profile, command);
+    if (['begin-day', 'open-hole', 'end-day'].includes(command?.type)) return updateDay(profile, command);
     if (command?.type === 'study') return study(profile, command.speciesId);
     if (command?.type === 'award') return award(profile, command);
     if (command?.type === 'buy' || command?.type === 'equip') return shop(profile, command);

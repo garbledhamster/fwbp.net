@@ -1,7 +1,7 @@
 import { openCampaignMap, mapCells, firstShoreHole, confirmEndAttempt } from './campaign-map.mjs';
 import { createSuspensionClock } from './suspension.mjs';
 import { catchQuality, moveToHole, selectHoleFish, abandonHoleFish, advanceLineFight, apply, campaignAreas, campaignDepthBand, campaignPhase, lakes, lures, practiceLevelXp, practiceSkills, publicRun, skills, start, starterArea } from './rules.mjs?v=mille-lacs-campaign';
-import { campaignProgress, campaignTraining, campaignTechniques, techniqueState, shopAvailability, applyProfile, campaignMilestone, loadProfile, shopItems } from './profile.mjs?v=mille-lacs-campaign';
+import { areaPermit, hasAreaAccess, campaignProgress, campaignTraining, campaignTechniques, techniqueState, shopAvailability, applyProfile, campaignMilestone, loadProfile, shopItems } from './profile.mjs?v=mille-lacs-campaign';
 import { lureTip } from './species-catalog.mjs';
 import { openYourLake } from './collection.mjs?v=mille-lacs-campaign';
 import { renderSpeciesVideo } from './species-video.mjs';
@@ -51,6 +51,7 @@ picker.setAttribute('aria-labelledby', 'fishing-picker-title');
 picker.innerHTML = `
   <div class="fishing-dialog-intro">
     <h2 id="fishing-picker-title">Choose an outing</h2>
+    <p data-outing-message role="status"></p>
     <img class="fishing-dialog-art" src="./assets/fishing/mille-lacs-dawn.webp" alt="" width="1104" height="460" loading="lazy">
   </div>
   <div class="fishing-picker-options">
@@ -115,6 +116,8 @@ pause.innerHTML = `
   <h2 id="fishing-pause-title" tabindex="-1">Paused</h2>
   <section data-pause-panel="menu">
     <p>Your fish and the outing clock will wait here.</p>
+    <p data-pause-day hidden>Leaving ends the day and closes today’s holes.</p>
+    <p data-pause-error role="status"></p>
     <div class="fishing-menu-actions">
       <button type="button" data-action="skills">Skills</button>
       <button type="button" data-action="gear">${icon('gear')} Gear</button>
@@ -317,11 +320,13 @@ status.after(studiedCue);
 document.addEventListener('fishing:profile-changed', event => {
   if (usesLinePhysics()) profile = event.detail.profile;
 });
-let campaignArea = starterArea;
 let permitArea = starterArea;
 let permitReturn;
 let selectedHole = firstShoreHole;
 let mapRelease;
+let mapOpening = false;
+let campaignDayId, dayEnd;
+let leavingOuting = false;
 let permitGeneration = 0;
 let campaignMilestoneNotice = false;
 let pickerGeneration = 0;
@@ -389,8 +394,8 @@ function showPhase(phase) {
   lake.dataset.fishingLight = phase;
 }
 
-function saveCampaignClock(elapsedMs) {
-  clockWrite = applyProfile({ type: 'clock', elapsedMs }).catch(() => undefined);
+function saveCampaignClock(elapsedMs, dayId = campaignDayId) {
+  clockWrite = applyProfile({ type: 'clock', elapsedMs, dayId }).catch(() => undefined);
   return clockWrite;
 }
 
@@ -443,6 +448,27 @@ function stopOutingClock() {
   return save ? saveCampaignClock(elapsedMs) : clockWrite;
 }
 
+async function endSavedDay(dayId) {
+  if (dayId === campaignDayId) {
+    if (clock) await saveCampaignClock(outingElapsed(), dayId);
+    else await clockWrite;
+  }
+  return applyProfile({ type: 'end-day', dayId });
+}
+
+function finishCampaignDay() {
+  if (!campaignDayId) return Promise.resolve(true);
+  const dayId = campaignDayId;
+  dayEnd ??= endSavedDay(dayId).then(result => {
+    if (campaignDayId === dayId) {
+      profile = result.profile;
+      campaignDayId = undefined;
+    }
+    return true;
+  }).catch(() => false).finally(() => { dayEnd = undefined; });
+  return dayEnd;
+}
+
 const coins = amount => `${amount} ${amount === 1 ? 'coin' : 'coins'}`;
 const shopLabels = { bait: 'Bait', line: 'Fishing line', hook: 'Hooks', training: 'Training', license: 'Licenses' };
 const shopBalance = shop.querySelector('[data-shop-balance]');
@@ -450,18 +476,9 @@ const shopMessage = shop.querySelector('[data-shop-message]');
 const shopList = shop.querySelector('[data-shop-items]');
 const reefDescription = picker.querySelector('#reef-description');
 
-function areaPermit(area) {
-  if (!Object.hasOwn(campaignAreas, area)) return undefined;
-  return shopItems.find(item => item.category === 'license' && item.area === area);
-}
-
-function hasAreaAccess(savedProfile, area) {
-  const permit = areaPermit(area);
-  return Boolean(permit && savedProfile?.owned.includes(permit.id));
-}
-
-function showOutingPicker(focusArea) {
+function showOutingPicker(focusArea, message = '') {
   const current = ++pickerGeneration;
+  picker.querySelector('[data-outing-message]').textContent = message;
   if (!picker.open) picker.showModal();
   if (focusArea) picker.querySelector(`[data-area="${focusArea}"]`)?.focus();
   void loadProfile().then(savedProfile => {
@@ -689,6 +706,8 @@ export function openPause() {
   if (pause.open) return;
   pauseOpener = document.activeElement;
   pauseRelease = acquireSuspension();
+  pause.querySelector('[data-pause-day]').hidden = mode !== 'campaign' || !campaignDayId;
+  pause.querySelector('[data-pause-error]').textContent = '';
   showPausePanel('menu');
   pause.showModal();
 }
@@ -703,18 +722,24 @@ pause.addEventListener('close', () => {
   }
 });
 pause.addEventListener('cancel', event => {
-  if (shopBusy) { event.preventDefault(); return; }
+  if (shopBusy || leavingOuting) { event.preventDefault(); return; }
   if (pausePanel === 'gear' && gearPane === 'details' && matchMedia('(max-width: 599px)').matches) { event.preventDefault(); returnToGearGrid(); return; }
   if (pausePanel !== 'menu') { event.preventDefault(); showPausePanel('menu'); }
 });
 pause.addEventListener('click', async event => {
   const control = event.target.closest('[data-action]');
-  if (!control || shopBusy) return;
+  if (!control || shopBusy || leavingOuting) return;
   const current = ++pauseGeneration;
   const destination = control.dataset.action;
   if (destination === 'resume') pause.close();
   if (destination === 'back') { const parent = pausePanel; showPausePanel('menu'); pause.querySelector(`[data-action="${parent}"]`)?.focus(); }
-  if (destination === 'leave') { pause.close(); leave(); }
+  if (destination === 'leave') {
+    leavingOuting = true;
+    const ended = mode !== 'campaign' || await finishCampaignDay();
+    leavingOuting = false;
+    if (ended) { pause.close(); leave(); }
+    else pause.querySelector('[data-pause-error]').textContent = 'Couldn’t end the day. Try leaving again.';
+  }
   if (destination === 'skills') void openCampaignSkills();
   if (destination === 'controls') showPausePanel('controls');
   if (destination === 'shop') void openShop();
@@ -1444,7 +1469,10 @@ function render() {
   if ((state?.stage !== 'seek' || failed) && (!practiceBite || practiceError)) setStatus(cue, detail);
   wallet.hidden = !campaign || !profile;
   phaseLabel.hidden = !linePhysics || !state;
-  if (linePhysics && state?.stage === 'done') stopOutingClock();
+  if (linePhysics && state?.stage === 'done') {
+    stopOutingClock();
+    if (campaign) void finishCampaignDay();
+  }
   if (campaign && profile) wallet.textContent = coins(profile.coins);
   practiceProgress.hidden = !state?.practice || failed;
   if (state?.practice) {
@@ -1516,8 +1544,8 @@ function render() {
   updateSearch();
 }
 
-async function begin(selectedMode = mode, selectedArea = campaignArea) {
-  const clockSaved = stopOutingClock();
+async function begin(selectedMode = mode, hole, savedProfile) {
+  stopOutingClock();
   const fromAction = document.activeElement === action;
   dismissCelebration();
   clearBite();
@@ -1528,7 +1556,9 @@ async function begin(selectedMode = mode, selectedArea = campaignArea) {
   jigAt = -Infinity;
   jigActivation = fightActivation = false;
   practiceError = undefined;
-  profile = outingId = catchReward = encounterTip = undefined;
+  profile = savedProfile;
+  outingId = catchReward = encounterTip = undefined;
+  campaignDayId = savedProfile?.day?.id;
   campaignMilestoneNotice = false;
   settledCatch = undefined;
   catchSaveFailed = false;
@@ -1544,27 +1574,6 @@ async function begin(selectedMode = mode, selectedArea = campaignArea) {
   removeTarget();
   render();
   let serverNow;
-  if (mode === 'campaign') {
-    try {
-      await clockSaved;
-      const loaded = await loadProfile();
-      if (current !== generation) return;
-      profile = loaded;
-      if (!hasAreaAccess(loaded, selectedArea)) {
-        busy = false;
-        leave();
-        await showPermit(selectedArea);
-        return;
-      }
-      campaignArea = selectedArea;
-      outingId = crypto.randomUUID();
-    } catch {
-      if (current !== generation) return;
-      busy = false;
-      setStatus('Couldn’t open your saved tackle. Exit fishing and try Campaign again.');
-      return;
-    }
-  }
   if (endpoint && mode === 'ranked') {
     try {
       const opened = await api('start', {}, null);
@@ -1594,7 +1603,7 @@ async function begin(selectedMode = mode, selectedArea = campaignArea) {
     const elapsedMs = mode === 'campaign' ? profile?.elapsedMs ?? 0 : 0;
     run = start(outingTime.dateNow(), undefined, undefined, {
       practice: mode === 'practice',
-      campaign: mode === 'campaign' ? { hole: mapCells.find(cell => cell.id === selectedHole), area: campaignArea, lineStrength, line, hook, lineControlRank, lureWorkRank, baits, elapsedMs } : undefined,
+      campaign: mode === 'campaign' ? { hole, area: hole.area, lineStrength, line, hook, lineControlRank, lureWorkRank, baits, elapsedMs } : undefined,
     });
     state = publicRun(run);
     startOutingClock(elapsedMs);
@@ -1614,30 +1623,13 @@ function enter(event) {
   showOutingPicker();
 }
 
-async function startSelected(selectedMode, selectedArea, fromMap = false) {
-  if (selectedMode === 'campaign' && !fromMap) {
-    selectedHole = mapCells.find(cell => cell.area === selectedArea)?.id ?? firstShoreHole;
-    picker.close();
-    return showLakeMap(false);
-  }
-  if (selectedMode === 'campaign') {
-    if (!areaPermit(selectedArea)) return;
-    const current = ++pickerGeneration;
-    try {
-      const saved = await loadProfile();
-      if (current !== pickerGeneration || (!picker.open && !fromMap)) return;
-      if (!hasAreaAccess(saved, selectedArea)) return showPermit(selectedArea);
-    } catch {
-      if (current === pickerGeneration && picker.open) await showPermit(selectedArea);
-      return;
-    }
-  }
+async function startSelected(selectedMode, hole, savedProfile) {
   picker.close();
   tray.hidden = false;
   document.body.classList.add('fishing');
   exit.focus({ preventScroll: true });
   const current = generation + 1;
-  await begin(selectedMode, selectedArea);
+  await begin(selectedMode, hole, savedProfile);
   // Loading a local profile temporarily disables Menu and drops browser focus.
   // Restore it once this outing is ready, unless the player focused a control.
   if (current === generation && !tray.hidden && !exit.disabled &&
@@ -1648,6 +1640,7 @@ async function startSelected(selectedMode, selectedArea, fromMap = false) {
 
 function leave() {
   stopOutingClock();
+  campaignDayId = undefined;
   delete lake.dataset.fishingLight;
   phaseLabel.dataset.phase = '';
   dismissCelebration();
@@ -1674,7 +1667,10 @@ document.querySelectorAll('.game-entry, .fish-entry').forEach(entry => entry.add
 picker.addEventListener('click', event => {
   if (event.target.closest('[data-open-shop]')) return openShop();
   const choice = event.target.closest('button[data-mode]');
-  if (choice) startSelected(choice.dataset.mode, choice.dataset.area);
+  if (choice?.dataset.mode === 'campaign') {
+    picker.close();
+    void showLakeMap(false, undefined, choice.dataset.area);
+  } else if (choice) void startSelected(choice.dataset.mode);
 });
 exit.addEventListener('click', () => usesLinePhysics() ? openPause() : leave());
 window.addEventListener('pagehide', () => {
@@ -1992,13 +1988,18 @@ action.addEventListener('pointercancel', () => { jigActivation = fightActivation
 action.addEventListener('keydown', event => {
   if (!event.repeat && ['Enter', ' '].includes(event.key)) rememberAction();
 });
-function activatePrimary(reelEffort) {
+async function activatePrimary(reelEffort) {
   if (gameBlocked() || action.disabled || !state) return;
   const startedBeforeMiss = jigActivation || fightActivation;
   jigActivation = fightActivation = false;
   if (startedBeforeMiss && ['missed', 'done'].includes(state.stage)) return;
   if (failed || state.stage === 'done') {
-    if (!failed && mode === 'campaign') { leave(); return showLakeMap(false); }
+    if (!failed && mode === 'campaign') {
+      if (!await finishCampaignDay()) { setStatus('Couldn’t end the day. Try again.'); return; }
+      if (tray.hidden || state?.stage !== 'done') return;
+      leave();
+      return showLakeMap(false);
+    }
     return begin(failed ? 'practice' : mode);
   }
   if (usesLinePhysics() && state.stage === 'landed' && catchSaveFailed) return retryCatchCoins();
@@ -2048,22 +2049,56 @@ mapButton.addEventListener('click', () => {
   endAttemptIfNeeded(() => void showLakeMap(true));
 });
 function releaseMap() { mapRelease?.(); mapRelease = undefined; }
-async function showLakeMap(active = !tray.hidden && mode === 'campaign') {
+async function showLakeMap(active, dayId = active ? campaignDayId : undefined, preferredArea) {
+  if (mapOpening) return;
+  mapOpening = true;
   mapRelease ??= acquireSuspension();
-  try { profile = await loadProfile(); }
-  catch { releaseMap(); setStatus('Couldn’t read your permits. Please try again.'); return; }
+  const current = generation;
+  let loaded;
+  try { loaded = dayId ? await loadProfile() : (await applyProfile({ type: 'begin-day' })).profile; }
+  catch {
+    releaseMap();
+    const message = 'Couldn’t read your fishing day. Try opening the map again.';
+    if (current === generation) {
+      if (active) setStatus(message); else showOutingPicker(preferredArea, message);
+    }
+    return;
+  } finally { mapOpening = false; }
+  if (current !== generation) { releaseMap(); return; }
+  profile = loaded;
+  function staleDay() {
+    releaseMap();
+    if (active) leave();
+    showOutingPicker(preferredArea, 'This day ended in another tab. Choose Campaign to open the map.');
+  }
+  const day = profile.day;
+  if (dayId && day?.id !== dayId) return staleDay();
+  if (preferredArea) {
+    selectedHole = mapCells.find(cell => cell.area === preferredArea && day.opened.includes(cell.id))?.id
+      ?? mapCells.find(cell => cell.area === preferredArea)?.id ?? firstShoreHole;
+  }
   openCampaignMap({ selected: selectedHole, hasAccess: area => hasAreaAccess(profile, area),
-    opened: active ? Object.keys(run.holes) : [], budget: active ? state.count - state.index : undefined,
+    day, budget: active ? state.count - state.index : undefined,
     onSelect: id => { selectedHole = id; },
-    onPermit: cell => { permitReturn = () => showLakeMap(active); void showPermit(cell.area); },
-    onBack: () => { releaseMap(); if (!active) showOutingPicker(); else mapButton.focus(); },
-    onOpen: cell => {
+    onPermit: cell => { permitReturn = () => showLakeMap(active, day.id); void showPermit(cell.area); },
+    onBack: () => { releaseMap(); if (!active) showOutingPicker(preferredArea); else mapButton.focus(); },
+    save: async command => {
+      const result = await (command.type === 'end-day' ? endSavedDay(command.dayId) : applyProfile(command));
+      profile = result.profile;
+      return result;
+    },
+    onStale: staleDay,
+    onEnd: () => {
+      releaseMap();
+      if (active) leave();
+      showOutingPicker(preferredArea);
+    },
+    onFish: cell => {
       selectedHole = cell.id;
       releaseMap();
-      if (!active) void startSelected('campaign', cell.area, true);
+      if (!active) void startSelected('campaign', cell, profile);
       else {
         state = moveToHole(run, cell, outingTime.dateNow(), outingElapsed());
-        campaignArea = cell.area;
         clearBite(); stopCountdown(); placeFish(); render(); syncCountdown();
         window.scrollTo({ top: 0, behavior: 'instant' }); mapButton.focus();
       }
