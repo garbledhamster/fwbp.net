@@ -49,6 +49,7 @@ async function checkDesktop(browser) {
     await press(action, 'Enter');
     await reelToHole();
     await press(action, 'Enter');
+    await action.filter({ hasText: /^Next fish$/ }).waitFor();
     assert.match(await status.textContent(), /\+\d+ points/);
     assert.equal(await scrollY(page), 0, 'reeling and landing return the view to the ice hole');
   };

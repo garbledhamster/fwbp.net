@@ -62,6 +62,7 @@ async function checkBite(browser) {
   await keyboard.press('Space');
   await reelToHole();
   await press(action);
+  await action.filter({ hasText: /^Next fish$/ }).waitFor();
   assert.match(await cue(), /yellow perch.*\+10 points/i);
   assert.equal(await action.evaluate(el => el === document.activeElement), true);
   await keyboard.press('Escape');
