@@ -48,7 +48,7 @@
     radial-gradient(ellipse 83% 990px at 15% 40%, #72946a38, transparent 85%),
     linear-gradient(168deg, #355d54, #25463d 34%, #1a3734 70%, #142c2b);
 }
-.dive, .lake > .library { position: relative; }
+.lake [data-dive] { position: relative; }
 .dive { min-height: clamp(245px, 42svh, 450px); }
 .dive-expanse { min-height: clamp(400px, 62svh, 640px); }
 .dive-water { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
@@ -60,6 +60,9 @@
   width: clamp(32px, var(--size), 440px);
 }
 .dive-actor svg { display: block; width: 100%; height: auto; }
+.dive-actor[data-water-edge] { max-width: 128px; }
+.dive-actor[data-water-edge="start"] { top: calc(var(--water-start) / 2); }
+.dive-actor[data-water-edge="end"] { bottom: calc(var(--water-end) / 2); translate: -50% 50%; }
 .dive-facing-right { transform: scaleX(-1); }
 .dive-actor[data-layer="far"] { z-index: 1; opacity: .35; }
 .dive-actor[data-layer="middle"] { z-index: 2; opacity: .77; }
@@ -98,6 +101,13 @@
 .dive-panel .channel-banner { margin-top: 14px; }
 .library .episode-trigger { background: #192d27f5; border-radius: 14px 4px 4px; padding-bottom: 10px; }
 .library .episode-meta, .library .episode-name { padding-inline: 8px; }
+
+/* Center fish in open water on either side of the content, even as it changes height. */
+body:not(.fishing) :is(.lake > :is(.library, .field-notes, .merch, [data-dive="weeds"]), .lakebed-feature) {
+  --water-start: clamp(60px, 7vw, 86px);
+  --water-end: clamp(60px, 8vw, 96px);
+  padding-block: var(--water-start) var(--water-end);
+}
 
 /* Shoreline growth and stones appear only when the dive reaches the footer. */
 .footer.lakebed {

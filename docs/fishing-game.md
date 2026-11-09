@@ -8,6 +8,8 @@ The first outing should teach you how to find, hook and land a fish. Show how th
 
 Start at the ice hole and scroll the lake to find a fish. Jig becomes available when the fish comes into view above the tackle tray. Pick one of three lures and reel when the line is ready. Next fish leaves you at the same depth, so look above and below you. The catch log shows which lure worked for each fish you landed.
 
+In Campaign and Practice, smaller fish fill the background. Look for the larger fish with the small diamond above it. Each outing starts fish on the left, middle and right across six depths.
+
 Each outing has six encounters. Common fish give you 30 seconds, Uncommon fish 25 seconds, and Rare fish 20 seconds. The clock starts when the fish arrives and keeps running while you search or try lures. If time runs out, the fish swims away. It counts as one encounter and earns zero points and XP. You can leave at any time or start another outing when you finish.
 
 ## Architecture

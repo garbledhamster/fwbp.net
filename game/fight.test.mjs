@@ -182,3 +182,28 @@ test('wrong lures move local fish away and spook a muskie sooner than a perch', 
     }
   }
 });
+
+test('local outings present fish across the lake width even when position rolls repeat', () => {
+  const options = [{ practice: true }, { campaign: {} }, { campaign: { area: 'deep-reef' } }];
+  for (const mode of options) {
+    const openingLanes = [];
+    for (const roll of [.05, .5, .95]) {
+      const run = rules.start(1000, () => roll, undefined, mode);
+      const lanes = [];
+      const depths = [];
+      let state = rules.publicRun(run);
+      while (state.fish) {
+        const { x, depth } = state.fish;
+        lanes.push(x < 38 ? 'left' : x < 62 ? 'middle' : 'right');
+        depths.push(depth);
+        const now = state.seekUntil;
+        state = rules.apply(run, { action: 'expire' }, now);
+        if (state.stage === 'missed') state = rules.apply(run, { action: 'next' }, now);
+      }
+      openingLanes.push(lanes[0]);
+      assert.deepEqual(depths.sort(), [0, 1, 2, 3, 4, 5]);
+      assert.deepEqual(lanes.sort(), ['left', 'left', 'middle', 'middle', 'right', 'right']);
+    }
+    assert.deepEqual(openingLanes, ['left', 'middle', 'right']);
+  }
+});

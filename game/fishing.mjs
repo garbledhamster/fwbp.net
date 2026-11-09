@@ -1,9 +1,36 @@
-import { advanceLineFight, apply, campaignAreas, campaignPhase, lures, practiceLevelXp, practiceSkills, publicRun, skills, start, starterArea } from './rules.mjs?v=16';
+import { advanceLineFight, apply, campaignAreas, campaignPhase, lakes, lures, practiceLevelXp, practiceSkills, publicRun, skills, start, starterArea } from './rules.mjs?v=lake-balance';
 import { applyProfile, loadProfile, shopItems } from './profile.mjs?v=16';
 
 const endpoint = document.querySelector('meta[name="fishing-api"]')?.content;
-const scenes = [...document.querySelectorAll('.dive[data-dive]')].slice(0, 6);
 const lake = document.querySelector('.lake');
+const water = [...lake.querySelectorAll(':scope > .dive')];
+const scenes = water.slice(0, 6);
+const backgroundFish = {
+  pike: [['pike', 78, 56]],
+  perch: [['perch', 23, 27], ['rock-bass', 76, 75]],
+  weeds: [['smallmouth', 78, 30], ['perch', 30, 70]],
+  midwater: [['pike', 21, 29], ['walleye', 76, 74]],
+  camera: [['rock-bass', 27, 34], ['smallmouth', 84, 79]],
+  coldwater: [['walleye', 77, 26], ['muskie', 23, 73]],
+  bottomfish: [['muskie', 76, 31], ['rock-bass', 22, 71]],
+};
+
+const fishArt = new Map(lakes['mille-lacs'].fish.map(({ id, art }) => [id, art]));
+const fishSvg = ([file, symbol, box]) =>
+  `<svg viewBox="${box}" aria-hidden="true"><use href="./assets/${file}.svg#${symbol}"/></svg>`;
+
+for (const band of water) {
+  for (const [id, x, y] of backgroundFish[band.dataset.dive] ?? []) {
+    const fish = document.createElement('div');
+    fish.className = 'fishing-background-fish';
+    fish.setAttribute('aria-hidden', 'true');
+    fish.toggleAttribute('data-facing-right', x < 50);
+    fish.style.left = `${x}%`;
+    fish.style.top = `${y}%`;
+    fish.innerHTML = fishSvg(fishArt.get(id));
+    band.append(fish);
+  }
+}
 const iceCeiling = lake.querySelector('.dive-ceiling');
 const icon = id => `<svg class="tackle-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="./assets/tackle-icons.svg#${id}"/></svg>`;
 const reefArea = 'deep-reef';
@@ -762,14 +789,14 @@ function placeFish() {
   removeTarget();
   positionLine();
   if (!state.fish) return;
-  const { art: [file, symbol, box], x, y } = state.fish;
+  const { art, x, y } = state.fish;
   target = document.createElement('div');
   target.className = 'fishing-target';
   target.classList.toggle('gilded', state.fish.gilded);
   target.setAttribute('aria-hidden', 'true');
   target.style.setProperty('--x', `${x}%`);
   target.style.setProperty('--y', `${y}%`);
-  target.innerHTML = `<svg viewBox="${box}" aria-hidden="true"><use href="./assets/${file}.svg#${symbol}"/></svg>`;
+  target.innerHTML = fishSvg(art);
   target.addEventListener('animationend', updateSearch);
   target.addEventListener('transitionend', updateSearch);
   scenes[state.fish.depth ?? state.index].append(target);

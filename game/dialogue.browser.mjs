@@ -34,6 +34,7 @@ async function checkDialogue(browser, mobile) {
     const touch = await page.context().newCDPSession(page);
     await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 100, y: 70 }] });
     await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: 100, y: 145 }] });
+    await page.waitForTimeout(160); // Release a stationary finger before the scripted search scroll.
     await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     await touch.detach();
   } else {

@@ -14,6 +14,7 @@ export const practiceSkills = {
   lift: 'Reel in extra line on the first clear pull',
 };
 const searchDepths = [1, 3, 2, 5, 4, 0];
+const searchLaneCenters = [27, 50, 73];
 export const starterArea = 'starter-shore';
 export const campaignAreas = {
   [starterArea]: { name: 'Starter Shore' },
@@ -159,14 +160,26 @@ export function start(now, random = Math.random, lake = 'mille-lacs', { practice
   const area = Object.hasOwn(campaignAreas, campaign?.area) ? campaign.area : starterArea;
   const depths = campaignAreas[area].depths ?? searchDepths;
   const usesLineFight = campaign || practice;
+  let firstLane = 0;
   const run = {
     lake, skills: { quick: 0, control: 0, lift: 0 }, skillPoints: 0, fight: null,
-    encounters: depths.map(depth => {
+    encounters: depths.map((depth, index) => {
       const speciesRoll = random();
+      const horizontalRoll = random();
+      let x = 17 + Math.round(horizontalRoll * 66);
+      if (usesLineFight) {
+        // Rotate through all three lanes from the first fish's random position.
+        if (index === 0) {
+          firstLane = x < 38 ? 0 : x < 62 ? 1 : 2;
+        } else {
+          const lane = (firstLane + index) % searchLaneCenters.length;
+          x = searchLaneCenters[lane] + Math.round((horizontalRoll - .5) * 20);
+        }
+      }
       return {
         depth,
         ...(usesLineFight ? { speciesRoll } : { species: pool[Math.floor(speciesRoll * pool.length)] }),
-        x: 17 + Math.round(random() * 66),
+        x,
         y: 28 + Math.round(random() * 38),
         sizeRoll: random(), colorRoll: random(),
       };
