@@ -16,6 +16,7 @@ async function checkMilestone(browser, choice) {
     await press(action);
     await reelToHole();
     await press(action);
+    await action.filter({ hasText: /^Next fish$/ }).waitFor();
   };
 
   await press(launch, 'Enter');
@@ -87,6 +88,7 @@ async function checkMilestone(browser, choice) {
   assert.equal(await levelTwo.isVisible(), true, 'hooking a fighter earns no XP yet');
   assert.equal(await reelToHole(), choice === 'Lift' ? 3 : 4, 'Lift saves a clear reel on this walleye');
   await press(action);
+  await action.filter({ hasText: /^Next fish$/ }).waitFor();
   assert.match(await status.textContent(), /Walleye.*\+25 points/);
   assert.equal(await tray.getByText(/Level 2 · 30 XP/).isVisible(), true);
   assert.match(await tray.locator('[data-score]').textContent(), /50 pts/);

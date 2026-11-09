@@ -81,7 +81,7 @@ async function checkLandscape(browser, mode) {
   await press(launch, 'Enter');
   await press(page.getByRole('button', { name: 'Tackle shop', exact: true }));
   const shop = page.getByRole('dialog', { name: 'Tackle shop' });
-  await shop.getByText('Stronger line').waitFor();
+  await shop.getByText('Stronger line', { exact: true }).waitFor();
   await press(shop.getByRole('button', { name: 'Back to outings' }));
   await page.getByRole('dialog', { name: 'Choose an outing' }).waitFor();
   assert.equal(await shop.isHidden(), true);

@@ -57,6 +57,8 @@ async function checkDialogue(browser, mobile) {
   await press(action);
   await reelToHole();
   await press(action);
+  // Landing saves the collection entry before the settled catch is rendered.
+  await action.filter({ hasText: /^Next fish$/ }).waitFor();
   assert.equal(await speech.getByRole('button', { name: 'Next fish' }).count(), 1);
   await expectPortrait('walleye-portrait');
   await capture('caught');

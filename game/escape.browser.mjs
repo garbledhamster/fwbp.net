@@ -3,7 +3,7 @@ import { practicePage, withBrowser } from './browser-qa.mjs';
 import { apply, publicRun, start } from './rules.mjs';
 
 async function checkOuting(browser, mobile) {
-  const { enter, page, tray, action, button, status, press, tick, findFish, errors } =
+  const { leave, enter, page, tray, action, button, status, press, tick, findFish, errors } =
     await practicePage(browser, { mobile });
   const countdown = tray.getByRole('timer');
   const target = page.locator('.fishing-target');
@@ -53,6 +53,7 @@ async function checkOuting(browser, mobile) {
   assert.match(await tray.locator('.fishing-practice-progress').textContent(), /^0 \/ 20 XP/);
 
   await press(action);
+  await countdown.waitFor();
   await expectSeconds(30);
   await advance(29000);
   await leave();
@@ -67,12 +68,15 @@ async function checkOuting(browser, mobile) {
 }
 
 async function checkLateJig(browser) {
-  const { leave, enter, page, action, press, findFish, status, timing, errors } = await practicePage(browser);
+  const { enter, page, action, press, findFish, status, timing, errors } = await practicePage(browser);
   await enter();
   await findFish();
-  // Simulate a late callback by moving wall time without running any timers.
-  const started = await page.evaluate(() => Date.now());
-  await page.clock.setSystemTime(started + 30000);
+  // Simulate a suspended tab resuming late, before its countdown callback runs.
+  // Local rules follow monotonic time; a wall-clock adjustment leaves it unchanged.
+  await page.evaluate(() => {
+    const now = performance.now.bind(performance);
+    Object.defineProperty(performance, 'now', { configurable: true, value: () => now() + 30000 });
+  });
   await press(action, 'Enter');
   assert.match(await status.textContent(), /fish swam away/i);
   assert.equal(await timing.isHidden(), true);
@@ -174,6 +178,7 @@ async function checkExpiredOuting(browser) {
   assert.equal(await tray.getByRole('timer').isHidden(), true);
   assert.equal(await page.locator('.fishing-target').count(), 0);
   await press(action, 'Enter');
+  await tray.getByRole('timer').waitFor();
   assert.match(await tray.getByRole('timer').textContent(), /30s/);
   assert.deepEqual(errors, []);
   await page.close();

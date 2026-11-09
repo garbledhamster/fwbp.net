@@ -46,6 +46,8 @@ export async function practicePage(browser, { mobile = false, viewport, configur
     .or(page.getByRole('link', { name: 'Fishing with Bryan, start fishing' }));
 
   async function press(locator, key = 'Space') {
+    // Keyboard focus/touch dispatch do not auto-wait for enabled controls.
+    await locator.and(page.locator(':not(:disabled)')).waitFor();
     if (mobile) {
       await locator.scrollIntoViewIfNeeded();
       const box = await locator.boundingBox();
@@ -54,6 +56,22 @@ export async function practicePage(browser, { mobile = false, viewport, configur
     } else {
       await locator.focus();
       await page.keyboard.press(key);
+    }
+  }
+
+  async function closeDialog(dialog, control, key = 'Enter') {
+    // Native .close() removes [open] before its close event releases the hold
+    // and restores the parent. Observe that event after the source handlers.
+    const completion = await dialog.evaluateHandle(el => {
+      const state = { closed: false };
+      el.addEventListener('close', () => { state.closed = true; }, { once: true });
+      return state;
+    });
+    try {
+      await press(control, key);
+      await page.waitForFunction(state => state.closed, completion, { polling: 25 });
+    } finally {
+      await completion.dispose();
     }
   }
 
@@ -69,12 +87,14 @@ export async function practicePage(browser, { mobile = false, viewport, configur
         const shop = page.getByRole('dialog', { name: 'Tackle shop' });
         await press(shop.locator('[data-item="starter-license"]').getByRole('button', { name: /^(?:Buy|Claim) Starter Shore permit$/ }), 'Enter');
         await shop.locator('[data-item="starter-license"]').getByText('Owned', { exact: true }).waitFor();
-        await press(shop.locator('[data-shop-back]'), 'Enter');
+        await closeDialog(shop, shop.locator('[data-shop-back]'));
         await picker.waitFor();
         await press(picker.getByRole('button', { name, exact: true }), 'Enter');
       }
       await tray.locator('[data-wallet]').waitFor();
     }
+    // Both local modes read the saved profile before the outing is ready.
+    await tray.locator('[data-exit]:enabled').waitFor();
   }
 
   async function enter(name = 'Practice') {
@@ -85,7 +105,8 @@ export async function practicePage(browser, { mobile = false, viewport, configur
   async function leave() {
     if (await button('Menu').isVisible()) {
       await press(button('Menu'), 'Enter');
-      await press(page.locator('.fishing-pause').getByRole('button', { name: 'Leave outing', exact: true }), 'Enter');
+      const pause = page.locator('.fishing-pause');
+      await closeDialog(pause, pause.getByRole('button', { name: 'Leave outing', exact: true }));
     } else await press(button('Exit fishing'), 'Enter');
   }
 
@@ -116,7 +137,7 @@ export async function practicePage(browser, { mobile = false, viewport, configur
   }
 
   return {
-    page, tray, action, launch, button, press, leave, errors, findFish, chooseMode, enter, reelToHole,
+    page, tray, action, launch, button, press, closeDialog, leave, errors, findFish, chooseMode, enter, reelToHole,
     status: tray.getByRole('status'),
     timing: tray.locator('.fishing-timing'),
     tick: ms => page.clock.runFor(ms),
