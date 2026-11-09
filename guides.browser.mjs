@@ -20,14 +20,15 @@ for (const width of [320, 1200]) {
         return { summary, guide: summary.locator('..') };
       }
 
-      async function checkIllustration(summary, file) {
+      async function checkIllustration(summary, file, side = 'right') {
         const avatar = summary.locator(`img[src*="${file}"]`);
         assert.equal(await avatar.count(), 1, `Missing illustrated presenter ${file}`);
         const picture = await avatar.boundingBox();
         const copy = await summary.locator('span').first().boundingBox();
         const chevron = await summary.locator('.chevron').boundingBox();
         assert.ok(picture && copy && chevron, 'Presenter, heading and chevron are visible');
-        assert.ok(copy.x + copy.width <= picture.x && picture.x + picture.width <= chevron.x,
+        const separate = side === 'left' ? picture.x + picture.width <= copy.x : copy.x + copy.width <= picture.x;
+        assert.ok(separate && Math.max(copy.x + copy.width, picture.x + picture.width) <= chevron.x,
           'The illustration has its own space beside the heading and chevron');
       }
 
@@ -68,7 +69,7 @@ for (const width of [320, 1200]) {
       await t.test('jig guide shows two poses, its three diagrams, and a timestamped example', async () => {
         const { summary, guide } = await openGuide('How a jig moves');
         try {
-          await checkIllustration(summary, 'bryan-full-body-jig.webp');
+          await checkIllustration(summary, 'bryan-full-body-jig.webp', 'left');
           assert.equal(await guide.locator('.guide-body img[src*="bryan-jig-portrait.webp"]').count(), 1);
           assert.deepEqual(await guide.locator('.guide-frames figcaption strong').allTextContents(), ['Lift', 'Pause', 'Lower']);
           const example = guide.getByRole('link', { name: /watch the spoon/i });

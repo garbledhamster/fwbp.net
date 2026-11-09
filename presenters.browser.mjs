@@ -21,21 +21,46 @@ await withBrowser(async browser => {
     const about = page.locator('#about');
     const note = page.locator('.latest-presenter');
     const lakebed = page.locator('#muskrat-presenter');
-    const presenters = [[about, 'headshot'], [note, 'front-facing'], [lakebed, 'leaning-in']];
+    const picks = page.locator('.trip-picker');
+    const kayak = page.locator('#kayak-presenter');
+    const short = page.locator('#short-presenter');
+    const presenters = [
+      [note, 'front-facing', 'left'],
+      [about, 'headshot', 'right'],
+      [picks, 'standing-welcome', 'left'],
+      [kayak, 'kayak', 'right'],
+      [short, 'over-the-shoulder', 'right'],
+      [lakebed, 'leaning-in', 'left'],
+    ];
     const missing = [];
     for (const [card, pose] of presenters) {
       if (await card.locator('.presenter-cutout').count() !== 1) missing.push(pose);
     }
     assert.deepEqual(missing, [], `missing presenter poses at ${width}px: ${missing.join(', ')}`);
-    for (const [card, pose] of presenters) {
+    const artWidths = new Map();
+    for (const [card, pose, side] of presenters) {
       const cutout = card.locator('.presenter-cutout');
       assert.match(await cutout.getAttribute('src'), new RegExp(`bryan-${pose}\\.webp$`));
       await cutout.scrollIntoViewIfNeeded();
       await cutout.evaluate(img => img.decode());
       const art = await cutout.boundingBox();
       const copy = await card.locator('.presenter-copy').boundingBox();
-      assert.ok(art && copy && art.x >= copy.x + copy.width, `art overlaps copy at ${width}px`);
-      assert.ok(art.x + art.width <= width, `art exceeds viewport at ${width}px`);
+      assert.ok(art && copy, `missing ${pose} art or copy at ${width}px`);
+      assert.ok(side === 'left' ? art.x + art.width <= copy.x : art.x >= copy.x + copy.width,
+        `${pose} needs its own lane on the ${side} at ${width}px`);
+      assert.ok(art.x >= 0 && art.x + art.width <= width, `art exceeds viewport at ${width}px`);
+      artWidths.set(pose, art.width);
+      if (width > 1000 && (pose === 'kayak' || pose === 'over-the-shoulder')) {
+        const footage = await card.locator('.presenter-footage').boundingBox();
+        assert.ok(footage && (pose === 'kayak' ? art.x + art.width <= footage.x : footage.x + footage.width <= art.x),
+          `${pose} art should sit ${pose === 'kayak' ? 'between the copy and footage' : 'past the footage'}`);
+      }
+    }
+    assert.ok(artWidths.get('headshot') > artWidths.get('front-facing'), 'About leads the compact latest-video note');
+    if (width > 1000) {
+      const [pickBox, kayakBox, shortBox] = await Promise.all([picks.boundingBox(), kayak.boundingBox(), short.boundingBox()]);
+      assert.ok(pickBox.x > shortBox.x && kayakBox.x > shortBox.x, 'Library callouts sit on different page alignments');
+      assert.ok(artWidths.get('kayak') > artWidths.get('over-the-shoulder') * 1.4, 'The kayak feature gets the larger illustration');
     }
 
     assert.match(await about.innerText(), /Minnesota.*kayak.*ice/s);
