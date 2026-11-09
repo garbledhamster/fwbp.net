@@ -24,11 +24,11 @@ await withBrowser(async browser => {
   });
 
   await press(action);
-  await status.filter({ hasText: /couldn’t save.*coins/i }).waitFor();
-  assert.equal(await action.textContent(), 'Save coins', 'keep a retry on the earned catch');
+  await status.filter({ hasText: /couldn’t save.*catch/i }).waitFor();
+  assert.equal(await action.textContent(), 'Save catch', 'keep a retry on the earned catch');
   assert.equal(await tray.locator('[data-wallet]').textContent(), '0 coins');
   await page.clock.fastForward(20 * 60 * 1000);
-  assert.equal(await action.textContent(), 'Save coins', 'an expired outing keeps an earned payout available');
+  assert.equal(await action.textContent(), 'Save catch', 'an expired outing keeps an earned payout available');
   await press(action);
   await status.filter({ hasText: /yellow perch.*\+10 coins/i }).waitFor();
   assert.equal(await tray.locator('[data-wallet]').textContent(), '10 coins');
@@ -37,6 +37,8 @@ await withBrowser(async browser => {
     return loadProfile();
   });
   assert.deepEqual(Object.values(saved.awards), [10]);
+  assert.deepEqual(saved.caughtSpecies, ['perch']);
+  assert.equal(Object.keys(saved.collectionAwards).length, 0, 'Campaign uses its existing payout ledger');
   assert.deepEqual(errors, []);
   await page.close();
   console.log('PASS: a transient save failure can retry the same catch award');

@@ -1,30 +1,8 @@
 import { fishProfiles } from "./assets/fish-profiles.js";
 
-const species = {
-  pike: ["lake-life", "pike", "0 0 230 72"],
-  perch: ["scenes", "bi-perch", "0 0 172 66"],
-  walleye: ["scenes", "bi-walleye", "0 0 172 66"],
-  smallmouth: ["lake-life", "bass", "0 0 172 80"],
-  "largemouth": ["fish", "largemouth", "0 0 195 80"],
-  "white-bass": ["fish", "white-bass", "0 0 181 80"],
-  "rock-bass": ["fish", "rock-bass", "0 0 160 92"],
-  "bluegill": ["fish", "bluegill", "0 0 150 92"],
-  "pumpkinseed": ["fish", "pumpkinseed", "0 0 151 94"],
-  "black-crappie": ["fish", "black-crappie", "0 0 169 86"],
-  "muskie": ["fish", "muskie", "0 0 245 72"],
-  "rainbow-trout": ["fish", "rainbow-trout", "0 0 222 76"],
-  "brown-trout": ["fish", "brown-trout", "0 0 222 76"],
-  "brook-trout": ["fish", "brook-trout", "0 0 222 76"],
-  "lake-trout": ["fish", "lake-trout", "0 0 222 76"],
-  "chinook": ["fish", "chinook", "0 0 248 83"],
-  "sturgeon": ["fish", "sturgeon", "0 0 264 82"],
-  "quillback": ["fish", "quillback", "0 0 199 90"],
-  "bowfin": ["fish", "bowfin", "0 0 225 81"],
-  "carp": ["fish", "carp", "0 0 209 91"],
-  "catfish": ["fish", "catfish", "0 0 223 85"],
-  "bullhead": ["fish", "bullhead", "0 0 184 84"],
-  "redhorse": ["fish", "redhorse", "0 0 215 79"],
-};
+import { speciesArt as species } from "./game/species-catalog.mjs";
+import { loadProfile } from "./game/profile.mjs?v=16";
+import { fillSpeciesCard } from "./game/collection.mjs";
 
 const debris = {
   sprig: ["lake-life", "sprig", "0 0 138 62"],
@@ -163,26 +141,60 @@ const overlayLink = document.querySelector(".footer-lure");
 const habitatLayers = document.querySelectorAll(".dive-water, .lakebed-art");
 const targets = document.querySelectorAll(".fish-target");
 const fishCard = document.querySelector("#fish-card");
-const cardArt = fishCard.querySelector(".fish-card-art");
-const cardTitle = fishCard.querySelector("h2");
-const cardFields = Object.fromEntries(
-  Array.from(fishCard.querySelectorAll("[data-card]"), field => [field.dataset.card, field])
-);
-const profileOrder = Object.keys(fishProfiles);
 let cardOpener;
+let guideGeneration = 0;
+let collection;
 
-function setFishGuide(active) {
+async function setFishGuide(active) {
+  const current = ++guideGeneration;
   document.body.toggleAttribute("data-fish-mode", active);
   guideToggle.setAttribute("aria-pressed", String(active));
-  guideLabel.textContent = active ? "Exit fish guide" : "Fish guide";
+  guideLabel.textContent = active ? "Exit Your Lake" : "Your Lake";
   guideHint.hidden = !active;
   navigation.hidden = active;
   overlayLink.inert = active;
   for (const layer of habitatLayers) layer.setAttribute("aria-hidden", String(!active));
-  for (const target of targets) target.disabled = !active;
+  for (const target of targets) {
+    target.disabled = true;
+    target.hidden = active;
+  }
+  if (!active) return;
+  guideHint.innerHTML = '<img src="./assets/branding/bryan-front-facing.webp" alt="Bryan" width="44" height="44"><span>Opening your saved lake…</span>';
+  try {
+    collection = await loadProfile();
+    if (current !== guideGeneration) return;
+    guideHint.querySelector('span').textContent = `${collection.caughtSpecies.length} / 6 species. Land fish in Campaign or Practice, then tap a caught fish to learn its lure tip.`;
+    const first = [...targets].find(target => collection.caughtSpecies.includes(target.dataset.fish));
+    if (first) {
+      const link = document.createElement('a');
+      link.href = '#';
+      link.textContent = 'First caught fish';
+      link.addEventListener('click', event => {
+        event.preventDefault();
+        first.scrollIntoView({ block: 'center' });
+        first.focus({ preventScroll: true });
+      });
+      guideHint.append(link);
+    }
+    for (const target of targets) {
+      const caught = collection.caughtSpecies.includes(target.dataset.fish);
+      target.hidden = !caught;
+      target.disabled = !caught;
+    }
+  } catch {
+    if (current !== guideGeneration) return;
+    guideHint.querySelector('span').textContent = 'Couldn’t open your saved lake.';
+    const retry = document.createElement('button');
+    retry.type = 'button';
+    retry.textContent = 'Try again';
+    retry.addEventListener('click', () => setFishGuide(true));
+    guideHint.append(retry);
+  }
 }
 
 guideToggle.disabled = false;
+guideToggle.setAttribute("aria-label", "Fishing with Bryan, Your Lake");
+guideLabel.textContent = "Your Lake";
 guideToggle.addEventListener("click", () => {
   setFishGuide(!document.body.hasAttribute("data-fish-mode"));
 });
@@ -192,19 +204,16 @@ document.addEventListener("click", event => {
   if (!trigger || trigger.disabled || fishCard.open) return;
 
   const key = trigger.dataset.fish;
-  const profile = fishProfiles[key];
-  const [sheet, symbol, viewBox] = species[key];
   cardOpener = trigger;
-  cardTitle.textContent = profile.name;
-  cardFields.number.textContent = String(profileOrder.indexOf(key) + 1).padStart(2, "0") + " / " + profileOrder.length;
-  cardFields.family.textContent = profile.family;
-  cardFields.feature.textContent = profile.feature;
-  cardFields.habitat.textContent = profile.habitat;
-  cardFields.note.hidden = !profile.note;
-  cardFields.note.textContent = profile.note ?? "";
-  cardFields.source.href = profile.source;
-  cardArt.setAttribute("viewBox", viewBox);
-  cardArt.querySelector("use").setAttribute("href", "./assets/" + sheet + ".svg#" + symbol);
+  const frame = fishCard.querySelector('.fish-card-frame');
+  frame.innerHTML = '<div class="collection-top"><form method="dialog"><button class="close" aria-label="Close fish card" autofocus>Close</button></form></div><div data-species-card></div>';
+  fillSpeciesCard(frame.querySelector('[data-species-card]'), key, {
+    profile: collection,
+    onChange: profile => { collection = profile; },
+    onVideo: (id, container) => document.dispatchEvent(new CustomEvent('fishing:species-video', { detail: { speciesId: id, container } })),
+  });
+  const title = frame.querySelector('h2');
+  title.id = 'fish-card-name';
   document.body.setAttribute("data-fish-paused", "");
   fishCard.showModal();
 });

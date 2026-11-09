@@ -66,11 +66,22 @@ await withBrowser(async browser => {
       if (missing.length) {
         gaps.push(`${name}: no unobstructed illustration for ${missing.join(', ')}`);
       } else {
+        // Collection filtering must not replace the ordinary site's 23-species coverage above.
+        await page.evaluate(async () => {
+          const { applyProfile } = await import('./game/profile.mjs?v=16');
+          for (const [index, speciesId] of ['perch', 'rock-bass', 'walleye', 'pike', 'smallmouth', 'muskie'].entries()) {
+            await applyProfile({ type: 'award', key: `guide:${index}`, mode: 'practice', speciesId,
+              outcome: 'landed', catch: { points: 10 } });
+          }
+        });
         const guide = page.locator('#fish-guide-toggle');
         await guide.click();
         const card = page.locator('#fish-card');
         const allFish = page.locator('.dive-actor[data-fish]');
-        for (const [key, profile] of Object.entries(fishProfiles)) {
+        await page.waitForFunction(() => document.querySelectorAll('.fish-target:enabled').length > 0);
+        assert.equal(await page.locator('.fish-target:visible').evaluateAll(nodes => new Set(nodes.map(node => node.dataset.fish)).size), 6);
+        for (const key of ['perch', 'rock-bass', 'walleye', 'pike', 'smallmouth', 'muskie']) {
+          const profile = fishProfiles[key];
           const actor = allFish.nth(representatives.get(key).index);
           await (touch ? actor.tap() : actor.click());
           await card.getByRole('heading', { name: profile.name, exact: true }).waitFor();

@@ -1,5 +1,6 @@
 import { advanceLineFight, apply, campaignAreas, campaignPhase, lakes, lures, practiceLevelXp, practiceSkills, publicRun, skills, start, starterArea } from './rules.mjs?v=lake-balance';
 import { applyProfile, loadProfile, shopItems } from './profile.mjs?v=16';
+import { lureTip } from './species-catalog.mjs';
 
 const endpoint = document.querySelector('meta[name="fishing-api"]')?.content;
 const lake = document.querySelector('.lake');
@@ -239,6 +240,15 @@ let retractTimer, retractFrame, retractAt;
 let lastTouchY;
 let profile, outingId, catchReward, catchSaveFailed;
 let biteDepth;
+let encounterTip;
+const studiedCue = document.createElement('p');
+studiedCue.className = 'fishing-studied-cue';
+studiedCue.hidden = true;
+status.after(studiedCue);
+// Learning affects the next encounter, never the fish already on screen.
+document.addEventListener('fishing:profile-changed', event => {
+  if (usesLinePhysics()) profile = event.detail.profile;
+});
 let campaignArea = starterArea;
 let permitArea = starterArea;
 let permitGeneration = 0;
@@ -799,6 +809,7 @@ function fishInView() {
 
 function updateSearch() {
   if (tray.hidden) return;
+  renderStudiedCue();
   const searching = !failed && state?.stage === 'seek';
   const inView = searching && fishInView();
   if (searching && !inView) action.setAttribute('aria-disabled', 'true');
@@ -884,13 +895,26 @@ function placeFish() {
   target.setAttribute('aria-hidden', 'true');
   target.style.setProperty('--x', `${x}%`);
   target.style.setProperty('--y', `${y}%`);
+  encounterTip = usesLinePhysics() && profile?.studiedSpecies?.includes(state.fish.id) ? lureTip(state.fish.id) : undefined;
   target.innerHTML = fishSvg(art);
   target.addEventListener('animationend', updateSearch);
   target.addEventListener('transitionend', updateSearch);
   scenes[state.fish.depth ?? state.index].append(target);
 }
 
+function renderStudiedCue() {
+  const visible = usesLinePhysics() && encounterTip && state?.fish
+    && ['seek', 'bite', 'fight'].includes(state.stage) && fishInView();
+  studiedCue.hidden = !visible;
+  if (visible && studiedCue.dataset.species !== state.fish.id) {
+    studiedCue.dataset.species = state.fish.id;
+    studiedCue.innerHTML = icon(encounterTip.lure);
+    studiedCue.append(document.createTextNode(encounterTip.text));
+  }
+}
+
 function render() {
+  renderStudiedCue();
   const campaign = mode === 'campaign';
   const linePhysics = usesLinePhysics();
   const modeName = { campaign: 'Campaign', practice: 'Practice', ranked: 'Ranked' }[mode];
@@ -925,7 +949,7 @@ function render() {
     }
     if (linePhysics) {
       detail = cue;
-      cue = catchSaveFailed ? 'Couldn’t save the coins. Let’s try again.' : 'Nice! You got one.';
+      cue = catchSaveFailed ? 'Couldn’t save this catch. Let’s try again.' : busy ? 'Saving your catch…' : 'Nice! You got one.';
     } else {
       cue = `All right! ${cue}`;
     }
@@ -943,7 +967,7 @@ function render() {
   }
   const [actionIcon, label] = failed ? ['next', 'Practice'] : ({
     seek: ['jig', state?.reaction === 'slipped-hook' ? 'Try again' : 'Jig'], bite: ['reel', 'Reel'], fight: pullUp ? ['lift', 'Pull up'] : ['reel', 'Reel'],
-    landed: campaign && catchSaveFailed ? ['next', 'Save coins'] : ['next', 'Next fish'],
+    landed: linePhysics && catchSaveFailed ? ['next', 'Save catch'] : ['next', 'Next fish'],
     missed: ['next', 'Next fish'], done: ['next', 'Fish again'],
   }[state?.stage] ?? ['next', 'Wait']);
   setAction(actionIcon, label);
@@ -1011,7 +1035,7 @@ async function begin(selectedMode = mode, selectedArea = campaignArea) {
   jigAt = -Infinity;
   jigActivation = fightActivation = false;
   practiceError = undefined;
-  profile = outingId = catchReward = undefined;
+  profile = outingId = catchReward = encounterTip = undefined;
   campaignMilestoneNotice = false;
   catchSaveFailed = false;
   lure = 'jig';
@@ -1057,13 +1081,20 @@ async function begin(selectedMode = mode, selectedArea = campaignArea) {
   }
   if (!state) {
     if (mode === 'ranked') mode = 'practice';
-    const equippedLine = shopItems.find(item => item.id === profile?.equipped.line);
+    if (mode === 'practice') {
+      // A failed collection read does not prevent a temporary Practice outing.
+      try { profile = await loadProfile(); } catch { profile = undefined; }
+      if (current !== generation) return;
+    }
+    outingId ??= crypto.randomUUID();
+    const equipment = mode === 'campaign' ? profile : undefined;
+    const equippedLine = shopItems.find(item => item.id === equipment?.equipped.line);
     const lineStrength = equippedLine?.strength;
     const line = equippedLine?.windowMs ? { lure: equippedLine.lure, windowMs: equippedLine.windowMs } : undefined;
-    const equippedHook = shopItems.find(item => item.id === profile?.equipped.hook);
+    const equippedHook = shopItems.find(item => item.id === equipment?.equipped.hook);
     const hook = equippedHook?.windowMs ? { lure: equippedHook.lure, windowMs: equippedHook.windowMs } : undefined;
-    const lineControlRank = shopItems.find(item => item.id === 'line-control' && profile?.owned.includes(item.id))?.rank;
-    const elapsedMs = profile?.elapsedMs ?? 0;
+    const lineControlRank = shopItems.find(item => item.id === 'line-control' && equipment?.owned.includes(item.id))?.rank;
+    const elapsedMs = mode === 'campaign' ? profile?.elapsedMs ?? 0 : 0;
     run = start(Date.now(), undefined, undefined, {
       practice: mode === 'practice',
       campaign: mode === 'campaign' ? { area: campaignArea, lineStrength, line, hook, lineControlRank, elapsedMs } : undefined,
@@ -1197,14 +1228,17 @@ slots.forEach(slot => slot.addEventListener('click', () => {
 
 async function saveCatchCoins(current) {
   const key = `${outingId}:${state.index}`;
+  const speciesId = state.fish?.id;
   catchReward = undefined;
   try {
-    const result = await applyProfile({ type: 'award', key, outcome: state.stage, catch: state.catch });
+    const result = await applyProfile({ type: 'award', key, outcome: state.stage, catch: state.catch, speciesId, mode });
+    if (!['awarded', 'duplicate-award'].includes(result.status)) throw new Error('Catch save rejected.');
     if (current !== generation) return;
     profile = result.profile;
     if (result.milestoneReached) campaignMilestoneNotice = true;
-    catchReward = result.earned ?? profile.awards[key];
+    catchReward = mode === 'campaign' ? result.earned ?? profile.awards[key] : undefined;
     catchSaveFailed = false;
+    document.dispatchEvent(new CustomEvent('fishing:catch-saved', { detail: { mode, key, speciesId, profile, milestoneReached: result.milestoneReached === true } }));
   } catch {
     if (current === generation) catchSaveFailed = true;
   }
@@ -1250,7 +1284,7 @@ async function perform(move, input = {}) {
     ({ state, serverNow } = result);
     practiceError = undefined;
     if (move === 'jig' && state.reaction === 'wrong-lure') moveFishAway();
-    if (mode === 'campaign' && state.stage === 'landed' && prior.stage !== 'landed') {
+    if (usesLinePhysics() && state.stage === 'landed' && prior.stage !== 'landed') {
       await saveCatchCoins(current);
       if (current !== generation) return;
     }
@@ -1320,7 +1354,7 @@ action.addEventListener('click', () => {
   jigActivation = fightActivation = false;
   if (startedBeforeMiss && ['missed', 'done'].includes(state.stage)) return;
   if (failed || state.stage === 'done') return begin(failed ? 'practice' : mode);
-  if (mode === 'campaign' && state.stage === 'landed' && catchSaveFailed) return retryCatchCoins();
+  if (usesLinePhysics() && state.stage === 'landed' && catchSaveFailed) return retryCatchCoins();
   if (state.stage === 'seek' && !fishInView()) return updateSearch();
   const fightMove = usesLinePhysics() && !state.fight?.pullUp ? 'reel' : 'lift';
   const move = { seek: 'jig', bite: 'reel', fight: fightMove, landed: 'next', missed: 'next' }[state.stage];
