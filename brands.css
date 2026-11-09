@@ -278,3 +278,80 @@ body[data-fish-mode] .fish-target:enabled:focus-visible { border-radius: 6px; }
   .fish-card-head { padding-block: 9px; }
   .fish-card-details { padding-top: 6px; }
 }
+
+.channel-showcase {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  grid-template-areas: "identity ." "copy .";
+  align-items: center;
+  gap: 16px clamp(20px, 4vw, 54px);
+  margin-top: clamp(54px, 7vw, 88px);
+  padding: 24px clamp(24px, 4vw, 54px);
+  color: var(--ink);
+  background: #f1e8d0;
+  border: 1px solid #c3ac74;
+  border-radius: 22px 6px 22px 6px;
+}
+.channel-identity { grid-area: identity; align-self: end; }
+.channel-identity p {
+  margin-bottom: 8px;
+  color: #526155;
+  font-size: .76rem;
+  font-weight: 760;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+.channel-logo { display: block; width: 86px; height: auto; border-radius: 8px; }
+.channel-copy { grid-area: copy; align-self: start; }
+.channel-copy h2 { font-size: clamp(26px, 4vw, 42px); line-height: 1.05; }
+.channel-copy p { max-width: 44ch; margin-top: 10px; }
+.channel-link { margin-top: 14px; background: var(--tent); color: var(--foam); }
+.channel-link:hover { background: var(--lake); }
+.channel-showcase :focus-visible { outline-color: #745022; }
+.channel-avatar {
+  position: absolute;
+  inset: -20px clamp(20px, 3.5vw, 50px) auto auto;
+  display: block;
+  width: auto;
+  max-width: 40%;
+  height: calc(100% + 40px);
+  object-fit: contain;
+  object-position: center top;
+}
+.guide-camera { border-block-start: 0; }
+.guide-camera summary {
+  grid-template-columns: minmax(0, 1fr) clamp(74px, 18vw, 120px) 22px;
+  padding: 14px clamp(12px, 3vw, 24px);
+  margin-top: 30px;
+  border: 1px solid #c3ac74;
+  border-radius: 12px 4px 12px 4px;
+  background: #f5edda;
+}
+.guide-camera summary:hover { background: #faf2df; }
+.guide-camera .guide-avatar { display: block; width: 100%; height: auto; margin-block: -23px -19px; }
+.guide-camera .guide-body { margin-top: 12px; }
+
+@media (max-width: 740px) {
+  .channel-showcase {
+    grid-template-columns: minmax(0, 1fr) minmax(0, .95fr);
+    grid-template-areas: "identity avatar" "copy copy";
+    gap: 10px 8px;
+    padding: 18px;
+  }
+  .channel-identity { align-self: center; }
+  .channel-avatar {
+    position: static;
+    grid-area: avatar;
+    width: min(100%, 152px);
+    max-width: none;
+    height: auto;
+    margin-block: -39px 0;
+    justify-self: center;
+  }
+  .channel-copy h2 { max-width: 24ch; }
+}
+
+@media (max-width: 360px) {
+  .brand { font-size: .82rem; letter-spacing: .01em; }
+}

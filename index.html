@@ -8,9 +8,10 @@
   <meta name="description" content="Fish Minnesota with Bryan Prokuski, from underwater ice fishing on Mille Lacs to summer kayak trips on the Mississippi.">
   <meta property="og:title" content="Fishing with Bryan Prokuski">
   <meta property="og:description" content="Go through the ice with Bryan Prokuski. Watch underwater fishing videos and browse illustrated field notes.">
-  <link rel="icon" href="./assets/fwbp-logo.jpg" type="image/jpeg">
+  <link rel="icon" href="./assets/branding/underwater-stamp-favicon.ico" sizes="16x16 32x32 48x48">
+  <link rel="icon" href="./assets/branding/underwater-stamp-favicon.svg" type="image/svg+xml" sizes="any">
   <link rel="stylesheet" href="./styles.css?v=guide">
-  <link rel="stylesheet" href="./brands.css?v=guide">
+  <link rel="stylesheet" href="./brands.css?v=channel-brand">
   <script type="module" src="./brands.js?v=guide"></script>
   <script type="module" src="./site.js?v=guide"></script>
   <link rel="stylesheet" href="./game/fishing.css?v=12">
@@ -22,7 +23,7 @@
   <header class="mast">
     <div class="mast-inner">
       <button id="fish-guide-toggle" class="brand" type="button" aria-label="Fishing with Bryan, fish guide" aria-pressed="false" disabled>
-        <img id="brand-mark" src="./assets/fwbp-logo.jpg" width="34" height="34" alt="">
+        <img id="brand-mark" src="./assets/branding/underwater-stamp.svg" width="34" height="34" alt="">
         <span>Fishing with Bryan<small class="brand-mode">Fish guide</small></span>
       </button>
       <nav aria-label="Main">
@@ -53,6 +54,18 @@
           <span class="play-mark" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="m6 3 11 7-11 7z"/></svg></span>
         </a>
       </div>
+      <section id="channel-showcase" class="channel-showcase wrap" aria-labelledby="channel-heading" data-fish-overlay>
+        <div class="channel-identity">
+          <p>On YouTube</p>
+          <img class="channel-logo" src="./assets/fwbp-logo.jpg" width="900" height="900" alt="FWBP Minnesota channel logo">
+        </div>
+        <div class="channel-copy">
+          <h2 id="channel-heading">Fishing with Bryan Prokuski</h2>
+          <p>Come along for summer kayak trips, days on the ice, and a look at what happens below the surface. Sometimes Bryan’s kids join him, too.</p>
+          <a class="button channel-link" href="https://www.youtube.com/@BryanProkuski">Watch on YouTube <span aria-hidden="true">↗</span></a>
+        </div>
+        <img class="channel-avatar" src="./assets/branding/bryan-walleye.webp" width="640" height="938" loading="lazy" decoding="async" alt="Illustration of Bryan kneeling with a walleye">
+      </section>
       <div class="descent-link wrap" data-fish-overlay><a href="#ice"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v13m-5-5 5 5 5-5"/></svg>Through the hole</a></div>
     </section>
     <section id="ice" class="ice" aria-label="Crossing the ice">
@@ -115,10 +128,10 @@
             <div><h2 id="notes-heading">Field notes</h2><p>Short picture guides from the ice.</p></div>
           </div>
           <div class="guide-list">
-            <details class="guide">
+            <details class="guide guide-camera">
               <summary>
-                <img class="artwork guide-cover" src="https://i.ytimg.com/vi/1mtyGF6wlDI/mqdefault.jpg" width="320" height="180" alt="" loading="lazy" decoding="async">
                 <span><strong>Underwater camera setup</strong><small>Bryan’s early-ice video</small></span>
+                <img class="guide-avatar" src="./assets/branding/bryan-camera.webp" width="360" height="592" alt="" loading="lazy" decoding="async">
                 <svg class="chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m5 7 5 5 5-5"/></svg>
               </summary>
               <div class="guide-body">
