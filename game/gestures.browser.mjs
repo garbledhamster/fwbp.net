@@ -8,7 +8,7 @@ const layouts = [
 ];
 
 async function checkGestures(browser, layout) {
-  const { page, tray, action, button, status, enter, findFish, tick, press, closeDialog, launch, errors } =
+  const { page, tray, action, button, status, enter, findFish, tick, press, closeDialog, closeSavedCatch, launch, errors } =
     await practicePage(browser, layout);
   const touch = layout.mobile && await page.context().newCDPSession(page);
   // A standard muskie on starter line supplies a real surge and multiple pulls.
@@ -45,7 +45,7 @@ async function checkGestures(browser, layout) {
   const fingers = (type, points) => touch.send('Input.dispatchTouchEvent', {
     type, touchPoints: points.map(({ x, y }, id) => ({ x, y, id })),
   });
-  async function gesture({ x, y }, dx, dy, { pinch = false, cancel = false } = {}) {
+  async function gesture({ x, y }, dx, dy, { pinch = false, cancel = false, hold = false } = {}) {
     if (!touch) {
       await page.mouse.move(x, y);
       await page.mouse.wheel(dx, dy);
@@ -59,12 +59,14 @@ async function checkGestures(browser, layout) {
     ];
     await fingers('touchStart', points(0));
     for (const offset of [.25, .5, .75, 1]) await fingers('touchMove', points(offset));
+    if (hold) await page.waitForTimeout(160);
     await fingers(cancel ? 'touchCancel' : 'touchEnd', []);
   }
 
   await enter('Campaign');
   const originalScroll = await scrollY();
-  await gesture(await waterPoint(), 0, touch ? -65 : 115);
+  // End the browse swipe with the finger held still so a native fling cannot swallow the next tap.
+  await gesture(await waterPoint(), 0, touch ? -65 : 115, { hold: true });
   await settleInput();
   assert.ok(await scrollY() > originalScroll + 5, 'native depth browsing works outside the line marker');
   assert.equal(await action.textContent(), 'Jig');
@@ -86,12 +88,12 @@ async function checkGestures(browser, layout) {
   await press(button('Spoon'));
   await findFish();
   await marker.waitFor();
-  const selected = await button('Spoon').getAttribute('aria-pressed');
+  assert.equal(await button('Spoon').getAttribute('aria-pressed'), 'true', 'the bait tap selects Spoon');
   const preJigScroll = await scrollY();
   await gesture(await markerPoint(), 0, -70);
   assert.equal(await wait.isVisible(), true, 'an upward line gesture jigs the selected lure');
   assert.equal(await scrollY(), preJigScroll, 'jig does not browse depths');
-  assert.equal(await button('Spoon').getAttribute('aria-pressed'), selected, 'a gesture does not change tackle on release');
+  assert.equal(await button('Spoon').getAttribute('aria-pressed'), 'true', 'a gesture does not change tackle on release');
 
   // The next wheel event belongs to the jig burst. A short swipe stays below the threshold.
   await gesture(await markerPoint(), 0, touch ? -10 : -70);
@@ -156,9 +158,13 @@ async function checkGestures(browser, layout) {
   await settleInput();
   await gesture(await waterPoint(), 0, -65);
   await tray.getByText(/Muskie.*75 points/i).waitFor();
+  const reward = page.locator('.fishing-catch-popup');
+  await reward.getByRole('heading', { name: 'Muskie', exact: true }).waitFor();
   await settleInput();
   await gesture(await waterPoint(), 0, -65);
-  assert.equal(await action.textContent(), 'Next fish', 'gestures cannot dismiss the catch result');
+  assert.equal(await reward.isVisible(), true, 'gestures cannot dismiss the reward');
+  assert.equal(await action.textContent(), 'Next fish', 'gestures cannot advance the outing');
+  await closeSavedCatch();
 
   await press(button('Menu'), 'Enter');
   await closeDialog(pause, pause.getByRole('button', { name: 'Leave outing' }));

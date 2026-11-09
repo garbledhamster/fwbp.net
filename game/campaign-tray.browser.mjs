@@ -155,6 +155,8 @@ async function checkOuting(browser, mobile) {
         const save = resultButton('Save catch');
         await save.waitFor();
         assert.deepEqual(await saves(), [], 'a failed write has no saved catch');
+        assert.equal(await reward.isVisible(), false, 'the reward opens only after a successful save');
+        await capture('retry');
         await press(save, 'Enter');
       }
       await nextFish.waitFor();
@@ -164,18 +166,21 @@ async function checkOuting(browser, mobile) {
       assert.equal(new Set(savedKeys).size, attempt, 'each landed fish has its own catch key');
       if (attempt === 1) {
         await capture('saved');
+        const species = await reward.getByRole('heading').innerText();
         await press(viewCatch, 'Enter');
         const lake = page.getByRole('dialog', { name: 'Your Lake', exact: true });
-        await lake.waitFor();
+        await lake.getByRole('heading', { name: species, exact: true }).waitFor();
+        await capture('your-lake');
         await closeDialog(lake, lake.getByRole('button', { name: 'Back to catch', exact: true }));
         await nextFish.waitFor();
         assert.equal(await viewCatch.evaluate(el => el === document.activeElement), true,
           'Your Lake returns to the same catch');
       }
-      await press(nextFish, 'Enter');
+      await closeDialog(reward, nextFish);
       await advanceInput();
     }
-    await press(tray.getByRole('button', { name: 'Fish again', exact: true }), 'Enter');
+    await tray.getByRole('status').filter({ hasText: 'Outing complete.' }).waitFor();
+    await press(resultButton('Fish again'), 'Enter');
     assert.equal(await tray.isVisible(), false, 'the sixth result returns to the map');
     const map = page.locator('.fishing-map');
     await map.waitFor();

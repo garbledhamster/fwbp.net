@@ -20,7 +20,7 @@ async function fightView(page) {
 }
 
 async function checkLandscape(browser, mode) {
-  const { leave, page, tray, action, button, status, launch, press, enter, tick, findFish, errors } =
+  const { leave, page, tray, action, button, status, launch, press, enter, tick, findFish, selectTackle, errors } =
     await practicePage(browser, { mobile: true });
   await page.evaluate(() => {
     const rolls = [.98, .2, .5, .4, .1];
@@ -104,7 +104,8 @@ async function checkLandscape(browser, mode) {
   await press(launch, 'Enter');
   await press(page.getByRole('button', { name: 'Tackle shop', exact: true }));
   const shop = page.getByRole('dialog', { name: 'Tackle shop' });
-  await shop.getByText('Stronger line', { exact: true }).waitFor();
+  const strongerLine = await selectTackle('stronger-line');
+  await strongerLine.getByText('12 lb breaking strength.', { exact: true }).waitFor();
   await press(shop.getByRole('button', { name: 'Back to outings' }));
   await page.getByRole('dialog', { name: 'Choose an outing' }).waitFor();
   assert.equal(await shop.isHidden(), true);

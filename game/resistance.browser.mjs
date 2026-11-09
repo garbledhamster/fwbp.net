@@ -131,7 +131,9 @@ async function randomFights(browser, mobile) {
           await wait(300);
           await input(-1);
           await tray.getByText(/(?:Northern pike|Muskie).*points/i).waitFor();
+          await page.locator('.fishing-catch-popup').getByRole('heading', { name: /^(Northern pike|Muskie)$/i }).waitFor();
           await capture('landed');
+          await qa.closeSavedCatch();
         }
       }
       await qa.leave();
