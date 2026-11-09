@@ -37,10 +37,10 @@ export function campaignPhase(elapsedMs = 0) {
   return 'night';
 }
 
-function encounterPool(lake, phase, area) {
+function encounterPool(lake, phase, area, hole) {
   return lakes[lake].fish.flatMap((fish, index) => {
     const phaseWeight = phaseWeights[phase]?.[fish.id] ?? fish.weight;
-    const areaBonus = campaignAreas[area]?.weightBonus?.[fish.id] ?? 0;
+    const areaBonus = hole?.weightBonus?.[fish.id] ?? campaignAreas[area]?.weightBonus?.[fish.id] ?? 0;
     return Array(phaseWeight + areaBonus).fill(index);
   });
 }
@@ -194,6 +194,13 @@ export function start(now, random = Math.random, lake = 'mille-lacs', { practice
       campaign: { ...campaign, area, line: campaign.line && { ...campaign.line }, hook: campaign.hook && { ...campaign.hook }, lineStrength: campaign.lineStrength ?? starterLineStrength },
     }),
   };
+  if (campaign?.hole) {
+    run.holes = {};
+    run.holeSeed = structuredClone(run.encounters);
+    run.committed = false;
+    moveToHole(run, campaign.hole, now, campaign.elapsedMs);
+    return run;
+  }
   chooseOutingSpecies(run, campaign?.elapsedMs);
   run.seekUntil = seekDeadline(run, now);
   return run;
@@ -212,6 +219,7 @@ export function publicRun(run) {
     submitted: run.submitted,
     ...(run.practice && { practice: { xp, level: xp >= practiceLevelXp ? 2 : 1 } }),
     ...(run.campaign && { area: campaignAreas[run.campaign.area].name }),
+    ...(run.holes && { hole: run.campaign.hole, committed: run.committed, candidates: run.holes[run.campaign.holeId].candidates.map((fish, slot) => ({ slot, selected: slot === run.holes[run.campaign.holeId].selected, ...lakes[run.lake].fish[fish.species], depth: fish.depth, x: fish.x, y: fish.y })) }),
     ...((run.campaign || run.practice) && {
       lineStrength: run.campaign?.lineStrength ?? starterLineStrength,
       snap: run.snap, fight: run.fight && { ...run.fight },
@@ -239,6 +247,7 @@ export function apply(run, input, now, { campaignElapsedMs = run.campaign?.elaps
   const encounter = run.encounters[run.index];
   const target = lakes[run.lake].fish[encounter?.species];
   if (jig) {
+    if (run.holes && !run.committed) { run.committed = true; run.seekUntil = seekDeadline(run, now); }
     if (input.lure === target.lure) {
       if (run.campaign || run.practice) run.reaction = null;
       run.stage = 'bite';
@@ -327,8 +336,12 @@ export function apply(run, input, now, { campaignElapsedMs = run.campaign?.elaps
       run.last = now - moveIntervalMs;
     }
     run.stage = run.index === run.encounters.length ? 'done' : 'seek';
-    if (run.stage === 'seek') chooseOutingSpecies(run, campaignElapsedMs);
-    run.seekUntil = run.stage === 'seek' ? seekDeadline(run, now) : null;
+    if (run.holes) {
+      consumeHoleFish(run);
+      run.committed = false;
+      if (run.stage === 'seek') prepareHoleFish(run, campaignElapsedMs);
+    } else if (run.stage === 'seek') chooseOutingSpecies(run, campaignElapsedMs);
+    run.seekUntil = run.stage === 'seek' && !run.holes ? seekDeadline(run, now) : null;
     run.cue = run.stage === 'done' ? 'Outing complete.' : 'Fish in view. Pick a lure and jig.';
   } else {
     throw Error('That action is unavailable.');
@@ -364,4 +377,67 @@ function land(run, target) {
   }
   run.stage = 'landed';
   run.cue = `${target.name} · ${length} in · ${rarity}${grade === 'Standard' ? '' : ' · ' + grade}${gilded ? ' · Gilded' : ''} · +${points} points`;
+}
+
+// Campaign map state lives on the same six-attempt run. Opening a hole never
+// replaces its clock, score, award index, equipment or previously sampled fish.
+function prepareHoleFish(run, elapsedMs = 0) {
+  const hole = run.campaign.hole;
+  const saved = run.holes[hole.id];
+  if (!saved.candidates.length) {
+    const pool = encounterPool(run.lake, campaignPhase(elapsedMs), hole.area, hole);
+    const salt = (hole.area === starterArea ? saved.generation * 17 : hole.id.charCodeAt(0) * 7 + Number(hole.id[1]) * 11 + saved.generation * 17) / 101;
+    saved.candidates = Array.from({ length: 3 }, (_, slot) => {
+      const seed = run.holeSeed[(slot + saved.generation) % run.holeSeed.length];
+      const roll = (seed.speciesRoll + salt + slot / 3) % 1;
+      const maxBand = Math.min(5, Math.max(1, Math.round(hole.depthFt / 7) - 1));
+      return { ...seed, species: pool[Math.floor(roll * pool.length)],
+        depth: Math.max(0, maxBand - (slot % 3)), x: [27, 50, 73][slot], y: 35 + slot * 10 };
+    });
+    saved.generation++;
+  }
+  saved.selected = Math.min(saved.selected, saved.candidates.length - 1);
+  run.encounters[run.index] = { ...saved.candidates[saved.selected] };
+}
+function consumeHoleFish(run) {
+  const saved = run.holes[run.campaign.holeId];
+  saved.candidates.splice(saved.selected, 1);
+  saved.selected = 0;
+}
+export function moveToHole(run, hole, now, elapsedMs = 0) {
+  if (!run.holes || !hole?.id || !Object.hasOwn(campaignAreas, hole.area) || !Number.isFinite(hole.depthFt)) throw Error('Choose a valid Campaign hole.');
+  if (run.committed || !['seek'].includes(run.stage)) throw Error('End the current attempt before moving.');
+  if (now >= run.expires) throw Error('This outing expired.');
+  const holeId = hole.id;
+  run.campaign.holeId = holeId;
+  run.campaign.hole = structuredClone(hole);
+  run.campaign.area = hole.area;
+  run.holes[holeId] ??= { candidates: [], selected: 0, generation: 0 };
+  prepareHoleFish(run, elapsedMs);
+  run.seekUntil = null;
+  run.version++;
+  return publicRun(run);
+}
+export function selectHoleFish(run, slot) {
+  if (!run.holes || run.stage !== 'seek' || run.committed) throw Error('End the current attempt before changing fish.');
+  const saved = run.holes[run.campaign.holeId];
+  if (!Number.isInteger(slot) || !saved.candidates[slot]) throw Error('Choose a fish in this hole.');
+  saved.selected = slot;
+  prepareHoleFish(run);
+  run.version++;
+  return publicRun(run);
+}
+export function abandonHoleFish(run, now, elapsedMs = 0) {
+  if (!run.holes || !run.committed || !['seek', 'bite', 'fight'].includes(run.stage)) throw Error('No committed attempt to end.');
+  consumeHoleFish(run);
+  run.index++;
+  run.committed = false;
+  run.stage = run.index === run.encounters.length ? 'done' : 'seek';
+  run.fight = run.catch = run.seekUntil = run.snap = run.reaction = null;
+  run.wrongLures = 0;
+  run.last = now - moveIntervalMs;
+  if (run.stage === 'seek') prepareHoleFish(run, elapsedMs);
+  run.cue = run.stage === 'done' ? 'Outing complete.' : 'Attempt ended. Choose another fish.';
+  run.version++;
+  return publicRun(run);
 }
