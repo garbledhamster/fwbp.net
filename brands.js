@@ -4,6 +4,7 @@ import { speciesArt as species } from "./game/species-catalog.mjs";
 import { loadProfile } from "./game/profile.mjs?v=connected-rpg";
 import { renderSpeciesVideo } from "./game/species-video.mjs";
 import { fillSpeciesCard } from "./game/collection.mjs";
+import { spriteHref } from "./game/lake-sprites.mjs";
 
 const debris = {
   sprig: ["lake-life", "sprig", "0 0 138 62"],
@@ -109,7 +110,7 @@ function makeActor([kind, x, y, size, travelX, travelY, layer]) {
   svg.setAttribute("viewBox", viewBox);
   svg.setAttribute("aria-hidden", "true");
   const use = document.createElementNS(svgNamespace, "use");
-  use.setAttribute("href", "./assets/" + sheet + ".svg#" + symbol);
+  use.setAttribute("href", spriteHref(sheet, symbol));
   if (fish) {
     actor.classList.add("fish-target");
     actor.type = "button";
