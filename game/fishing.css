@@ -981,3 +981,49 @@ body[data-reduced] .fishing-auger-scene svg { transition: none; transform: none;
 .fishing-catch-popup > header, .fishing-catch-popup > footer { flex-shrink: 0; }
 .fishing-catch-popup > footer { position: static; }
 .fishing-catch-popup [data-reward-body] { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+/* Gear uses the same inventory and inspector rhythm as Marnie's shop. */
+.fishing-pause [data-gear-content] { display: grid; grid-template-rows: auto minmax(0,1fr) auto; overflow: hidden; flex: 1; gap: 8px; }
+.fishing-gear-loadouts { max-height: 190px; overflow: auto; overscroll-behavior: contain; border-bottom: 1px solid #8bb4c1; padding-bottom: 6px; }
+.fishing-gear-loadouts summary { cursor: pointer; min-height: 44px; align-content: center; font-weight: 700; color: #f1ce8a; }
+.fishing-gear-loadouts .fishing-loadout { margin: 6px 0; gap: 6px 12px; font-size: .8rem; grid-template-columns: minmax(86px,.5fr) minmax(0,1.5fr); }
+.fishing-gear-loadouts .fishing-loadout dd { line-height: 1.45; }
+.fishing-gear-loadouts p { margin: 5px 0 0; font-size: .75rem; }
+.fishing-gear-layout { display: grid; grid-template-columns: minmax(0,1.3fr) minmax(220px,1fr); gap: 12px; min-height: 0; overflow: hidden; }
+.fishing-gear-grid { overflow: auto; overscroll-behavior: contain; min-height: 0; padding: 3px 6px 6px 3px; }
+.fishing-gear-grid section + section { margin-top: 16px; }
+.fishing-gear-grid h3 { margin: 0 0 8px; font-size: 1rem; }
+.fishing-gear-grid .fishing-item-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+.fishing-gear-grid .fishing-item-grid button { min-width: 0; }
+.fishing-gear-grid [data-gear-milestone] { margin-top: 14px; font-size: .8rem; }
+.fishing-gear-inspector { display: grid; grid-template-rows: minmax(0,1fr) auto; min-height: 0; padding-left: 12px; border-left: 1px solid #8bb4c1; }
+.fishing-gear-inspector h3 { margin: 0 0 10px; }
+.fishing-gear-actions { display: flex; flex-wrap: wrap; gap: 6px; border-top: 1px solid #8bb4c1; padding-top: 8px; }
+.fishing-gear-actions button { flex: 1; }
+.fishing-pause .fishing-gear-actions [data-item-details] { margin: 0; font-size: .875rem; }
+.fishing-gear-inspector [data-gear-grid-back] { display: none; }
+.fishing-pause [data-gear-message] { margin: 0; font-size: .8rem; }
+.fishing-pause [data-gear-message]:empty { display: none; }
+.fishing-pause [data-pause-panel="gear"] > [data-action="back"] { margin-top: 8px; }
+@media (max-width: 599px) {
+  .fishing-gear-layout { grid-template-columns: minmax(0,1fr); }
+  [data-gear-content][data-pane="grid"] .fishing-gear-inspector, [data-gear-content][data-pane="details"] .fishing-gear-grid { display: none; }
+  .fishing-gear-inspector { border: 0; padding: 0; grid-template-rows: auto minmax(0,1fr) auto; gap: 8px; }
+  .fishing-gear-inspector [data-gear-grid-back] { display: block; }
+  .fishing-gear-inspector .fishing-inspector-content > .tackle-icon { height: 60px; margin-bottom: 8px; }
+  .fishing-gear-loadouts { max-height: 160px; }
+  [data-gear-content][data-pane="details"] .fishing-gear-loadouts { display: none; }
+  .fishing-pause [data-gear-content][data-pane="details"] { grid-template-rows: minmax(0,1fr) auto; }
+}
+@media (max-height: 420px) and (min-width: 600px) {
+  .fishing-gear-loadouts { max-height: 66px; }
+  .fishing-gear-loadouts summary { min-height: 44px; font-size: .8rem; }
+  .fishing-pause [data-gear-content] { gap: 4px; }
+  .fishing-gear-inspector .fishing-inspector-content > .tackle-icon { float: left; width: 36px; height: 36px; margin: 0 8px 0 0; }
+  .fishing-gear-inspector h3 { font-size: 1rem; margin-bottom: 5px; }
+  .fishing-gear-inspector .fishing-inspector-content p { font-size: .8rem; margin-bottom: 5px; }
+  .fishing-gear-actions { padding-top: 4px; }
+}
+@media (max-height: 420px) and (min-width: 600px) {
+  .fishing-pause [data-pause-panel="gear"] > [data-action="back"] { position: absolute; left: 12px; bottom: 8px; width: calc(50% - 20px); margin: 0; }
+  .fishing-pause:has([data-pause-panel="gear"]:not([hidden])) .fishing-frame-footer button { width: calc(50% - 8px); }
+}

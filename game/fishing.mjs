@@ -639,22 +639,70 @@ shop.addEventListener('click', event => {
 });
 
 function equipmentName(id) { return shopItems.find(item => item.id === id)?.name ?? 'Starter tackle'; }
+let gearSelection = 'starter-line';
+let gearPane = 'grid';
+let gearGridScroll = 0;
+function gearItemStatus(item) {
+  if (item.category !== 'bait') return shopItemState(item).status;
+  const carried = mode === 'campaign' && run?.campaign?.baits?.some(bait => bait.id === item.id);
+  const owned = profile.owned.includes(item.id);
+  return carried ? 'Carried this outing and next' : owned ? 'Carried next outing' : shopItemState(item).status;
+}
 function renderGear() {
   const content = pause.querySelector('[data-gear-content]');
   if (!profile) { content.textContent = 'Couldn’t read your gear. Return to Pause and try Gear again.'; return; }
+  const previousGrid = content.querySelector('[data-gear-grid]');
+  if (previousGrid?.offsetHeight) gearGridScroll = previousGrid.scrollTop;
+  const expanded = content.querySelector('[data-gear-loadouts]')?.open ?? !matchMedia('(max-height: 420px)').matches;
   const active = outingEquipment ?? { line: 'starter-line', hook: 'starter-hook' };
-  content.innerHTML = `<p>Campaign changes apply to your next Campaign outing. Practice always starts with starter tackle.</p>
-    <dl class="fishing-loadout"><dt>This outing</dt><dd>${icon('line')} ${equipmentName(active.line)}<br>${icon('hook')} ${equipmentName(active.hook)}</dd>
-      <dt>Next Campaign outing</dt><dd>${icon('line')} ${equipmentName(profile.equipped.line)}<br>${icon('hook')} ${equipmentName(profile.equipped.hook)}</dd></dl>
-    <h3>Hooks</h3>${hookCarousel(true)}
-    <h3>Line</h3><ul>${shopItems.filter(item => item.category === 'line').map(item => shopItem(item, true)).join('')}</ul>
-    <h3>Training and licenses</h3><ul>${shopItems.filter(item => ['training', 'license'].includes(item.category)).map(item => shopItem(item, true)).join('')}</ul>
-    <div data-gear-milestone></div>
-    <p>Practice: two catches reach Level 2. Choose Line Control for a longer hook window or Lift for an extra first clear pull.</p>
-    <p data-gear-message role="status"></p>`;
+  const activeBaits = mode === 'campaign' ? run?.campaign?.baits ?? [] : [];
+  const nextBaits = shopItems.filter(item => item.category === 'bait' && profile.owned.includes(item.id));
+  const baitNames = items => items.length ? items.map(item => item.name).join(', ') : 'Basic lures · no added bait';
+  const selected = shopItems.find(item => item.id === gearSelection) ?? shopItems[0];
+  gearSelection = selected.id;
+  content.dataset.pane = gearPane;
+  content.innerHTML = `<details class="fishing-gear-loadouts" data-gear-loadouts ${expanded ? 'open' : ''}><summary>This outing / next Campaign outing</summary>
+    <dl class="fishing-loadout"><dt>This outing</dt><dd>${icon('line')} ${equipmentName(active.line)} · ${equipmentName(active.hook)}<br><span data-gear-active-bait><b>Bait:</b> ${baitNames(activeBaits)}</span></dd>
+      <dt>Next Campaign outing</dt><dd>${icon('line')} ${equipmentName(profile.equipped.line)} · ${equipmentName(profile.equipped.hook)}<br><span data-gear-next-bait><b>Bait:</b> ${baitNames(nextBaits)}</span></dd></dl>
+    <p>Equipment and newly bought bait apply next Campaign outing. Practice uses starter tackle.</p></details>
+    <div class="fishing-gear-layout"><div class="fishing-gear-grid" data-gear-grid aria-label="Gear inventory">
+    ${Object.entries(shopLabels).map(([category,label]) => `<section><h3>${label}</h3><div class="fishing-item-grid">${shopItems.filter(item => item.category === category).map(item => `<button type="button" data-gear-select="${item.id}" aria-pressed="${item.id === gearSelection}">${icon(item.category === 'line' ? 'line' : item.lure ?? item.category)}<strong>${item.name}</strong><small>${gearItemStatus(item)}</small></button>`).join('')}</div></section>`).join('')}
+    <div data-gear-milestone></div><p>Practice: two catches reach Level 2. Choose Line Control for a longer hook window or Lift for an extra first clear pull.</p>
+    </div><section class="fishing-gear-inspector" data-gear-inspector data-item="${selected.id}" tabindex="-1" aria-label="Selected gear">
+      <button type="button" data-gear-grid-back>Back to inventory</button>
+      <div class="fishing-inspector-content">${icon(selected.category === 'line' ? 'line' : selected.lure ?? selected.category)}<h3 data-gear-title tabindex="-1">${selected.name}</h3><p>${selected.effect}</p><p>${gearItemStatus(selected)}</p></div>
+      <div class="fishing-gear-actions"><button type="button" data-item-details="${selected.id}">Details<span class="fishing-announcement"> for ${selected.name}</span></button>
+      ${!profile.owned.includes(selected.id) ? `<button type="button" data-view-shop="${selected.id}">View in shop</button>` : shopItemState(selected).canEquip && !shopItemState(selected).equipped ? `<button type="button" data-shop-action="equip" aria-label="Equip ${selected.name}">Equip</button>` : ''}</div>
+    </section></div><p data-gear-message role="status"></p>`;
   const milestone = campaignMilestone(profile);
   content.querySelector('[data-gear-milestone]').textContent = `${milestone.name}: ${milestone.earned ? 'earned' : `${milestone.catches} / ${milestone.goal} Campaign catches saved`}. ${milestone.description}`;
+  content.querySelector('[data-gear-grid]').scrollTop = gearGridScroll;
 }
+function returnToGearGrid() {
+  if (shopBusy) return;
+  gearPane = 'grid'; renderGear();
+  pause.querySelector(`[data-gear-select="${gearSelection}"]`)?.focus({ preventScroll: true });
+}
+pause.addEventListener('click', event => {
+  if (shopBusy) return;
+  const tile = event.target.closest('[data-gear-select]');
+  if (tile) {
+    gearSelection = tile.dataset.gearSelect; gearPane = 'details'; renderGear();
+    const focus = matchMedia('(max-width: 599px)').matches ? '[data-gear-title]' : `[data-gear-select="${gearSelection}"]`;
+    pause.querySelector(focus)?.focus({ preventScroll: true });
+  }
+  if (event.target.closest('[data-gear-grid-back]')) returnToGearGrid();
+});
+pause.addEventListener('keydown', event => {
+  const tile = event.target.closest('[data-gear-select]');
+  if (!tile || shopBusy || !['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End'].includes(event.key)) return;
+  event.preventDefault();
+  const tiles = [...pause.querySelectorAll('[data-gear-select]')];
+  const index = tiles.indexOf(tile);
+  const columns = getComputedStyle(tile.parentElement).gridTemplateColumns.split(' ').length;
+  const delta = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -columns, ArrowDown: columns }[event.key];
+  tiles[event.key === 'Home' ? 0 : event.key === 'End' ? tiles.length - 1 : Math.max(0,Math.min(tiles.length - 1,index + delta))]?.focus();
+});
 
 function showPausePanel(panel) {
   pausePanel = panel;
@@ -687,6 +735,7 @@ pause.addEventListener('close', () => {
 });
 pause.addEventListener('cancel', event => {
   if (shopBusy) { event.preventDefault(); return; }
+  if (pausePanel === 'gear' && gearPane === 'details' && matchMedia('(max-width: 599px)').matches) { event.preventDefault(); returnToGearGrid(); return; }
   if (pausePanel !== 'menu') { event.preventDefault(); showPausePanel('menu'); }
 });
 pause.addEventListener('click', async event => {
@@ -706,6 +755,7 @@ pause.addEventListener('click', async event => {
     try { loaded = await loadProfile(); } catch { /* Gear offers a retry through Pause. */ }
     if (pause.open && current === pauseGeneration) {
       if (loaded) profile = loaded;
+      gearPane = 'grid';
       showPausePanel('gear');
       if (!loaded) pause.querySelector('[data-gear-content]').textContent = 'Couldn’t read your gear. Return to Pause and try Gear again.';
     }
