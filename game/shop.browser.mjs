@@ -1,8 +1,37 @@
 import assert from 'node:assert/strict';
+import { mkdir } from 'node:fs/promises';
+import { join } from 'node:path';
 import { practicePage, withBrowser } from './browser-qa.mjs';
 
+// Keep the search part of the playthrough on the same controls a player uses.
+async function search(page, tray, action, mobile) {
+  const touch = mobile ? await page.context().newCDPSession(page) : null;
+  try {
+    for (let step = 0; step < 18 && await action.isDisabled(); step++) {
+      const oldY = await page.evaluate(() => scrollY);
+      if (touch) {
+        const from = Math.round((await tray.boundingBox()).y * .83);
+        const send = (type, y) => touch.send('Input.dispatchTouchEvent', {
+          type, touchPoints: y === undefined ? [] : [{ x: 150, y }],
+        });
+        await send('touchStart', from);
+        for (const distance of [45, 90, 135]) await send('touchMove', from - distance);
+        // Lift a stationary finger so a kinetic scroll does not carry the fish past the tray.
+        await page.waitForTimeout(160);
+        await send('touchEnd');
+      } else {
+        await page.keyboard.press('PageDown');
+      }
+      await page.waitForFunction(start => scrollY > start, oldY, { polling: 25 });
+    }
+    assert.ok(await action.isEnabled(), 'scroll to find the fish above the tray');
+  } finally {
+    await touch?.detach();
+  }
+}
+
 async function checkShop(browser, mobile) {
-  const { page, launch, tray, action, status, button, enter, press, tick, findFish, errors } =
+  const { page, launch, tray, action, status, button, enter, press, tick, errors } =
     await practicePage(browser, { mobile });
   const picker = page.getByRole('dialog', { name: 'Choose an outing' });
   const shop = page.getByRole('dialog', { name: 'Tackle shop' });
@@ -13,6 +42,17 @@ async function checkShop(browser, mobile) {
   const balance = shop.locator('[data-shop-balance]');
   const meter = tray.getByRole('meter');
   const wallet = tray.locator('[data-wallet]');
+  const phase = tray.locator('[data-phase]');
+  const evidence = process.env.FISHING_EVIDENCE_DIR;
+
+  async function capture(step) {
+    if (!evidence) return;
+    await mkdir(evidence, { recursive: true });
+    await page.screenshot({
+      path: join(evidence, `${mobile ? 'phone' : 'desktop'}-${step}.png`),
+      animations: 'disabled',
+    });
+  }
 
   async function textVisible(container, pattern) {
     await container.getByText(pattern).waitFor({ state: 'visible' });
@@ -34,7 +74,7 @@ async function checkShop(browser, mobile) {
       Math.random = () => rolls[draw++ % rolls.length];
     }, species);
     await enter('Campaign');
-    await findFish();
+    await search(page, tray, action, mobile);
     await press(tray.getByRole('group', { name: 'Lures' }).getByRole('button', { name: lure, exact: true }));
     await press(action);
     await tick(700);
@@ -52,14 +92,22 @@ async function checkShop(browser, mobile) {
   await startWith(.05, 'Jig');
   await textVisible(tray, /Yellow perch.*\+10 coins/i);
   assert.match(await wallet.textContent(), /10 coins/);
+  assert.equal(await phase.count(), 1, 'the Campaign tray names the current light phase');
+  assert.equal(await phase.textContent(), 'Day');
+  await capture('catch');
+  await tick(30000);
+  await phase.filter({ hasText: 'Dusk' }).waitFor();
   await press(button('Exit fishing'));
 
   await startWith(.98, 'Spoon');
+  assert.equal(await phase.textContent(), 'Dusk');
   assert.equal(await meter.evaluate(el => el.max), 8);
   await tick(800);
+  assert.equal(await meter.evaluate(el => el.value), 6.7);
   await press(action);
   assert.match(await status.textContent(), /line snapped.*9\.7 lb.*8 lb/i);
   assert.match(await wallet.textContent(), /10 coins/, 'a snap pays no coins');
+  await capture('snap');
   await press(button('Exit fishing'));
 
   await openShop();
@@ -78,16 +126,20 @@ async function checkShop(browser, mobile) {
   assert.match(await balance.textContent(), /0 coins/);
   assert.match(await stronger.textContent(), /Equipped/i);
   assert.equal(await buy.count(), 0, 'reloading does not make an owned line buyable again');
+  await capture('shop');
   await press(shop.getByRole('button', { name: 'Back to outings' }));
   await press(picker.getByRole('button', { name: 'Back to the site' }));
 
   await startWith(.98, 'Spoon');
+  assert.equal(await phase.textContent(), 'Dusk', 'reload preserves the light phase for the matched surge');
   assert.equal(await meter.evaluate(el => el.max), 12);
   await tick(800);
+  assert.equal(await meter.evaluate(el => el.value), 6.7);
   await press(action);
   assert.match(await status.textContent(), /line tight.*loosen/i);
   assert.equal(await meter.evaluate(el => el.value), 9.7, 'the same surge holds on 12 lb line');
   assert.match(await wallet.textContent(), /0 coins/);
+  await capture('held');
   await press(button('Exit fishing'));
   await enter('Practice');
   assert.equal(await wallet.isHidden(), true, 'the campaign wallet stays outside Practice');
@@ -98,6 +150,6 @@ async function checkShop(browser, mobile) {
 await withBrowser(async browser => {
   for (const mobile of [false, true]) {
     await checkShop(browser, mobile);
-    console.log(`PASS: Campaign catch, shop, reload and matched surge (${mobile ? '320 px touch' : 'desktop keyboard'})`);
+    console.log(`PASS: Campaign catch, shop, reload and matched dusk surge (${mobile ? '320 px touch' : 'desktop keyboard'})`);
   }
 });
