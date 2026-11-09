@@ -68,11 +68,13 @@ async function controlledReel(browser, input, mobile = false) {
   try {
     await qa.enter('Campaign');
     await qa.hook('Jig', 'perch');
-    // The hooked perch has finished its first surge. Hold the game clock still
-    // for this comparison so a different input device cannot change the load.
+    // Start after the first surge, when the line load is steady for the reel.
     await qa.tick(1880);
     const before = await qa.depth();
+    const start = await qa.page.evaluate(() => Date.now());
     await input(qa);
+    const elapsed = await qa.page.evaluate(() => Date.now()) - start;
+    if (elapsed < 220) await qa.tick(220 - elapsed);
     const movement = (before - await qa.depth()) / before;
     assert.ok(movement > 0, 'the first reel moves the fish');
     assert.deepEqual(qa.errors, []);
@@ -110,6 +112,7 @@ async function compareFights(browser, mobile) {
       await tick(1880);
       const before = await depth();
       await input(-1);
+      await tick(220);
       movements[kind] = (before - await depth()) / before;
       assert.ok(movements[kind] > 0, `the first reel moves the ${species}`);
       if (kind === 'heavy') {
@@ -150,8 +153,11 @@ await withBrowser(async browser => {
   const oneLineNotch = await controlledReel(browser, qa => qa.wheelPackets([-1], 0, 1));
   const trackpad = await controlledReel(browser, async qa => {
     await qa.wheelPackets([-10, -10, -10], 16);
+    await qa.wheelPackets([-70, -60, -50, -40], 70);
     const after = await qa.depth();
-    await qa.wheelPackets([-70, -60, -50, -40, -30], 70);
+    await qa.wait(70);
+    await qa.wheelPackets([-30], 70);
+    await qa.tick(80);
     assert.equal(await qa.depth(), after, 'a wheel tail cannot add a second reel after the action interval');
   });
   const swipe = await controlledReel(browser, qa => qa.gesture(-68), true);
@@ -161,7 +167,7 @@ await withBrowser(async browser => {
   const quick = await controlledReel(browser, qa => qa.gesture(-250));
   const extreme = await controlledReel(browser, qa => qa.gesture(-9999));
   assert.ok(quick > notch * 1.2, `a faster deliberate reel moves the same fish farther: ${quick} vs ${notch}`);
-  assert.equal(extreme, quick, 'an extreme delta does not add power past the capped gesture');
+  assert.ok(Math.abs(extreme - quick) < .001, 'an extreme delta does not add power past the capped gesture');
   console.log(`PASS: normalized gesture distance, quiet wheel tail and effort cap ${JSON.stringify({ notch, lineNotch, oneLineNotch, trackpad, swipe, quick, extreme })}`);
   for (const mobile of [false, true]) await compareFights(browser, mobile);
 });

@@ -43,10 +43,11 @@
   position: relative;
   isolation: isolate;
   overflow: clip;
-  background:
+  --lake-water-background:
     radial-gradient(ellipse 95% 720px at 62% 0%, #c5cb9168, transparent 82%),
     radial-gradient(ellipse 83% 990px at 15% 40%, #72946a38, transparent 85%),
     linear-gradient(168deg, #355d54, #25463d 34%, #1a3734 70%, #142c2b);
+  background: var(--lake-water-background);
 }
 .lake [data-dive] { position: relative; }
 .lake::after {

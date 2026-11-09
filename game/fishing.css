@@ -3,19 +3,39 @@
 .game-entry { border: 1px solid #81936f; background: #213a2d; }
 .game-entry:hover { background: #36513a; }
 .fishing :is(.mast, .skip, .surface, .ice, .dive-content, .library, .field-notes, .merch, .lakebed-feature, .footer-rig, .footer-inner) { display: none; }
-html:has(body[data-campaign-camera]) { overflow: hidden; }
+html:has(body[data-campaign-camera]), body[data-campaign-camera] {
+  height: 100%;
+  overflow: clip;
+  overscroll-behavior: none;
+  scrollbar-width: none;
+}
 .fishing[data-campaign-camera] .fishing-route {
   position: fixed;
   inset: 0;
-  overflow: hidden;
-  overscroll-behavior: none;
+  overflow: clip;
+  background: #263e38;
   touch-action: pinch-zoom;
 }
+.fishing[data-campaign-camera] .lake {
+  translate: var(--camera-x, 0px) var(--camera-y, 0px);
+  overflow: visible;
+  background: none;
+}
+/* Paint past the sides so the water still fills the frame when a fish pulls sideways. */
+.fishing[data-campaign-camera] .lake::before {
+  display: block;
+  z-index: -2;
+  inset: 0 -25%;
+  width: auto;
+  background: var(--lake-water-background);
+}
+.fishing[data-campaign-camera] .dive-ceiling { left: -31%; width: 150%; }
 .fishing[data-campaign-camera] .footer { display: none; }
+.fishing[data-campaign-camera] dialog, .fishing[data-campaign-camera] dialog * { scrollbar-width: none; }
 .fishing .dive { min-height: 76svh; }
 .fishing .lake > [data-below-hole] { display: none; }
-/* Leave room to scroll the deepest fish above the fixed tray. */
-.fishing .lake[data-campaign-water] { padding-block-end: max(28svh, 112px); }
+/* Leave room for the camera to follow the deepest fish above the fixed tray. */
+.fishing .lake[data-campaign-water] { padding-block-end: max(50svh, 160px); }
 .fishing .dive-actor[data-fish] { visibility: hidden; }
 .fishing-background-fish {
   display: none;
@@ -676,13 +696,13 @@ body.fishing:has(.fishing-tray[data-mode="campaign"]) .fishing-target[data-candi
 .fishing-tray[data-line-physics] .fishing-speech > .fishing-action:focus-visible { outline-color: #35523e; }
 .fishing-tray[data-line-physics] .fishing-speech > .fishing-action .tackle-icon { width: 16px; }
 .lake[data-fishing-light="dusk"] {
-  background-image:
+  --lake-water-background:
     radial-gradient(ellipse 94% 760px at 62% 0%, #c2a56b66, transparent 83%),
     radial-gradient(ellipse 76% 980px at 18% 37%, #7b735c42, transparent 81%),
     linear-gradient(167deg, #4f5943, #324b42 32%, #203c3b 66%, #172d33);
 }
 .lake[data-fishing-light="night"] {
-  background-image:
+  --lake-water-background:
     radial-gradient(ellipse 76% 720px at 62% 0%, #80aeb949, transparent 85%),
     radial-gradient(ellipse 70% 1030px at 15% 40%, #36636b49, transparent 84%),
     linear-gradient(168deg, #2c4b53, #1b3946 35%, #182e3b 69%, #132530);
