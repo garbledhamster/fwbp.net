@@ -1,3 +1,5 @@
+import { openVideo } from './game/video-player.mjs';
+
 const episodes = [
   {
     id: "3dmUMd9oR88",
@@ -132,34 +134,11 @@ for (const shortcut of document.querySelectorAll(".trip-picks button")) {
 featured.replaceChildren(...episodes.filter((episode) => episode.featured).map(makeEpisode));
 setFilter("All");
 
-const player = document.querySelector("#player");
-const videoSlot = player.querySelector("#player-video");
-const playerTitle = player.querySelector("#player-title");
-const playerDescription = player.querySelector("#player-description");
-const source = player.querySelector("#player-source");
-let opener;
-
 document.addEventListener("click", (event) => {
   const trigger = event.target.closest("a[data-watch]");
-  if (!trigger || event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  if (!trigger || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
   const episode = byId.get(trigger.dataset.watch);
-  if (!episode || typeof player.showModal !== "function") return;
-  event.preventDefault();
-  opener = trigger;
-  playerTitle.textContent = episode.title;
-  playerDescription.textContent = episode.description;
-  source.href = trigger.href;
-  const frame = document.createElement("iframe");
-  frame.title = episode.title;
-  frame.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
-  frame.referrerPolicy = "strict-origin-when-cross-origin";
-  frame.src = "https://www.youtube-nocookie.com/embed/" + episode.id + "?autoplay=1&playsinline=1&rel=0";
-  player.showModal();
-  videoSlot.replaceChildren(frame);
-});
-player.addEventListener("close", () => {
-  videoSlot.replaceChildren();
-  opener?.focus({ preventScroll: true });
+  if (episode && openVideo({ ...episode, url: trigger.href }, { trigger })) event.preventDefault();
 });
 
 const motion = document.querySelector("#motion");

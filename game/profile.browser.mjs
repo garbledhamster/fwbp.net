@@ -24,10 +24,12 @@ await withBrowser(async browser => {
     assert.ok(module.ok(), 'the browser can load the campaign save module');
 
     const starter = await profileCommand(first);
-    assert.equal(starter.version, 1);
+    assert.equal(starter.version, 2);
     assert.equal(starter.coins, 0);
     assert.deepEqual(starter.equipped, { line: 'starter-line', hook: 'starter-hook' });
-    assert.ok(starter.owned.includes('starter-license'));
+    assert.ok(!starter.owned.includes('starter-license'));
+    assert.deepEqual(starter.caughtSpecies, []);
+    assert.deepEqual(starter.studiedSpecies, []);
     const buy = revision => ({ type: 'buy', id: lineId, revision });
     const equip = (id, revision) => ({ type: 'equip', id, revision });
     const unaffordable = await profileCommand(first, buy(starter.revision));

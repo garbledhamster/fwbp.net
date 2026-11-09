@@ -1,3 +1,6 @@
+import { lakes } from './rules.mjs?v=16';
+
+const speciesIds = new Set(lakes['mille-lacs'].fish.map(fish => fish.id));
 export const shopItems = [
   { id: 'starter-line', category: 'line', name: 'Starter line', cost: 0, effect: '8 lb breaking strength; 100 ms more to set the hook with Jig.', strength: 8, lure: 'jig', windowMs: 100 },
   { id: 'stronger-line', category: 'line', name: 'Stronger line', cost: 10, effect: '12 lb breaking strength.', strength: 12 },
@@ -54,22 +57,48 @@ function openDatabase() {
   return database;
 }
 
+function collectionProfile(stored) {
+  const profile = stored ?? starterProfile();
+  // Additional fields need no IndexedDB version change. Preserve unrelated save fields.
+  const caughtSpecies = [...new Set((Array.isArray(profile.caughtSpecies) ? profile.caughtSpecies : []).filter(id => speciesIds.has(id)))];
+  const studiedSpecies = [...new Set((Array.isArray(profile.studiedSpecies) ? profile.studiedSpecies : []).filter(id => caughtSpecies.includes(id)))];
+  const collectionAwards = profile.collectionAwards && typeof profile.collectionAwards === 'object'
+    && !Array.isArray(profile.collectionAwards) ? profile.collectionAwards : {};
+  const sameIds = (saved, normalized) => Array.isArray(saved)
+    && saved.length === normalized.length && saved.every((id, index) => id === normalized[index]);
+  if (profile.version >= 2 && sameIds(profile.caughtSpecies, caughtSpecies)
+    && sameIds(profile.studiedSpecies, studiedSpecies) && collectionAwards === profile.collectionAwards) return profile;
+  return {
+    ...profile,
+    version: Math.max(2, profile.version ?? 1),
+    revision: (profile.revision ?? 0) + (stored ? 1 : 0),
+    caughtSpecies,
+    studiedSpecies,
+    collectionAwards,
+  };
+}
+
 async function readProfile(update) {
   const connection = await openDatabase();
   return new Promise((resolve, reject) => {
-    const transaction = connection.transaction(storeName, update ? 'readwrite' : 'readonly');
+    // Reads also perform the once-only legacy migration under the same tab-safe lock.
+    const transaction = connection.transaction(storeName, 'readwrite');
     const store = transaction.objectStore(storeName);
     const request = store.get(profileKey);
-    let result;
-
+    let result, failure;
     request.onsuccess = () => {
-      const profile = request.result ?? starterProfile();
-      result = update ? update(profile) : profile;
-      // The decision and its write use the same transaction, even across tabs.
-      if (update && result.profile !== profile) store.put(result.profile, profileKey);
+      try {
+        const profile = collectionProfile(request.result);
+        result = update ? update(profile) : profile;
+        const next = update ? result.profile : result;
+        if (next !== request.result) store.put(next, profileKey);
+      } catch (error) {
+        failure = error;
+        transaction.abort();
+      }
     };
     transaction.oncomplete = () => resolve(result);
-    transaction.onabort = () => reject(transaction.error ?? new Error('The campaign save was interrupted.'));
+    transaction.onabort = () => reject(failure ?? transaction.error ?? new Error('The campaign save was interrupted.'));
   });
 }
 
@@ -77,22 +106,45 @@ export function loadProfile() {
   return readProfile();
 }
 
-function award(profile, { key, outcome, catch: fish }) {
+function award(profile, { key, outcome, catch: fish, speciesId, mode = 'campaign' }) {
   const earned = fish?.points;
-  if (outcome !== 'landed' || typeof key !== 'string' || !/^.+:\d+$/.test(key)
-    || !Number.isSafeInteger(earned) || earned <= 0 || !Number.isSafeInteger(profile.coins + earned)) {
+  const localMode = mode === 'campaign' || mode === 'practice';
+  // An omitted species remains compatible with already-open older releases.
+  const validSpecies = speciesIds.has(speciesId);
+  if (!localMode || outcome !== 'landed' || typeof key !== 'string' || !/^.+:\d+$/.test(key)
+    || (speciesId !== undefined && !validSpecies) || (mode === 'practice' && !validSpecies)
+    || !Number.isSafeInteger(earned) || earned <= 0
+    || (mode === 'campaign' && !Number.isSafeInteger(profile.coins + earned))) {
     return { profile, status: 'no-award' };
   }
-  if (Object.hasOwn(profile.awards, key)) return { profile, status: 'duplicate-award' };
+  // Old numeric payout keys cannot be replayed to invent collection history.
+  if (Object.hasOwn(profile.awards, key) || Object.hasOwn(profile.collectionAwards, key)) {
+    return { profile, status: 'duplicate-award' };
+  }
+  const caughtSpecies = validSpecies && !profile.caughtSpecies.includes(speciesId)
+    ? [...profile.caughtSpecies, speciesId] : profile.caughtSpecies;
   return {
     profile: {
       ...profile,
       revision: profile.revision + 1,
-      coins: profile.coins + earned,
-      awards: { ...profile.awards, [key]: earned },
+      coins: mode === 'campaign' ? profile.coins + earned : profile.coins,
+      awards: mode === 'campaign' ? { ...profile.awards, [key]: earned } : profile.awards,
+      collectionAwards: mode === 'practice' ? { ...profile.collectionAwards, [key]: speciesId } : profile.collectionAwards,
+      caughtSpecies,
     },
     status: 'awarded',
-    earned,
+    earned: mode === 'campaign' ? earned : 0,
+    milestoneReached: mode === 'campaign' && campaignMilestone(profile).catches === 1,
+  };
+}
+
+function study(profile, speciesId) {
+  if (!speciesIds.has(speciesId)) return { profile, status: 'invalid' };
+  if (!profile.caughtSpecies.includes(speciesId)) return { profile, status: 'not-caught' };
+  if (profile.studiedSpecies.includes(speciesId)) return { profile, status: 'already-studied' };
+  return {
+    profile: { ...profile, revision: profile.revision + 1, studiedSpecies: [...profile.studiedSpecies, speciesId] },
+    status: 'studied',
   };
 }
 
@@ -127,6 +179,7 @@ function saveClock(profile, elapsedMs) {
 export function applyProfile(command) {
   return readProfile(profile => {
     if (command?.type === 'clock') return saveClock(profile, command.elapsedMs);
+    if (command?.type === 'study') return study(profile, command.speciesId);
     if (command?.type === 'award') return award(profile, command);
     if (command?.type === 'buy' || command?.type === 'equip') return shop(profile, command);
     return { profile, status: 'invalid' };

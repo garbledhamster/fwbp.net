@@ -62,11 +62,19 @@ await withBrowser(async browser => {
       }
       await inspectFish.evaluate(element => element.remove());
 
+      await page.evaluate(async () => {
+        const { applyProfile } = await import('./game/profile.mjs?v=16');
+        await applyProfile({ type: 'award', key: 'coverage-practice:0', mode: 'practice',
+          outcome: 'landed', speciesId: 'pike', catch: { points: 35 } });
+      });
       const toggle = page.locator('#fish-guide-toggle');
       await toggle.click();
+      await page.locator('.fish-target[data-fish="pike"]:enabled').first().waitFor();
       assert.equal(await page.locator('#field-notes [data-fish-overlay]').isVisible(), false);
-      assert.equal(await page.locator('.fish-target:enabled').count(), population.swimmers + 1);
-      await page.locator('#dive .fish-target').first().click();
+      assert.equal(await page.locator('.fish-target:enabled').evaluateAll(targets =>
+        targets.every(target => target.dataset.fish === 'pike')), true);
+      assert.equal(await page.locator('.fish-target:not([data-fish="pike"]):not([hidden])').count(), 0);
+      await page.locator('#dive .fish-target[data-fish="pike"]').first().click();
       const card = page.getByRole('dialog');
       await card.waitFor();
       await card.getByRole('button', { name: 'Close fish card' }).click();
