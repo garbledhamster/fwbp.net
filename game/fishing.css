@@ -193,9 +193,9 @@ body.fishing .dive-ceiling { transform: none !important; }
 }
 .fishing-line-rig use { fill: none; stroke: #ffedbd; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .fishing-line-eye { fill: #f2ba58; stroke: #6a552c; stroke-width: .75; }
-body.fishing:has(.fishing-tray[data-mode="campaign"]) .fishing-target.is-biting {
-  left: var(--bite-x, var(--line-x));
-  top: var(--bite-y, 44%);
+body.fishing:has(.fishing-tray[data-mode="campaign"]) .fishing-target:is(.is-biting, .is-hooked) {
+  left: calc(var(--bite-x, var(--line-x)) + var(--fight-x, 0px));
+  top: calc(var(--bite-y, 44%) + var(--fight-y, 0px));
   transition: none;
 }
 

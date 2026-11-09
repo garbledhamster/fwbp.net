@@ -23,13 +23,83 @@ export function reelWindow(levels) {
   return { from: 550 - levels.quick * 125, until: 2100 + levels.control * 350 };
 }
 export const runLifetime = 20 * 60 * 1000;
+const fightStepMs = 40;
+const surgeCycleMs = 2400;
+const reelLength = 1.5;
+const tightLoad = 4.8;
+
+function startCampaignFight(run, effort, now) {
+  const distance = effort * 2;
+  run.fight = {
+    lineStrength: run.campaign.lineStrength, effort, hookedAt: now, elapsed: 0,
+    distance, remaining: distance, paidOut: distance, tension: 1.1,
+    x: 0, y: 0, slack: 0, tight: false, pullUp: false,
+  };
+  run.stage = 'fight';
+  run.last = now;
+}
+
+function sampleFight(run) {
+  const fight = run.fight;
+  const phase = fight.elapsed % surgeCycleMs;
+  const surge = Math.max(0, Math.min(phase / 600, 1, (1800 - phase) / 700));
+  const extension = (fight.effort === 3 ? 2.8 : 2) * surge;
+  fight.distance = fight.remaining + extension;
+  fight.x = Math.sin(phase * 2 * Math.PI / surgeCycleMs) * (fight.effort === 3 ? 1 : .7);
+  fight.y = fight.distance - fight.effort * 2;
+  fight.slack = Math.max(0, fight.paidOut - fight.distance);
+  fight.tension = Math.round(Math.max(0, 1.1 + (fight.distance - fight.paidOut) * 2) * 10) / 10;
+  fight.tight = fight.tension >= tightLoad;
+  fight.pullUp = fight.remaining <= reelLength;
+  if (fight.tension > fight.lineStrength) {
+    run.snap = { tension: fight.tension, lineStrength: fight.lineStrength };
+    miss(run);
+    run.cue = `Line snapped at ${fight.tension} lb on ${fight.lineStrength} lb line.`;
+  }
+}
+
+// Advance through the same samples even if the browser misses a frame.
+export function advanceCampaignFight(run, now) {
+  if (!run.campaign || run.stage !== 'fight') return false;
+  const elapsed = Math.floor((Math.min(now, run.expires) - run.fight.hookedAt) / fightStepMs) * fightStepMs;
+  let changed = false;
+  while (run.fight && run.fight.elapsed < elapsed) {
+    run.fight.elapsed += fightStepMs;
+    sampleFight(run);
+    changed = true;
+  }
+  if (run.stage === 'fight' && now >= run.expires) {
+    run.stage = 'done';
+    run.fight = run.catch = null;
+    run.cue = 'This outing expired.';
+    changed = true;
+  }
+  if (run.stage !== 'fight') run.version++;
+  return changed;
+}
+
+function campaignFightMove(run, action, target) {
+  const fight = run.fight;
+  if (action === 'loosen') {
+    const room = Math.max(0, fight.distance + reelLength - fight.paidOut);
+    fight.paidOut += Math.min(room, reelLength);
+  } else if (action === 'lift' && fight.pullUp && !fight.tight) {
+    land(run, target);
+    return;
+  } else {
+    // A hard run resists the reel. The same input takes up line but adds load.
+    fight.paidOut = Math.max(0, fight.paidOut - reelLength);
+    if (!fight.tight) fight.remaining = Math.max(0, fight.remaining - reelLength);
+  }
+  sampleFight(run);
+}
 
 function seekDeadline(run, now) {
   const { species } = run.encounters[run.index];
   return now + seekWindows[lakes[run.lake].fish[species].rarity];
 }
 
-export function start(now, random = Math.random, lake = 'mille-lacs', { practice = false } = {}) {
+export function start(now, random = Math.random, lake = 'mille-lacs', { practice = false, campaign } = {}) {
   const pool = lakes[lake].fish.flatMap((entry, index) => Array(entry.weight).fill(index));
   const run = {
     lake, skills: { quick: 0, control: 0, lift: 0 }, skillPoints: 0, fight: null,
@@ -44,6 +114,7 @@ export function start(now, random = Math.random, lake = 'mille-lacs', { practice
     stage: 'seek', biteAt: 0, catch: null, cue: 'Fish in view. Pick a lure and jig.',
     version: 0, submitted: false,
     ...(practice && { practice: true, landed: 0 }),
+    ...(campaign && { campaign: { ...campaign, lineStrength: campaign.lineStrength ?? 8 }, snap: null }),
   };
   run.seekUntil = seekDeadline(run, now);
   return run;
@@ -61,6 +132,9 @@ export function publicRun(run) {
     seekUntil: run.stage === 'seek' ? run.seekUntil ?? null : null,
     submitted: run.submitted,
     ...(run.practice && { practice: { xp, level: xp >= practiceLevelXp ? 2 : 1 } }),
+    ...(run.campaign && {
+      lineStrength: run.campaign.lineStrength, snap: run.snap, fight: run.fight && { ...run.fight },
+    }),
   };
 }
 
@@ -73,7 +147,12 @@ export function apply(run, input, now) {
     run.version++;
     return publicRun(run);
   }
-  const paced = ['jig', 'lift', 'loosen'].includes(input.action);
+  const campaignFight = run.campaign && run.stage === 'fight';
+  if (campaignFight) {
+    advanceCampaignFight(run, now);
+    if (run.stage !== 'fight') return publicRun(run);
+  }
+  const paced = ['jig', 'lift', 'loosen'].includes(input.action) || (campaignFight && input.action === 'reel');
   if (paced && now - run.last < 250) throw Error('Give the line a moment.');
   const encounter = run.encounters[run.index];
   const target = lakes[run.lake].fish[encounter?.species];
@@ -98,7 +177,9 @@ export function apply(run, input, now) {
       run.catch = { name: target.name, rarity: target.rarity, points, lure: target.lure, length, grade, gilded };
       const effort = target.rarity === 'Rare' || grade !== 'Standard' ? 3
         : target.rarity === 'Uncommon' ? 2 : 0;
-      if (effort) {
+      if (effort && run.campaign) {
+        startCampaignFight(run, effort, now);
+      } else if (effort) {
         const surge = effort === 3 ? 80 : 68;
         run.fight = { pulls: Math.max(1, effort - run.skills.lift), tension: surge, surge };
         run.stage = 'fight';
@@ -110,6 +191,8 @@ export function apply(run, input, now) {
       run.stage = 'seek';
       run.cue = 'It slipped the hook. Jig again to bring it back.';
     }
+  } else if (campaignFight && ['reel', 'lift', 'loosen'].includes(input.action)) {
+    campaignFightMove(run, input.action, target);
   } else if (run.stage === 'fight' && ['lift', 'loosen'].includes(input.action)) {
     const fight = run.fight;
     if (input.action === 'loosen') {
@@ -142,6 +225,7 @@ export function apply(run, input, now) {
     }
     run.index++;
     run.catch = null;
+    if (run.campaign) run.snap = null;
     run.stage = run.index === run.encounters.length ? 'done' : 'seek';
     run.seekUntil = run.stage === 'seek' ? seekDeadline(run, now) : null;
     run.cue = run.stage === 'done' ? 'Outing complete.' : 'Fish in view. Pick a lure and jig.';
@@ -172,7 +256,7 @@ function land(run, target) {
   run.fight = null;
   run.score += points;
   if (run.practice) run.landed = (run.landed ?? run.index) + 1;
-  if (!run.practice || run.landed === practiceLevelCatches) run.skillPoints++;
+  if (!run.campaign && (!run.practice || run.landed === practiceLevelCatches)) run.skillPoints++;
   if (!run.discoveries.some(entry => entry.fish === target.name)) {
     run.discoveries.push({ fish: target.name, lure: target.lure });
   }

@@ -1,4 +1,4 @@
-import { apply, lures, practiceLevelXp, practiceSkills, publicRun, skills, start } from './rules.mjs?v=12';
+import { advanceCampaignFight, apply, lures, practiceLevelXp, practiceSkills, publicRun, skills, start } from './rules.mjs?v=12';
 
 const endpoint = document.querySelector('meta[name="fishing-api"]')?.content;
 const scenes = [...document.querySelectorAll('.dive[data-dive]')].slice(0, 6);
@@ -131,9 +131,10 @@ const countdown = tray.querySelector('.fishing-countdown');
 const practiceButtons = [...practiceChoice.querySelectorAll('button')];
 const slots = [...tray.querySelectorAll('[data-lure]')];
 let launch, previousScroll, run, state, token, target, busy, failed, biteAt, frame;
-let mode, rigFrame, jigAt = -Infinity;
+let mode, rigFrame, fightFrame, jigAt = -Infinity;
 let countdownTimer, rankedSeekUntil, rankedServerSeekUntil, escapeTimer;
 let jigActivation = false;
+let fightActivation = false;
 let lure = 'jig';
 let practiceError;
 let generation = 0;
@@ -206,8 +207,59 @@ function drawCampaignLine(eye, slack = 0) {
 }
 
 function positionCampaignLine() {
-  const attached = target && ['bite', 'fight'].includes(state?.stage);
-  drawCampaignLine(attached ? campaignMouth() : undefined);
+  const attached = mode === 'campaign' && target && ['bite', 'fight'].includes(state?.stage);
+  const fight = attached && state.fight;
+  let curve = 0;
+  if (fight) {
+    target.classList.add('is-hooked');
+    target.style.setProperty('--fight-x', `${fight.x * Math.min(82, innerWidth * .10)}px`);
+    target.style.setProperty('--fight-y', `${fight.y * 16}px`);
+    const loadRatio = Math.min(1, fight.tension / fight.lineStrength);
+    curve = Math.min(54, fight.slack * 7 + (1 - loadRatio) * 14);
+  }
+  drawCampaignLine(attached ? campaignMouth() : undefined, curve);
+}
+
+function fightCue(fight) {
+  if (fight.tight) return 'Line tight. Loosen.';
+  return fight.pullUp ? 'Line clear. Pull up.' : 'Line clear. Reel.';
+}
+
+function setAction(actionIcon, label) {
+  if (action.lastElementChild?.textContent !== label) {
+    action.innerHTML = `${icon(actionIcon)}<span>${label}</span>`;
+  }
+}
+
+function renderCampaignLoad() {
+  const load = state?.fight?.tension ?? state?.snap?.tension ?? 0;
+  meter.max = state?.lineStrength ?? 8;
+  meter.high = 4.8;
+  meter.value = load;
+  const reading = `${load} / ${meter.max} lb`;
+  if (pullsText.textContent !== reading) pullsText.textContent = reading;
+}
+
+function animateCampaignFight() {
+  if (tray.hidden || mode !== 'campaign' || state?.stage !== 'fight') return;
+  if (advanceCampaignFight(run, Date.now())) {
+    state = publicRun(run);
+    if (!state.fight) {
+      const focused = document.activeElement;
+      swimAway();
+      render();
+      if (focused === loosen) action.focus({ preventScroll: true });
+      return;
+    }
+    const { fight } = state;
+    renderCampaignLoad();
+    setStatus(fightCue(fight));
+    setAction(fight.pullUp ? 'lift' : 'reel', fight.pullUp ? 'Pull up' : 'Reel');
+    action.classList.toggle('fishing-action-quiet', fight.tight);
+    loosen.classList.toggle('fishing-recommended', fight.tight);
+    positionCampaignLine();
+  }
+  fightFrame = requestAnimationFrame(animateCampaignFight);
 }
 
 function jigCampaignLine() {
@@ -355,12 +407,13 @@ function render() {
   tray.querySelector('[data-score]').textContent = state
     ? `${state.lake} · ${modeName} · ${state.score} pts · ${Math.min(state.index + 1, state.count)}/${state.count}`
     : 'Fishing beneath the ice';
-  const practiceFight = !token && state?.stage === 'fight';
-  const tight = practiceFight && state.fight.tension >= 60;
-  const pullUp = state?.fight?.pulls === 1;
+  const practiceFight = !campaign && !token && state?.stage === 'fight';
+  const tight = campaign ? state?.fight?.tight : practiceFight && state.fight.tension >= 60;
+  const pullUp = campaign ? state?.fight?.pullUp : state?.fight?.pulls === 1;
   const practiceBite = !token && state?.stage === 'bite';
   let cue = state?.cue ?? 'Opening the lake…';
   if (failed) cue = 'Ranking disconnected. You can start a practice outing.';
+  else if (campaign && state?.fight) cue = fightCue(state.fight);
   else if (practiceError) cue = practiceError;
   else if (practiceFight) cue = tight ? 'Tight line. Loosen.' : `Line clear. ${pullUp ? 'Pull up' : 'Reel'}.`;
   else if (state?.stage === 'landed' && cue.endsWith('points')) {
@@ -378,10 +431,10 @@ function render() {
     if (practiceProgress.textContent !== progress) practiceProgress.textContent = progress;
   }
   const [actionIcon, label] = failed ? ['next', 'Practice'] : ({
-    seek: ['jig', 'Jig'], bite: ['reel', 'Reel'], fight: state?.fight?.pulls === 1 ? ['lift', 'Pull up'] : ['reel', 'Reel'],
+    seek: ['jig', 'Jig'], bite: ['reel', 'Reel'], fight: pullUp ? ['lift', 'Pull up'] : ['reel', 'Reel'],
     landed: ['next', 'Next fish'], missed: ['next', 'Next fish'], done: ['next', 'Fish again'],
   }[state?.stage] ?? ['next', 'Wait']);
-  action.innerHTML = `${icon(actionIcon)}<span>${label}</span>`;
+  setAction(actionIcon, label);
   action.disabled = busy || !state;
   action.closest('.fishing-tools').toggleAttribute('data-practice-fight', practiceFight);
   action.classList.toggle('fishing-action-quiet', tight);
@@ -395,11 +448,7 @@ function render() {
   loosen.hidden = !campaign && pressure.hidden;
   loosen.disabled = busy || !state?.fight;
   if (campaign) {
-    const load = (state?.fight?.tension ?? 0) * .08;
-    meter.max = 8;
-    meter.high = 4.8;
-    meter.value = load;
-    pullsText.textContent = `${Number(load.toFixed(1))} / ${meter.max} lb`;
+    renderCampaignLoad();
   } else if (state?.fight) {
     const { tension, pulls } = state.fight;
     meter.max = 100;
@@ -444,8 +493,9 @@ async function begin(selectedMode = mode) {
   clearBite();
   stopCountdown();
   cancelAnimationFrame(rigFrame);
+  cancelAnimationFrame(fightFrame);
   jigAt = -Infinity;
-  jigActivation = false;
+  jigActivation = fightActivation = false;
   practiceError = undefined;
   const current = ++generation;
   busy = true;
@@ -469,7 +519,10 @@ async function begin(selectedMode = mode) {
   if (!state) {
     if (mode === 'ranked') mode = 'practice';
     lure = 'jig';
-    run = start(Date.now(), undefined, undefined, { practice: mode === 'practice' });
+    run = start(Date.now(), undefined, undefined, {
+      practice: mode === 'practice',
+      campaign: mode === 'campaign' ? { lineStrength: 8 } : undefined,
+    });
     state = publicRun(run);
   }
   busy = false;
@@ -501,6 +554,7 @@ function leave() {
   clearBite();
   stopCountdown();
   cancelAnimationFrame(rigFrame);
+  cancelAnimationFrame(fightFrame);
   removeTarget();
   tray.hidden = bobber.hidden = true;
   line.setAttribute('hidden', '');
@@ -595,6 +649,9 @@ async function perform(move, input = {}) {
       animateBite();
     } else if (prior.stage === 'bite') {
       clearBite();
+      if (mode === 'campaign' && state.stage === 'fight') {
+        fightFrame = requestAnimationFrame(animateCampaignFight);
+      }
     }
   } catch (error) {
     if (current !== generation) return;
@@ -614,25 +671,30 @@ async function perform(move, input = {}) {
   if (focused === action || (move === 'upgrade' && skillRow.hidden && practiceChoice.hidden)) {
     action.focus({ preventScroll: true });
   }
-  if (focused === loosen) (loosen.hidden ? action : loosen).focus({ preventScroll: true });
+  if (focused === loosen) (loosen.disabled || loosen.hidden ? action : loosen).focus({ preventScroll: true });
 }
 
 loosen.addEventListener('click', () => perform('loosen'));
 
+function rememberAction() {
+  jigActivation = state?.stage === 'seek';
+  fightActivation = mode === 'campaign' && state?.stage === 'fight';
+}
 action.addEventListener('pointerdown', event => {
-  if (event.isPrimary && event.button === 0) jigActivation = state?.stage === 'seek';
+  if (event.isPrimary && event.button === 0) rememberAction();
 });
-action.addEventListener('pointercancel', () => { jigActivation = false; });
+action.addEventListener('pointercancel', () => { jigActivation = fightActivation = false; });
 action.addEventListener('keydown', event => {
-  if (!event.repeat && ['Enter', ' '].includes(event.key)) jigActivation = state?.stage === 'seek';
+  if (!event.repeat && ['Enter', ' '].includes(event.key)) rememberAction();
 });
 action.addEventListener('click', () => {
-  const startedAsJig = jigActivation;
-  jigActivation = false;
-  if (startedAsJig && ['missed', 'done'].includes(state.stage)) return;
+  const startedBeforeMiss = jigActivation || fightActivation;
+  jigActivation = fightActivation = false;
+  if (startedBeforeMiss && ['missed', 'done'].includes(state.stage)) return;
   if (failed || state.stage === 'done') return begin(failed ? 'practice' : mode);
   if (state.stage === 'seek' && !fishInView()) return updateSearch();
-  const move = { seek: 'jig', bite: 'reel', fight: 'lift', landed: 'next', missed: 'next' }[state.stage];
+  const fightMove = mode === 'campaign' && !state.fight?.pullUp ? 'reel' : 'lift';
+  const move = { seek: 'jig', bite: 'reel', fight: fightMove, landed: 'next', missed: 'next' }[state.stage];
   return perform(move, move === 'jig' ? { lure } : {});
 });
 for (const button of [...skillRow.children, ...practiceButtons]) {
