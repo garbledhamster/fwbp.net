@@ -3,6 +3,8 @@ import { practicePage, withBrowser } from './browser-qa.mjs';
 import map from './lake-map-data.mjs';
 const shore = map.cells.find((cell) => cell.area === 'starter-shore');
 const reef = map.cells.find((cell) => cell.depthFt >= 30);
+const visibleWaterBands = (page) =>
+  page.locator('.lake > .dive:visible').count();
 const snapshot = (page) =>
   page
     .locator('.fishing-target, .fishing-candidate')
@@ -59,6 +61,7 @@ await withBrowser(async (browser) => {
       new RegExp(`${shore.id}.*${shore.depthFt} ft`),
     );
     const firstHole = await snapshot(page);
+    const shoreBands = await visibleWaterBands(page);
     // The matching permit is bought through Rowan, then the same selection resumes.
     await press(tray.locator('[data-open-map]'), 'Enter');
     await press(page.locator(`[data-map-cell="${reef.id}"]`), 'Enter');
@@ -73,6 +76,7 @@ await withBrowser(async (browser) => {
     await press(page.locator('[data-map-drill]'), 'Enter');
     await press(page.locator('[data-drill-skip]'), 'Enter');
     assert.notDeepEqual(await snapshot(page), firstHole);
+    assert.ok(await visibleWaterBands(page) > shoreBands, 'deep holes extend the playable water');
     assert.match(
       await tray.locator('[data-water]').textContent(),
       new RegExp(`${reef.id}.*${reef.depthFt} ft`),
@@ -84,7 +88,9 @@ await withBrowser(async (browser) => {
     await press(page.locator('[data-map-drill]'), 'Enter');
     assert.equal(await page.locator('.fishing-drill').isVisible(), false);
     assert.deepEqual(await snapshot(page), firstHole, 'revisit never rerolls candidates');
+    assert.equal(await visibleWaterBands(page), shoreBands, 'revisit restores the original depth');
     await qa.leave();
+    assert.equal(await visibleWaterBands(page), 7, 'leaving restores the entire site lake');
     await qa.enter('Campaign');
     assert.equal(await tray.locator('meter').getAttribute('max'), '12', 'new equipment applies next outing');
     assert.deepEqual(qa.errors, []);

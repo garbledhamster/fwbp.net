@@ -4,6 +4,9 @@
 .game-entry:hover { background: #36513a; }
 .fishing :is(.mast, .skip, .surface, .ice, .dive-content, .library, .field-notes, .merch, .lakebed-feature, .footer-rig, .footer-inner) { display: none; }
 .fishing .dive { min-height: 76svh; }
+.fishing .lake > [data-below-hole] { display: none; }
+/* Leave room to scroll the deepest fish above the fixed tray. */
+.fishing .lake[data-campaign-water] { padding-block-end: max(28svh, 112px); }
 .fishing .dive-actor[data-fish] { visibility: hidden; }
 .fishing-background-fish {
   display: none;

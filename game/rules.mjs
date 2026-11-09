@@ -392,6 +392,10 @@ function land(run, target) {
 
 // Campaign map state lives on the same six-attempt run. Opening a hole never
 // replaces its clock, score, award index, equipment or previously sampled fish.
+export function campaignDepthBand(depthFt) {
+  return Math.min(5, Math.max(1, Math.round(depthFt / 7) - 1));
+}
+
 function prepareHoleFish(run, elapsedMs = 0) {
   const hole = run.campaign.hole;
   const saved = run.holes[hole.id];
@@ -401,7 +405,7 @@ function prepareHoleFish(run, elapsedMs = 0) {
     saved.candidates = Array.from({ length: 3 }, (_, slot) => {
       const seed = run.holeSeed[(slot + saved.generation) % run.holeSeed.length];
       const roll = (seed.speciesRoll + salt + slot / 3) % 1;
-      const maxBand = Math.min(5, Math.max(1, Math.round(hole.depthFt / 7) - 1));
+      const maxBand = campaignDepthBand(hole.depthFt);
       return { ...seed, species: pool[Math.floor(roll * pool.length)],
         depth: Math.max(0, maxBand - (slot % 3)), x: [27, 50, 73][slot], y: 35 + slot * 10 };
     });

@@ -1,6 +1,6 @@
 import { openCampaignMap, mapCells, firstShoreHole, confirmEndAttempt } from './campaign-map.mjs';
 import { createSuspensionClock } from './suspension.mjs';
-import { moveToHole, selectHoleFish, abandonHoleFish, advanceLineFight, apply, campaignAreas, campaignPhase, lakes, lures, practiceLevelXp, practiceSkills, publicRun, skills, start, starterArea } from './rules.mjs?v=connected-rpg';
+import { moveToHole, selectHoleFish, abandonHoleFish, advanceLineFight, apply, campaignAreas, campaignDepthBand, campaignPhase, lakes, lures, practiceLevelXp, practiceSkills, publicRun, skills, start, starterArea } from './rules.mjs?v=connected-rpg';
 import { applyProfile, campaignMilestone, loadProfile, shopItems } from './profile.mjs?v=connected-rpg';
 import { lureTip } from './species-catalog.mjs';
 import { openYourLake } from './collection.mjs';
@@ -1236,9 +1236,16 @@ function moveFishAway() {
   target.style.setProperty('--y', `${y + state.wrongLures * 3}%`);
 }
 
+function setCampaignWater(hole) {
+  const lastBand = hole ? campaignDepthBand(hole.depthFt) : water.length - 1;
+  lake.toggleAttribute('data-campaign-water', Boolean(hole));
+  water.forEach((band, index) => band.toggleAttribute('data-below-hole', index > lastBand));
+}
+
 function placeFish() {
   removeCandidates();
   removeTarget();
+  setCampaignWater(state.hole);
   positionLine();
   if (!state.fish) return;
   const { art, x, y } = state.fish;
@@ -1552,6 +1559,7 @@ function leave() {
   outingTime.cancel(fightFrame);
   removeTarget();
   removeCandidates();
+  setCampaignWater();
   mapRelease?.(); mapRelease = undefined;
   tray.hidden = bobber.hidden = true;
   line.setAttribute('hidden', '');
