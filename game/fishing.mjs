@@ -1,7 +1,9 @@
+import { createSuspensionClock } from './suspension.mjs';
 import { advanceLineFight, apply, campaignAreas, campaignPhase, lakes, lures, practiceLevelXp, practiceSkills, publicRun, skills, start, starterArea } from './rules.mjs?v=lake-balance';
 import { applyProfile, loadProfile, shopItems } from './profile.mjs?v=16';
 import { lureTip } from './species-catalog.mjs';
 
+const outingTime = createSuspensionClock();
 const endpoint = document.querySelector('meta[name="fishing-api"]')?.content;
 const lake = document.querySelector('.lake');
 const water = [...lake.querySelectorAll(':scope > .dive')];
@@ -77,7 +79,7 @@ shop.innerHTML = `
   </div>
   <p data-shop-message role="status"></p>
   <div data-shop-items></div>
-  <form method="dialog"><button>Back to outings</button></form>`;
+  <form method="dialog"><button data-shop-back>Back to outings</button></form>`;
 const permitDialog = document.createElement('dialog');
 permitDialog.className = 'fishing-picker fishing-permit';
 permitDialog.setAttribute('aria-labelledby', 'fishing-permit-title');
@@ -96,6 +98,44 @@ permitDialog.innerHTML = `
   <p class="fishing-permit-note">These permits unlock game areas with game coins. For real fishing, check
     <a href="https://www.dnr.state.mn.us/regulations/fishing/index.html" target="_blank" rel="noopener">Minnesota DNR requirements</a>
     and <a href="https://www.dnr.state.mn.us/fishing/millelacs.html" target="_blank" rel="noopener">Mille Lacs rules</a>.</p>`;
+
+const pause = document.createElement('dialog');
+pause.className = 'fishing-picker fishing-pause';
+pause.setAttribute('aria-labelledby', 'fishing-pause-title');
+pause.innerHTML = `
+  <h2 id="fishing-pause-title" tabindex="-1">Paused</h2>
+  <section data-pause-panel="menu">
+    <p>Your fish and the outing clock will wait here.</p>
+    <div class="fishing-menu-actions">
+      <button type="button" data-action="resume">Resume fishing</button>
+      <button type="button" data-action="gear">${icon('gear')} Gear</button>
+      <button type="button" data-action="shop">${icon('shop')} Tackle shop</button>
+      <button type="button" data-action="your-lake" data-open-your-lake>${icon('your-lake')} Your Lake</button>
+      <button type="button" data-action="controls">${icon('controls')} Controls</button>
+      <button type="button" data-action="leave">Leave outing</button>
+    </div>
+  </section>
+  <section data-pause-panel="gear" hidden>
+    <div data-gear-content></div>
+    <button type="button" data-action="back">Back to Pause</button>
+  </section>
+  <section data-pause-panel="controls" hidden>
+    <p>Scroll the lake to find the larger fish. Choose a lure, then jig. Reel in the gold window. Loosen a tight line; reel when it clears.</p>
+    <dl class="fishing-controls-list">
+      <dt><kbd>J</kbd></dt><dd>Jig while searching</dd>
+      <dt><kbd>R</kbd></dt><dd>Reel at the bite or in a fight; pull up at the hole</dd>
+      <dt><kbd>L</kbd></dt><dd>Loosen during a fight</dd>
+      <dt><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></dt><dd>Jig, Spoon, Minnow while searching</dd>
+      <dt><kbd>Esc</kbd></dt><dd>Menu / Back / Resume</dd>
+      <dt>Arrows / Page keys</dt><dd>Scroll the lake; Left / Right browse a focused hook carousel</dd>
+    </dl>
+    <p>Touch uses the labeled fishing buttons. Details shows each item’s effect. Campaign tackle changes apply to the next outing. Practice uses starter tackle and its own Level 2 skill choice. Ranked uses server timing and an Exit button.</p>
+    <button type="button" data-action="back">Back to Pause</button>
+  </section>`;
+const itemDetails = document.createElement('dialog');
+itemDetails.className = 'fishing-picker fishing-item-details';
+itemDetails.setAttribute('aria-labelledby', 'fishing-item-title');
+itemDetails.innerHTML = '<h2 id="fishing-item-title"></h2><div data-item-description></div><form method="dialog"><button>Back to item</button></form>';
 const tray = document.createElement('section');
 tray.className = 'fishing-tray';
 tray.hidden = true;
@@ -184,12 +224,12 @@ celebration.innerHTML = `
 const announcement = document.createElement('span');
 announcement.className = 'fishing-announcement';
 announcement.setAttribute('role', 'status');
-document.body.append(picker, shop, permitDialog, tray, celebration, announcement);
+document.body.append(picker, pause, shop, itemDetails, permitDialog, tray, celebration, announcement);
 
 let celebrationTimer;
 
 function dismissCelebration() {
-  clearTimeout(celebrationTimer);
+  outingTime.cancel(celebrationTimer);
   celebration.hidden = true;
   announcement.textContent = '';
 }
@@ -202,7 +242,7 @@ function celebrateCatch(level, practice = false) {
   else celebration.removeAttribute('aria-hidden');
   celebration.hidden = false;
   if (!practice) announcement.textContent = `Level ${level}. You earned one skill point.`;
-  celebrationTimer = setTimeout(dismissCelebration, 3600);
+  celebrationTimer = outingTime.timeout(dismissCelebration, 3600);
 }
 
 const action = tray.querySelector('.fishing-action');
@@ -257,6 +297,40 @@ let pickerGeneration = 0;
 let clock, clockWrite, suspendedClock;
 let shopBusy = false;
 let shopGeneration = 0;
+let shopReturn, shopRelease, pauseRelease, pauseOpener, detailsOpener;
+let outingEquipment;
+let pausePanel = 'menu';
+let pauseGeneration = 0;
+let hookSelection = 'starter-hook';
+let detailsPress;
+let pausedAnimations = [];
+
+export function acquireSuspension() {
+  if (tray.hidden || !usesLinePhysics()) return () => {};
+  const first = !outingTime.suspended;
+  const releaseTime = outingTime.acquire();
+  if (first) {
+    pausedAnimations = [...lake.getAnimations({ subtree: true }), ...celebration.getAnimations({ subtree: true })]
+      .filter(animation => animation.playState === 'running');
+    pausedAnimations.forEach(animation => animation.pause());
+    document.body.setAttribute('data-fishing-paused', '');
+  }
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    releaseTime();
+    if (!outingTime.suspended) {
+      document.body.removeAttribute('data-fishing-paused');
+      pausedAnimations.forEach(animation => { if (animation.playState === 'paused') animation.play(); });
+      pausedAnimations = [];
+    }
+  };
+}
+
+const dialogOpen = () => Boolean(document.querySelector('dialog[open]'));
+const gameBlocked = () => tray.hidden || busy || outingTime.suspended || dialogOpen();
+
 let countdownTimer, rankedSeekUntil, rankedServerSeekUntil, escapeTimer;
 let jigActivation = false;
 let fightActivation = false;
@@ -272,7 +346,7 @@ const phaseNames = { day: 'Day', dusk: 'Dusk', night: 'Night' };
 
 function outingElapsed() {
   if (!clock) return mode === 'campaign' ? profile?.elapsedMs ?? 0 : 0;
-  return Math.floor(Math.min(performance.now(), clock.until) - clock.origin);
+  return Math.floor(Math.min(outingTime.now(), clock.until) - clock.origin);
 }
 
 function showPhase(phase) {
@@ -289,7 +363,7 @@ function saveCampaignClock(elapsedMs) {
 
 function tickOutingClock() {
   const current = clock;
-  if (performance.now() >= current.until) {
+  if (outingTime.now() >= current.until) {
     // An expired clock must not discard a landed catch whose payout is still pending.
     if (state?.stage === 'landed' && (busy || catchSaveFailed)) {
       stopOutingClock();
@@ -319,10 +393,10 @@ function tickOutingClock() {
 
 function startOutingClock(elapsedMs) {
   const phase = campaignPhase(elapsedMs);
-  const now = performance.now();
+  const now = outingTime.now();
   clock = {
-    origin: now - elapsedMs, until: now + Math.max(0, run.expires - Date.now()), phase, checkpoint: elapsedMs,
-    save: mode === 'campaign', timer: setInterval(tickOutingClock, 250),
+    origin: now - elapsedMs, until: now + Math.max(0, run.expires - outingTime.dateNow()), phase, checkpoint: elapsedMs,
+    save: mode === 'campaign', timer: outingTime.interval(tickOutingClock, 250),
   };
   showPhase(phase);
 }
@@ -331,7 +405,7 @@ function stopOutingClock() {
   if (!clock) return clockWrite;
   const elapsedMs = outingElapsed();
   const { save, timer } = clock;
-  clearInterval(timer);
+  outingTime.clearInterval(timer);
   clock = undefined;
   return save ? saveCampaignClock(elapsedMs) : clockWrite;
 }
@@ -432,7 +506,7 @@ permitStarter.addEventListener('click', () => {
   showOutingPicker(starterArea);
 });
 
-function shopItem(item) {
+function shopItem(item, inventory = false) {
   const owned = profile.owned.includes(item.id);
   const equipped = profile.equipped[item.category] === item.id;
   const canEquip = Object.hasOwn(profile.equipped, item.category);
@@ -440,29 +514,144 @@ function shopItem(item) {
   const action = (type, label, disabled = false) =>
     `<button type="button" data-shop-action="${type}" aria-label="${label} ${item.name}" ${disabled ? 'disabled' : ''}>${label}</button>`;
   return `<li data-item="${item.id}" tabindex="-1">
-    <div><strong>${item.name}</strong><p>${item.effect}</p></div>
+    <div><strong>${icon(item.category)} ${item.name}</strong><p>${item.effect}</p>
+      <button type="button" data-item-details="${item.id}">Details<span class="fishing-announcement"> for ${item.name}</span></button></div>
     <div class="fishing-shop-action">
       <span>${owned ? equipped ? 'Equipped' : 'Owned' : coins(item.cost)}</span>
-      ${owned ? canEquip && !equipped ? action('equip', 'Equip') : '' : action('buy', 'Buy', shortfall > 0)}
+      ${owned ? canEquip && !equipped ? action('equip', 'Equip') : '' : inventory ? `<button type="button" data-view-shop="${item.id}">View in shop</button>` : action('buy', 'Buy', shortfall > 0)}
     </div>
   </li>`;
 }
 
-function renderShop() {
-  shopBalance.textContent = coins(profile.coins);
-  shopList.innerHTML = Object.entries(shopLabels).map(([category, label]) => {
-    const items = shopItems.filter(item => item.category === category);
-    if (!items.length) return '';
-    return `<section aria-labelledby="shop-${category}">
-      <h3 id="shop-${category}">${label}</h3>
-      <ul>${items.map(shopItem).join('')}</ul>
-    </section>`;
-  }).join('');
+function hookCarousel(inventory = false) {
+  const hooks = shopItems.filter(item => item.category === 'hook');
+  let selected = hooks.findIndex(item => item.id === hookSelection);
+  if (selected < 0) selected = 0;
+  hookSelection = hooks[selected].id;
+  const cardPrefix = inventory ? 'gear-hook' : 'shop-hook';
+  return `<div class="fishing-hook-carousel" tabindex="0" role="group" aria-label="Hook carousel" aria-describedby="${cardPrefix}-${hookSelection}" data-hook-carousel>
+    <div class="fishing-carousel-nav">
+      <button type="button" data-hook-step="-1" aria-label="Previous hook" ${selected === 0 ? 'disabled' : ''}>Previous</button>
+      <span data-hook-position role="status">Hook ${selected + 1} of ${hooks.length}</span>
+      <button type="button" data-hook-step="1" aria-label="Next hook" ${selected === hooks.length - 1 ? 'disabled' : ''}>Next</button>
+    </div>
+    <ul>${hooks.map((item, i) => shopItem(item, inventory).replace('<li ', `<li id="${cardPrefix}-${item.id}" ${i !== selected ? 'hidden' : ''} `)).join('')}</ul>
+  </div>`;
 }
 
-async function openShop() {
+function renderShop() {
+  shopBalance.textContent = coins(profile.coins);
+  shopList.innerHTML = `<nav class="fishing-shop-categories" aria-label="Shop categories">${Object.entries(shopLabels).map(([id, label]) =>
+    `<button type="button" data-shop-category="${id}">${icon(id)} ${label}</button>`).join('')}</nav>` +
+    Object.entries(shopLabels).map(([category, label]) => {
+      const items = shopItems.filter(item => item.category === category);
+      if (!items.length) return '';
+      return `<section aria-labelledby="shop-${category}" data-category="${category}">
+        <h3 id="shop-${category}" tabindex="-1">${label}</h3>
+        ${category === 'hook' ? hookCarousel() : `<ul>${items.map(item => shopItem(item)).join('')}</ul>`}
+      </section>`;
+    }).join('');
+}
+
+function equipmentName(id) { return shopItems.find(item => item.id === id)?.name ?? 'Starter tackle'; }
+function renderGear() {
+  const content = pause.querySelector('[data-gear-content]');
+  if (!profile) { content.textContent = 'Couldn’t read your gear. Return to Pause and try Gear again.'; return; }
+  const active = outingEquipment ?? { line: 'starter-line', hook: 'starter-hook' };
+  content.innerHTML = `<p>Campaign changes apply to your next Campaign outing. Practice always starts with starter tackle.</p>
+    <dl class="fishing-loadout"><dt>This outing</dt><dd>${icon('line')} ${equipmentName(active.line)}<br>${icon('hook')} ${equipmentName(active.hook)}</dd>
+      <dt>Next Campaign outing</dt><dd>${icon('line')} ${equipmentName(profile.equipped.line)}<br>${icon('hook')} ${equipmentName(profile.equipped.hook)}</dd></dl>
+    <h3>Hooks</h3>${hookCarousel(true)}
+    <h3>Line</h3><ul>${shopItems.filter(item => item.category === 'line').map(item => shopItem(item, true)).join('')}</ul>
+    <h3>Training and licenses</h3><ul>${shopItems.filter(item => ['training', 'license'].includes(item.category)).map(item => shopItem(item, true)).join('')}</ul>
+    <div data-gear-milestone></div>
+    <p>Practice: two catches reach Level 2. Choose Line Control for a longer hook window or Lift for an extra first clear pull.</p>
+    <p data-gear-message role="status"></p>`;
+  pause.dispatchEvent(new CustomEvent('fishing:gear-rendered', { bubbles: true, detail: { profile } }));
+}
+
+function showPausePanel(panel) {
+  pausePanel = panel;
+  pause.querySelectorAll('[data-pause-panel]').forEach(section => { section.hidden = section.dataset.pausePanel !== panel; });
+  const title = pause.querySelector('h2');
+  title.textContent = { menu: 'Paused', gear: 'Gear', controls: 'Controls' }[panel];
+  pause.scrollTop = 0;
+  if (panel === 'gear') renderGear();
+  title.focus({ preventScroll: true });
+}
+
+export function openPause() {
+  if (tray.hidden || !usesLinePhysics() || busy || catchSaveFailed || !state) return;
+  if (pause.open) return;
+  pauseOpener = document.activeElement;
+  pauseRelease = acquireSuspension();
+  showPausePanel('menu');
+  pause.showModal();
+}
+
+pause.addEventListener('close', () => {
+  pauseGeneration++;
+  pauseRelease?.();
+  pauseRelease = undefined;
+  if (!tray.hidden) {
+    render();
+    (pauseOpener?.isConnected ? pauseOpener : exit).focus({ preventScroll: true });
+  }
+});
+pause.addEventListener('cancel', event => {
+  if (shopBusy) { event.preventDefault(); return; }
+  if (pausePanel !== 'menu') { event.preventDefault(); showPausePanel('menu'); }
+});
+pause.addEventListener('click', async event => {
+  const control = event.target.closest('[data-action]');
+  if (!control || shopBusy) return;
+  const current = ++pauseGeneration;
+  const destination = control.dataset.action;
+  if (destination === 'resume') pause.close();
+  if (destination === 'back') { const parent = pausePanel; showPausePanel('menu'); pause.querySelector(`[data-action="${parent}"]`)?.focus(); }
+  if (destination === 'leave') { pause.close(); leave(); }
+  if (destination === 'controls') showPausePanel('controls');
+  if (destination === 'shop') void openShop();
+  if (destination === 'gear') {
+    let loaded;
+    try { loaded = await loadProfile(); } catch { /* Gear offers a retry through Pause. */ }
+    if (pause.open && current === pauseGeneration) {
+      if (loaded) profile = loaded;
+      showPausePanel('gear');
+      if (!loaded) pause.querySelector('[data-gear-content]').textContent = 'Couldn’t read your gear. Return to Pause and try Gear again.';
+    }
+  }
+});
+
+export async function openShop({ itemId, onClose } = {}) {
+  // A pending catch must settle before a purchase can use its balance.
+  if (!tray.hidden && (busy || catchSaveFailed || !usesLinePhysics())) return;
+  if (shopBusy || shop.open) return;
   const current = ++shopGeneration;
-  picker.close();
+  const returnToPause = !tray.hidden && usesLinePhysics();
+  const opener = document.activeElement;
+  const parentHook = hookSelection;
+  const parentScroll = pause.scrollTop;
+  const parentItem = opener?.closest('[data-item]')?.dataset.item;
+  shopReturn = onClose ?? (() => {
+    if (returnToPause) {
+      if (!pause.open) openPause();
+      else if (pausePanel === 'gear') {
+        hookSelection = parentHook;
+        renderGear();
+        pause.scrollTop = parentScroll;
+        const row = [...pause.querySelectorAll('[data-item]')].find(row => row.dataset.item === parentItem);
+        (row?.querySelector('[data-view-shop], [data-shop-action]') ?? row)?.focus({ preventScroll: true });
+      }
+      if (opener?.isConnected) opener.focus({ preventScroll: true });
+    } else {
+      showOutingPicker();
+      picker.querySelector('[data-open-shop]').focus();
+    }
+  });
+  shopRelease = acquireSuspension();
+  if (picker.open) picker.close();
+  shop.querySelector('[data-shop-back]').textContent = onClose ? 'Back' : returnToPause ? 'Back to Pause' : 'Back to outings';
   shopBusy = true;
   shopBalance.textContent = '';
   shopList.replaceChildren();
@@ -474,10 +663,17 @@ async function openShop() {
     const loaded = await loadProfile();
     if (current !== shopGeneration || !shop.open) return;
     profile = loaded;
+    const targeted = shopItems.find(item => item.id === itemId);
+    if (targeted?.category === 'hook') hookSelection = itemId;
     renderShop();
-    shopMessage.textContent = '';
+    shopMessage.textContent = returnToPause ? 'Equipment changes apply to your next Campaign outing.' : '';
+    if (targeted) {
+      const row = [...shopList.querySelectorAll('[data-item]')].find(row => row.dataset.item === itemId);
+      row?.scrollIntoView({ block: 'nearest' });
+      row?.focus({ preventScroll: true });
+    }
   } catch {
-    if (current === shopGeneration) shopMessage.textContent = 'Couldn’t open your saved tackle. Try opening the shop again.';
+    if (current === shopGeneration) shopMessage.textContent = 'Couldn’t open your saved tackle. Close the shop and try again.';
   } finally {
     if (current === shopGeneration) shopBusy = false;
   }
@@ -485,41 +681,133 @@ async function openShop() {
 
 shop.addEventListener('close', () => {
   shopGeneration++;
-  showOutingPicker();
-  picker.querySelector('[data-open-shop]').focus();
+  const returnTo = shopReturn;
+  shopReturn = undefined;
+  // Establish the parent hold before releasing this child.
+  try { returnTo?.(); } finally {
+    shopRelease?.();
+    shopRelease = undefined;
+  }
 });
+shop.addEventListener('cancel', event => { if (shopBusy) event.preventDefault(); });
+shop.addEventListener('submit', event => { if (shopBusy) event.preventDefault(); });
 
-shop.addEventListener('click', async event => {
+async function changeShopItem(event) {
   const control = event.target.closest('[data-shop-action]');
   if (!control || shopBusy) return;
+  const source = event.currentTarget;
   const current = shopGeneration;
   const id = control.closest('[data-item]').dataset.item;
   const type = control.dataset.shopAction;
+  const message = source === shop ? shopMessage : pause.querySelector('[data-gear-message]');
   shopBusy = true;
+  message.textContent = 'Saving tackle…';
+  source.querySelectorAll('[data-shop-action], [data-hook-step], [data-item-details], [data-view-shop], [data-shop-category]')
+    .forEach(button => { button.disabled = true; });
   try {
     const result = await applyProfile({ type, id, revision: profile.revision });
-    if (current !== shopGeneration || !shop.open) return;
+    if (source === shop && (current !== shopGeneration || !shop.open)) return;
     profile = result.profile;
-    renderShop();
+    if (source === shop) renderShop(); else renderGear();
     const item = shopItems.find(item => item.id === id);
     const notices = {
-      bought: `${item.name} purchased.`,
-      equipped: `${item.name} equipped.`,
+      bought: `${item.name} purchased.`, equipped: `${item.name} equipped for the next Campaign outing.`,
       stale: 'Your tackle changed in another tab. Check your updated gear and balance.',
-      unaffordable: 'You need more coins for that purchase.',
-      'already-owned': 'You already own that item.',
+      unaffordable: 'You need more coins for that purchase.', 'already-owned': 'You already own that item.',
       'already-equipped': 'That item is already equipped.',
     };
-    shopMessage.textContent = notices[result.status] ?? 'That change is unavailable.';
-    const updated = shopList.querySelector(`[data-item="${id}"]`);
-    const next = updated.querySelector('button:not(:disabled)') ?? updated;
-    next.focus({ preventScroll: true });
+    (source === shop ? message : pause.querySelector('[data-gear-message]')).textContent = notices[result.status] ?? 'That change is unavailable.';
+    const updated = [...source.querySelectorAll('[data-item]')].find(row => row.dataset.item === id);
+    (updated?.querySelector('[data-shop-action]:not(:disabled)') ?? updated)?.focus({ preventScroll: true });
   } catch {
-    if (current === shopGeneration) shopMessage.textContent = 'Couldn’t save that change. Try again.';
+    if (source === shop) renderShop(); else renderGear();
+    (source === shop ? shopMessage : pause.querySelector('[data-gear-message]')).textContent = 'Couldn’t save that change. Try again.';
+    const row = [...source.querySelectorAll('[data-item]')].find(row => row.dataset.item === id);
+    row?.querySelector('[data-shop-action]')?.focus({ preventScroll: true });
   } finally {
-    if (current === shopGeneration) shopBusy = false;
+    shopBusy = false;
   }
-});
+}
+shop.addEventListener('click', changeShopItem);
+pause.addEventListener('click', changeShopItem);
+
+function browseHook(container, index) {
+  if (shopBusy) return;
+  const hooks = shopItems.filter(item => item.category === 'hook');
+  hookSelection = hooks[Math.max(0, Math.min(hooks.length - 1, index))].id;
+  container.outerHTML = hookCarousel(pause.contains(container));
+  const replacement = (shop.open ? shop : pause).querySelector('[data-hook-carousel]');
+  replacement.focus({ preventScroll: true });
+}
+function openDetails(id, opener) {
+  if (shopBusy || itemDetails.open) return;
+  const item = shopItems.find(item => item.id === id);
+  if (!item) return;
+  detailsOpener = opener;
+  itemDetails.querySelector('h2').textContent = item.name;
+  itemDetails.querySelector('[data-item-description]').innerHTML = `${icon(item.category)}<p>${item.effect}</p><p>${profile.owned.includes(id) ? profile.equipped[item.category] === id ? 'Equipped for the next Campaign outing.' : 'Owned.' : `Price: ${coins(item.cost)}.`}</p>`;
+  itemDetails.showModal();
+}
+itemDetails.addEventListener('close', () => detailsOpener?.focus({ preventScroll: true }));
+for (const surface of [shop, pause]) {
+  surface.addEventListener('click', event => {
+    const detail = event.target.closest('[data-item-details]');
+    if (detail) openDetails(detail.dataset.itemDetails, detail);
+    const view = event.target.closest('[data-view-shop]');
+    if (view) void openShop({ itemId: view.dataset.viewShop });
+    const category = event.target.closest('[data-shop-category]');
+    if (category) {
+      const heading = shopList.querySelector(`#shop-${category.dataset.shopCategory}`);
+      heading.scrollIntoView({ block: 'start' }); heading.focus({ preventScroll: true });
+    }
+    const arrow = event.target.closest('[data-hook-step]');
+    if (arrow) {
+      const hooks = shopItems.filter(item => item.category === 'hook');
+      browseHook(arrow.closest('[data-hook-carousel]'), hooks.findIndex(item => item.id === hookSelection) + Number(arrow.dataset.hookStep));
+    }
+  });
+  surface.addEventListener('keydown', event => {
+    const carousel = event.target.closest('[data-hook-carousel]');
+    if (!carousel || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const hooks = shopItems.filter(item => item.category === 'hook');
+    const current = hooks.findIndex(item => item.id === hookSelection);
+    browseHook(carousel, event.key === 'Home' ? 0 : event.key === 'End' ? hooks.length - 1 : current + (event.key === 'ArrowRight' ? 1 : -1));
+  });
+  let gesture;
+  let suppressClick = false;
+  surface.addEventListener('click', event => {
+    if (!suppressClick || event.detail === 0) return;
+    suppressClick = false;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }, true);
+  const cancelPress = () => { clearTimeout(detailsPress); detailsPress = undefined; };
+  surface.addEventListener('pointerdown', event => {
+    cancelPress();
+    suppressClick = false;
+    const carousel = event.target.closest('[data-hook-carousel]');
+    const row = event.target.closest('[data-item]');
+    gesture = { x: event.clientX, y: event.clientY, carousel, row };
+    if (row && event.pointerType !== 'mouse' && !event.target.closest('button')) {
+      detailsPress = setTimeout(() => { openDetails(row.dataset.item, row); gesture = undefined; }, 500);
+    }
+  });
+  surface.addEventListener('pointermove', event => {
+    if (gesture && Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y) > 10) { cancelPress(); suppressClick = true; }
+  });
+  surface.addEventListener('pointerup', event => {
+    cancelPress();
+    if (!gesture) return;
+    const { carousel, x, y } = gesture;
+    gesture = undefined;
+    if (!carousel || Math.abs(event.clientX - x) < 45 || Math.abs(event.clientY - y) > 25) return;
+    const hooks = shopItems.filter(item => item.category === 'hook');
+    browseHook(carousel, hooks.findIndex(item => item.id === hookSelection) + (event.clientX < x ? 1 : -1));
+  });
+  surface.addEventListener('pointercancel', () => { cancelPress(); gesture = undefined; });
+  surface.addEventListener('pointerleave', cancelPress);
+}
 
 async function api(action, data = {}, auth = token) {
   const response = await fetch(endpoint, {
@@ -579,11 +867,11 @@ function drawFishingLine(eye, slack = 0, fight) {
   const start = iceHole(hole);
   const x0 = start.x - water.left;
   const y0 = start.y - water.top;
-  const elapsed = (performance.now() - jigAt) / 340;
+  const elapsed = (outingTime.now() - jigAt) / 340;
   const bounce = elapsed < 1 ? 12 * Math.sin(Math.PI * elapsed) : 0;
   const end = eye ?? searchEye(hole);
   if (!eye && retractAt !== undefined && window.scrollY <= 2) {
-    const progress = Math.min(1, (performance.now() - retractAt) / 240);
+    const progress = Math.min(1, (outingTime.now() - retractAt) / 240);
     end.y = start.y + 11 + (end.y - start.y - 11) * (1 - progress) ** 2;
   }
   const x = end.x - water.left;
@@ -662,8 +950,8 @@ function renderLineLoad() {
 }
 
 function animateLineFight() {
-  if (tray.hidden || !usesLinePhysics() || state?.stage !== 'fight') return;
-  if (advanceLineFight(run, Date.now())) {
+  if (tray.hidden || outingTime.suspended || !usesLinePhysics() || state?.stage !== 'fight') return;
+  if (advanceLineFight(run, outingTime.dateNow())) {
     state = publicRun(run);
     if (!state.fight) {
       const focused = document.activeElement;
@@ -680,18 +968,18 @@ function animateLineFight() {
     loosen.classList.toggle('fishing-recommended', fight.tight);
     positionFishingLine();
   }
-  fightFrame = requestAnimationFrame(animateLineFight);
+  fightFrame = outingTime.frame(animateLineFight);
 }
 
 function jigFishingLine() {
-  cancelAnimationFrame(rigFrame);
+  outingTime.cancel(rigFrame);
   if (document.body.hasAttribute('data-reduced') || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  jigAt = performance.now();
+  jigAt = outingTime.now();
   const animate = () => {
     positionFishingLine();
-    if (performance.now() - jigAt < 340) rigFrame = requestAnimationFrame(animate);
+    if (outingTime.now() - jigAt < 340) rigFrame = outingTime.frame(animate);
   };
-  rigFrame = requestAnimationFrame(animate);
+  rigFrame = outingTime.frame(animate);
 }
 
 function fishToLure() {
@@ -735,22 +1023,22 @@ function renderDialogue(linePhysics) {
 }
 
 function resetRetraction() {
-  clearTimeout(retractTimer);
-  cancelAnimationFrame(retractFrame);
+  outingTime.cancel(retractTimer);
+  outingTime.cancel(retractFrame);
   retractTimer = retractAt = undefined;
 }
 
 function retractAtHole() {
-  if (tray.hidden || !usesLinePhysics() || state?.stage !== 'seek' || window.scrollY > 2
+  if (tray.hidden || outingTime.suspended || !usesLinePhysics() || state?.stage !== 'seek' || window.scrollY > 2
     || retractAt !== undefined) return;
-  clearTimeout(retractTimer);
-  retractTimer = setTimeout(() => {
+  outingTime.cancel(retractTimer);
+  retractTimer = outingTime.timeout(() => {
     retractTimer = undefined;
     if (tray.hidden || state?.stage !== 'seek' || window.scrollY > 2) return;
-    retractAt = performance.now() - (reducedMotion() ? 240 : 0);
+    retractAt = outingTime.now() - (reducedMotion() ? 240 : 0);
     const settle = () => {
       positionFishingLine();
-      if (performance.now() - retractAt < 240) retractFrame = requestAnimationFrame(settle);
+      if (outingTime.now() - retractAt < 240) retractFrame = outingTime.frame(settle);
     };
     settle();
   }, 125);
@@ -761,7 +1049,7 @@ function reducedMotion() {
 }
 
 function stopCountdown() {
-  clearTimeout(countdownTimer);
+  outingTime.cancel(countdownTimer);
   rankedSeekUntil = rankedServerSeekUntil = undefined;
   countdown.hidden = true;
 }
@@ -772,20 +1060,20 @@ function updateCountdown() {
     countdown.hidden = true;
     return;
   }
-  const remaining = deadline - (token ? performance.now() : Date.now());
+  const remaining = deadline - (token ? outingTime.now() : outingTime.dateNow());
   countdown.hidden = false;
   countdown.textContent = `Fish leaves in ${Math.max(0, Math.ceil(remaining / 1000))}s`;
   if (remaining <= 0) {
     if (!busy) void perform('expire');
   } else {
-    countdownTimer = setTimeout(updateCountdown, remaining % 1000 || 1000);
+    countdownTimer = outingTime.timeout(updateCountdown, remaining % 1000 || 1000);
   }
 }
 
 function syncCountdown(serverNow) {
-  clearTimeout(countdownTimer);
+  outingTime.cancel(countdownTimer);
   if (Number.isFinite(serverNow) && Number.isFinite(state?.seekUntil)) {
-    const receivedDeadline = performance.now() + Math.max(0, state.seekUntil - serverNow);
+    const receivedDeadline = outingTime.now() + Math.max(0, state.seekUntil - serverNow);
     // A slow response can only tighten an existing countdown, never add time to it.
     rankedSeekUntil = state.seekUntil === rankedServerSeekUntil
       ? Math.min(rankedSeekUntil, receivedDeadline) : receivedDeadline;
@@ -808,7 +1096,7 @@ function fishInView() {
 }
 
 function updateSearch() {
-  if (tray.hidden) return;
+  if (tray.hidden || outingTime.suspended) return;
   renderStudiedCue();
   const searching = !failed && state?.stage === 'seek';
   const inView = searching && fishInView();
@@ -835,23 +1123,23 @@ function showPracticeBite(elapsed) {
 }
 
 function clearBite() {
-  cancelAnimationFrame(frame);
+  outingTime.cancel(frame);
   timing.style.removeProperty('--position');
 }
 
 function animateBite() {
   if (tray.hidden || state?.stage !== 'bite') return;
-  const elapsed = (token ? performance.now() : Date.now()) - biteAt;
+  const elapsed = (token ? outingTime.now() : outingTime.dateNow()) - biteAt;
   timing.style.setProperty('--position', `${Math.min(100, elapsed / state.window.until * 100)}%`);
   if (!token && !practiceError) showPracticeBite(elapsed);
   if (usesLinePhysics()) positionFishingLine();
   if (elapsed < state.window.until || (!token && elapsed === state.window.until)) {
-    frame = requestAnimationFrame(animateBite);
+    frame = outingTime.frame(animateBite);
   }
 }
 
 function removeTarget() {
-  clearTimeout(escapeTimer);
+  outingTime.cancel(escapeTimer);
   target?.remove();
   target = null;
 }
@@ -871,7 +1159,7 @@ function swimAway() {
   target.toggleAttribute('data-facing-right', toRight);
   target.classList.remove('is-curious', 'is-biting', 'is-hooked');
   target.classList.add('is-escaping');
-  escapeTimer = setTimeout(removeTarget, 720);
+  escapeTimer = outingTime.timeout(removeTarget, 720);
 }
 
 function moveFishAway() {
@@ -973,9 +1261,11 @@ function render() {
   setAction(actionIcon, label);
   renderDialogue(linePhysics);
   action.disabled = busy || !state;
+  exit.disabled = usesLinePhysics() && (busy || !state || catchSaveFailed);
+  exit.innerHTML = usesLinePhysics() ? `${icon('pause')}<span>${busy ? state ? 'Saving…' : 'Opening…' : 'Menu'}</span>` : 'Exit fishing';
   action.classList.toggle('fishing-action-quiet', tight);
   loosen.classList.toggle('fishing-recommended', tight);
-  if (practiceBite && !practiceError) showPracticeBite(Date.now() - biteAt);
+  if (practiceBite && !practiceError) showPracticeBite(outingTime.dateNow() - biteAt);
   if (bobber.dataset.lure !== lure) {
     bobber.dataset.lure = lure;
     bobber.innerHTML = icon(lure);
@@ -1029,9 +1319,9 @@ async function begin(selectedMode = mode, selectedArea = campaignArea) {
   dismissCelebration();
   clearBite();
   stopCountdown();
-  cancelAnimationFrame(rigFrame);
+  outingTime.cancel(rigFrame);
   resetRetraction();
-  cancelAnimationFrame(fightFrame);
+  outingTime.cancel(fightFrame);
   jigAt = -Infinity;
   jigActivation = fightActivation = false;
   practiceError = undefined;
@@ -1088,6 +1378,7 @@ async function begin(selectedMode = mode, selectedArea = campaignArea) {
     }
     outingId ??= crypto.randomUUID();
     const equipment = mode === 'campaign' ? profile : undefined;
+    outingEquipment = equipment ? { ...equipment.equipped } : { line: 'starter-line', hook: 'starter-hook' };
     const equippedLine = shopItems.find(item => item.id === equipment?.equipped.line);
     const lineStrength = equippedLine?.strength;
     const line = equippedLine?.windowMs ? { lure: equippedLine.lure, windowMs: equippedLine.windowMs } : undefined;
@@ -1095,7 +1386,7 @@ async function begin(selectedMode = mode, selectedArea = campaignArea) {
     const hook = equippedHook?.windowMs ? { lure: equippedHook.lure, windowMs: equippedHook.windowMs } : undefined;
     const lineControlRank = shopItems.find(item => item.id === 'line-control' && equipment?.owned.includes(item.id))?.rank;
     const elapsedMs = mode === 'campaign' ? profile?.elapsedMs ?? 0 : 0;
-    run = start(Date.now(), undefined, undefined, {
+    run = start(outingTime.dateNow(), undefined, undefined, {
       practice: mode === 'practice',
       campaign: mode === 'campaign' ? { area: campaignArea, lineStrength, line, hook, lineControlRank, elapsedMs } : undefined,
     });
@@ -1145,9 +1436,9 @@ function leave() {
   generation++;
   clearBite();
   stopCountdown();
-  cancelAnimationFrame(rigFrame);
+  outingTime.cancel(rigFrame);
   resetRetraction();
-  cancelAnimationFrame(fightFrame);
+  outingTime.cancel(fightFrame);
   removeTarget();
   tray.hidden = bobber.hidden = true;
   line.setAttribute('hidden', '');
@@ -1162,7 +1453,7 @@ picker.addEventListener('click', event => {
   const choice = event.target.closest('button[data-mode]');
   if (choice) startSelected(choice.dataset.mode, choice.dataset.area);
 });
-exit.addEventListener('click', leave);
+exit.addEventListener('click', () => usesLinePhysics() ? openPause() : leave());
 window.addEventListener('pagehide', () => {
   if (!clock) return;
   suspendedClock = outingElapsed();
@@ -1173,12 +1464,27 @@ window.addEventListener('pageshow', event => {
   suspendedClock = undefined;
 });
 document.addEventListener('keydown', event => {
-  if (tray.hidden) return;
-  if (event.key === 'Escape') return leave();
-  if (Object.hasOwn(scrollKeys, event.key) && !event.defaultPrevented
-    && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey
-    && !event.target.closest('input')) {
-    // Keep a page step inside the visible water and avoid a scroll that outlasts the game.
+  if (tray.hidden || event.defaultPrevented || dialogOpen() || outingTime.suspended) return;
+  const editable = event.target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])');
+  if (editable || event.isComposing || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    if (!event.repeat) { if (usesLinePhysics()) openPause(); else leave(); }
+    return;
+  }
+  const key = event.key.toLowerCase();
+  if (['j', 'r', 'l', '1', '2', '3'].includes(key)) {
+    if (!usesLinePhysics()) return;
+    event.preventDefault();
+    if (event.repeat || busy) return;
+    if (key === 'j' && state?.stage === 'seek' && !action.disabled) action.click();
+    if (key === 'r' && ['bite', 'fight'].includes(state?.stage) && !action.disabled) action.click();
+    if (key === 'l' && state?.stage === 'fight' && !loosen.disabled) loosen.click();
+    const slot = slots[Number(key) - 1];
+    if (slot && !slot.disabled) slot.click();
+    return;
+  }
+  if (Object.hasOwn(scrollKeys, event.key)) {
     const step = event.key.startsWith('Arrow') ? 48
       : event.key.startsWith('Page') ? tray.getBoundingClientRect().top * .85
       : document.documentElement.scrollHeight;
@@ -1187,26 +1493,29 @@ document.addEventListener('keydown', event => {
     window.scrollBy({ top: step * scrollKeys[event.key], behavior: 'instant' });
     updateSearch();
   }
-  if (!token && event.repeat && ['Enter', ' '].includes(event.key) && tray.contains(event.target)) {
-    event.preventDefault();
-  }
+  if (!token && event.repeat && ['Enter', ' '].includes(event.key) && tray.contains(event.target)) event.preventDefault();
 });
 window.addEventListener('scroll', () => {
+  if (outingTime.suspended) return;
   if (window.scrollY > 2 && (retractTimer !== undefined || retractAt !== undefined)) resetRetraction();
   updateSearch();
 }, { passive: true });
 window.addEventListener('wheel', event => {
+  if (outingTime.suspended || dialogOpen()) return;
   if (event.deltaY < 0 && !event.target.closest('.fishing-tray')) retractAtHole();
 }, { passive: true });
 lake.addEventListener('touchstart', event => {
+  if (outingTime.suspended || dialogOpen()) return;
   lastTouchY = event.touches.length === 1 ? event.touches[0].clientY : undefined;
 }, { passive: true });
 lake.addEventListener('touchmove', event => {
+  if (outingTime.suspended || dialogOpen()) return;
   const y = event.touches.length === 1 ? event.touches[0].clientY : undefined;
   if (y !== undefined && lastTouchY !== undefined && y > lastTouchY + 2) retractAtHole();
   lastTouchY = y;
 }, { passive: true });
 window.addEventListener('resize', () => {
+  if (outingTime.suspended) return;
   positionLine();
   updateSearch();
   if (!shortLandscape.matches || !usesLinePhysics() || state?.stage !== 'fight' || !target) return;
@@ -1222,6 +1531,7 @@ lineResize.observe(lake);
 lineResize.observe(tray);
 log.addEventListener('toggle', updateSearch);
 slots.forEach(slot => slot.addEventListener('click', () => {
+  if (gameBlocked() || slot.disabled || state?.stage !== 'seek') return;
   lure = slot.dataset.lure;
   render();
 }));
@@ -1256,6 +1566,7 @@ async function retryCatchCoins() {
 }
 
 async function perform(move, input = {}) {
+  if (busy || outingTime.suspended || !state) return;
   if (move === 'next') campaignMilestoneNotice = false;
   const prior = state;
   const focused = document.activeElement;
@@ -1273,8 +1584,8 @@ async function perform(move, input = {}) {
   }
   busy = true;
   render();
-  const sentAt = performance.now();
-  const appliedAt = Date.now();
+  const sentAt = outingTime.now();
+  const appliedAt = outingTime.dateNow();
   let serverNow;
   try {
     const result = token
@@ -1303,7 +1614,7 @@ async function perform(move, input = {}) {
     } else if (prior.stage === 'bite') {
       clearBite();
       if (usesLinePhysics() && state.stage === 'fight') {
-        fightFrame = requestAnimationFrame(animateLineFight);
+        fightFrame = outingTime.frame(animateLineFight);
       }
     }
   } catch (error) {
@@ -1336,7 +1647,7 @@ async function perform(move, input = {}) {
   if (focused === loosen) (loosen.disabled || loosen.hidden ? action : loosen).focus({ preventScroll: true });
 }
 
-loosen.addEventListener('click', () => perform('loosen'));
+loosen.addEventListener('click', () => { if (!gameBlocked() && !loosen.disabled && state?.stage === 'fight') void perform('loosen'); });
 
 function rememberAction() {
   jigActivation = state?.stage === 'seek';
@@ -1350,6 +1661,7 @@ action.addEventListener('keydown', event => {
   if (!event.repeat && ['Enter', ' '].includes(event.key)) rememberAction();
 });
 action.addEventListener('click', () => {
+  if (gameBlocked() || action.disabled || !state) return;
   const startedBeforeMiss = jigActivation || fightActivation;
   jigActivation = fightActivation = false;
   if (startedBeforeMiss && ['missed', 'done'].includes(state.stage)) return;
@@ -1361,7 +1673,7 @@ action.addEventListener('click', () => {
   return perform(move, move === 'jig' ? { lure } : {});
 });
 for (const button of [...skillRow.children, ...practiceButtons]) {
-  button.addEventListener('click', () => perform('upgrade', { skill: button.dataset.skill }));
+  button.addEventListener('click', () => { if (!gameBlocked() && !button.disabled && state?.stage === 'landed') void perform('upgrade', { skill: button.dataset.skill }); });
 }
 
 form.addEventListener('submit', async event => {
