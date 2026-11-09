@@ -47,6 +47,7 @@ export async function practicePage(browser, { mobile = false, configure } = {}) 
 
   async function press(locator, key = 'Space') {
     if (mobile) {
+      await locator.scrollIntoViewIfNeeded();
       const box = await locator.boundingBox();
       assert.ok(box, 'a touch control must be in view');
       await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
@@ -59,6 +60,7 @@ export async function practicePage(browser, { mobile = false, configure } = {}) 
   async function chooseMode(name = 'Practice') {
     const picker = page.getByRole('dialog', { name: 'Choose an outing' });
     await press(picker.getByRole('button', { name, exact: true }), 'Enter');
+    if (name === 'Campaign') await tray.locator('[data-wallet]').waitFor();
   }
 
   async function enter(name = 'Practice') {

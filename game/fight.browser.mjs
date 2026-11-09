@@ -70,7 +70,7 @@ async function checkFight(browser, mobile) {
   assert.match(await status.textContent(), /pull up/i);
   await tick(300);
   await press(action);
-  assert.match(await status.textContent(), /Muskie.*75 points/i);
+  await tray.getByText(/Muskie.*75 points/i).waitFor();
 
   await press(button('Exit fishing'));
   await hook();

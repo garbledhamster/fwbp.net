@@ -1,4 +1,5 @@
-import { advanceCampaignFight, apply, lures, practiceLevelXp, practiceSkills, publicRun, skills, start } from './rules.mjs?v=12';
+import { advanceCampaignFight, apply, lures, practiceLevelXp, practiceSkills, publicRun, skills, start } from './rules.mjs?v=15';
+import { applyProfile, loadProfile, shopItems } from './profile.mjs?v=15';
 
 const endpoint = document.querySelector('meta[name="fishing-api"]')?.content;
 const scenes = [...document.querySelectorAll('.dive[data-dive]')].slice(0, 6);
@@ -13,12 +14,25 @@ picker.innerHTML = `
   <div class="fishing-picker-options">
     <button type="button" data-mode="campaign" aria-describedby="campaign-description">Campaign</button>
     <p id="campaign-description">Fish Mille Lacs with your own tackle.</p>
+    <button type="button" data-open-shop aria-describedby="shop-description">Tackle shop</button>
+    <p id="shop-description">Spend coins and choose your gear between outings.</p>
     <button type="button" data-mode="practice" aria-describedby="practice-description">Practice</button>
     <p id="practice-description">Find fish, try lures and earn a skill for this outing.</p>
     ${endpoint ? `<button type="button" data-mode="ranked" aria-describedby="ranked-description">Ranked</button>
       <p id="ranked-description">Fish for a score on the public board.</p>` : ''}
   </div>
   <form method="dialog"><button>Back to the site</button></form>`;
+const shop = document.createElement('dialog');
+shop.className = 'fishing-picker fishing-shop';
+shop.setAttribute('aria-labelledby', 'fishing-shop-title');
+shop.innerHTML = `
+  <div class="fishing-shop-heading">
+    <h2 id="fishing-shop-title" tabindex="-1" autofocus>Tackle shop</h2>
+    <strong data-shop-balance></strong>
+  </div>
+  <p data-shop-message role="status"></p>
+  <div data-shop-items></div>
+  <form method="dialog"><button>Back to outings</button></form>`;
 const tray = document.createElement('section');
 tray.className = 'fishing-tray';
 tray.hidden = true;
@@ -28,6 +42,7 @@ tray.innerHTML = `
     <div class="fishing-row fishing-heading"><img class="fishing-brand" src="./assets/fwbp-logo.jpg" alt="" width="27" height="27"><strong data-score></strong><button type="button" data-exit>Exit fishing</button></div>
     <p class="fishing-status" role="status"></p>
     <div class="fishing-row fishing-encounter">
+      <p class="fishing-wallet" data-wallet hidden></p>
       <p class="fishing-practice-progress" hidden></p>
       <p class="fishing-countdown" role="timer" hidden></p>
     </div>
@@ -92,7 +107,7 @@ celebration.innerHTML = `
 const announcement = document.createElement('span');
 announcement.className = 'fishing-announcement';
 announcement.setAttribute('role', 'status');
-document.body.append(picker, tray, celebration, announcement);
+document.body.append(picker, shop, tray, celebration, announcement);
 
 let celebrationTimer;
 
@@ -127,11 +142,15 @@ const board = tray.querySelector('[data-board]');
 const skillRow = tray.querySelector('.fishing-skills');
 const practiceChoice = tray.querySelector('.fishing-practice-choice');
 const practiceProgress = tray.querySelector('.fishing-practice-progress');
+const wallet = tray.querySelector('[data-wallet]');
 const countdown = tray.querySelector('.fishing-countdown');
 const practiceButtons = [...practiceChoice.querySelectorAll('button')];
 const slots = [...tray.querySelectorAll('[data-lure]')];
 let launch, previousScroll, run, state, token, target, busy, failed, biteAt, frame;
 let mode, rigFrame, fightFrame, jigAt = -Infinity;
+let profile, outingId, catchReward;
+let shopBusy = false;
+let shopGeneration = 0;
 let countdownTimer, rankedSeekUntil, rankedServerSeekUntil, escapeTimer;
 let jigActivation = false;
 let fightActivation = false;
@@ -139,6 +158,100 @@ let lure = 'jig';
 let practiceError;
 let generation = 0;
 const scrollKeys = { ArrowUp: -1, ArrowDown: 1, PageUp: -1, PageDown: 1, Home: -1, End: 1 };
+
+const coins = amount => `${amount} ${amount === 1 ? 'coin' : 'coins'}`;
+const shopLabels = { line: 'Fishing line', hook: 'Hooks', training: 'Training', license: 'Licenses' };
+const shopBalance = shop.querySelector('[data-shop-balance]');
+const shopMessage = shop.querySelector('[data-shop-message]');
+const shopList = shop.querySelector('[data-shop-items]');
+
+function shopItem(item) {
+  const owned = profile.owned.includes(item.id);
+  const equipped = profile.equipped[item.category] === item.id;
+  const canEquip = Object.hasOwn(profile.equipped, item.category);
+  const shortfall = item.cost - profile.coins;
+  const action = (type, label, disabled = false) =>
+    `<button type="button" data-shop-action="${type}" aria-label="${label} ${item.name}" ${disabled ? 'disabled' : ''}>${label}</button>`;
+  return `<li data-item="${item.id}" tabindex="-1">
+    <div><strong>${item.name}</strong><p>${item.effect}</p></div>
+    <div class="fishing-shop-action">
+      <span>${owned ? equipped ? 'Equipped' : 'Owned' : coins(item.cost)}</span>
+      ${owned ? canEquip && !equipped ? action('equip', 'Equip') : '' : action('buy', 'Buy', shortfall > 0)}
+    </div>
+  </li>`;
+}
+
+function renderShop() {
+  shopBalance.textContent = coins(profile.coins);
+  shopList.innerHTML = Object.entries(shopLabels).map(([category, label]) => {
+    const items = shopItems.filter(item => item.category === category);
+    if (!items.length) return '';
+    return `<section aria-labelledby="shop-${category}">
+      <h3 id="shop-${category}">${label}</h3>
+      <ul>${items.map(shopItem).join('')}</ul>
+    </section>`;
+  }).join('');
+}
+
+async function openShop() {
+  const current = ++shopGeneration;
+  picker.close();
+  shopBusy = true;
+  shopBalance.textContent = '';
+  shopList.replaceChildren();
+  shopMessage.textContent = 'Opening the tackle shop…';
+  shop.showModal();
+  shop.scrollTop = 0;
+  try {
+    const loaded = await loadProfile();
+    if (current !== shopGeneration || !shop.open) return;
+    profile = loaded;
+    renderShop();
+    shopMessage.textContent = '';
+  } catch {
+    if (current === shopGeneration) shopMessage.textContent = 'Couldn’t open your saved tackle. Try opening the shop again.';
+  } finally {
+    if (current === shopGeneration) shopBusy = false;
+  }
+}
+
+shop.addEventListener('close', () => {
+  shopGeneration++;
+  picker.showModal();
+  picker.querySelector('[data-open-shop]').focus();
+});
+
+shop.addEventListener('click', async event => {
+  const control = event.target.closest('[data-shop-action]');
+  if (!control || shopBusy) return;
+  const current = shopGeneration;
+  const id = control.closest('[data-item]').dataset.item;
+  const type = control.dataset.shopAction;
+  shopBusy = true;
+  try {
+    const result = await applyProfile({ type, id, revision: profile.revision });
+    if (current !== shopGeneration || !shop.open) return;
+    profile = result.profile;
+    renderShop();
+    const item = shopItems.find(item => item.id === id);
+    const notices = {
+      bought: `${item.name} purchased.`,
+      equipped: `${item.name} equipped.`,
+      stale: 'Your tackle changed in another tab. Check your updated gear and balance.',
+      unaffordable: 'You need more coins for that purchase.',
+      'already-owned': 'You already own that item.',
+      'already-equipped': 'That item is already equipped.',
+    };
+    shopMessage.textContent = notices[result.status] ?? 'That change is unavailable.';
+    const updated = shopList.querySelector(`[data-item="${id}"]`);
+    const next = updated.querySelector('button:not(:disabled)') ?? updated;
+    next.focus({ preventScroll: true });
+  } catch {
+    if (current === shopGeneration) shopMessage.textContent = 'Couldn’t save that change. Try again.';
+  } finally {
+    if (current === shopGeneration) shopBusy = false;
+  }
+});
 
 async function api(action, data = {}, auth = token) {
   const response = await fetch(endpoint, {
@@ -418,12 +531,15 @@ function render() {
   else if (practiceFight) cue = tight ? 'Tight line. Loosen.' : `Line clear. ${pullUp ? 'Pull up' : 'Reel'}.`;
   else if (state?.stage === 'landed' && cue.endsWith('points')) {
     cue = `All right! ${cue}`;
+    if (campaign && Number.isFinite(catchReward)) cue += ` · +${coins(catchReward)}`;
     if (state.practice?.xp === practiceLevelXp) {
       if (state.skillPoints) cue += '. Level 2! Choose a skill.';
       else cue += `. ${state.skills.control ? skills.control : skills.lift} selected.`;
     }
   }
   if ((state?.stage !== 'seek' || failed) && (!practiceBite || practiceError)) setStatus(cue);
+  wallet.hidden = !campaign || !profile;
+  if (campaign && profile) wallet.textContent = coins(profile.coins);
   practiceProgress.hidden = !state?.practice || failed;
   if (state?.practice) {
     const { xp, level } = state.practice;
@@ -497,6 +613,7 @@ async function begin(selectedMode = mode) {
   jigAt = -Infinity;
   jigActivation = fightActivation = false;
   practiceError = undefined;
+  profile = outingId = catchReward = undefined;
   const current = ++generation;
   busy = true;
   failed = false;
@@ -507,6 +624,19 @@ async function begin(selectedMode = mode) {
   removeTarget();
   render();
   let serverNow;
+  if (mode === 'campaign') {
+    try {
+      const loaded = await loadProfile();
+      if (current !== generation) return;
+      profile = loaded;
+      outingId = crypto.randomUUID();
+    } catch {
+      if (current !== generation) return;
+      busy = false;
+      setStatus('Couldn’t open your saved tackle. Exit fishing and try Campaign again.');
+      return;
+    }
+  }
   if (endpoint && mode === 'ranked') {
     try {
       const opened = await api('start', {}, null);
@@ -519,9 +649,10 @@ async function begin(selectedMode = mode) {
   if (!state) {
     if (mode === 'ranked') mode = 'practice';
     lure = 'jig';
+    const lineStrength = shopItems.find(item => item.id === profile?.equipped.line)?.strength;
     run = start(Date.now(), undefined, undefined, {
       practice: mode === 'practice',
-      campaign: mode === 'campaign' ? { lineStrength: 8 } : undefined,
+      campaign: mode === 'campaign' ? { lineStrength } : undefined,
     });
     state = publicRun(run);
   }
@@ -565,6 +696,7 @@ function leave() {
 
 document.querySelectorAll('.game-entry, .fish-entry').forEach(entry => entry.addEventListener('click', enter));
 picker.addEventListener('click', event => {
+  if (event.target.closest('[data-open-shop]')) return openShop();
   const choice = event.target.closest('button[data-mode]');
   if (choice) startSelected(choice.dataset.mode);
 });
@@ -634,6 +766,18 @@ async function perform(move, input = {}) {
     practiceError = undefined;
     if (!token && move === 'jig' && state.stage === 'seek') {
       state = { ...state, cue: 'It looked. Try a different lure and jig again.' };
+    }
+    if (mode === 'campaign' && state.stage === 'landed' && prior.stage !== 'landed') {
+      const key = `${outingId}:${state.index}`;
+      try {
+        const result = await applyProfile({ type: 'award', key, outcome: state.stage, catch: state.catch });
+        if (current !== generation) return;
+        profile = result.profile;
+        catchReward = result.earned;
+      } catch {
+        if (current !== generation) return;
+        state = { ...state, cue: `${state.cue}. Couldn’t save coins for this catch.` };
+      }
     }
     if (mode !== 'campaign' && state.stage === 'landed' && prior.stage !== 'landed') {
       if (!state.practice) celebrateCatch(state.index + 2);

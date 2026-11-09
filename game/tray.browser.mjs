@@ -54,6 +54,7 @@ async function checkTray(browser, mobile) {
   assert.equal(await picker.getByRole('button', { name: 'Practice', exact: true }).isVisible(), true);
   assert.equal(await picker.getByRole('button', { name: 'Ranked', exact: true }).count(), 0);
   await press(picker.getByRole('button', { name: 'Campaign', exact: true }));
+  await tray.locator('[data-wallet]').waitFor();
   assert.match(await tray.locator('[data-score]').textContent(), /Mille Lacs.*Campaign/);
   assert.equal(await action.isDisabled(), true);
   assert.match(await status.textContent(), /scroll.*find the fish/i);
@@ -92,7 +93,7 @@ async function checkTray(browser, mobile) {
   await tick(700);
   assert.match(await status.textContent(), /yeah, reel it/i, 'a late bite keeps its hook window');
   await press(action);
-  assert.match(await status.textContent(), /Yellow perch.*points/i);
+  await tray.getByText(/Yellow perch.*points/i).waitFor();
   if (!mobile) {
     assert.equal(await action.evaluate(el => el === document.activeElement && el.matches(':focus-visible')), true);
     await page.keyboard.press('Escape');
