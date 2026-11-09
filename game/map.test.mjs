@@ -183,10 +183,16 @@ test('same hole yields identical playable conditions regardless of drilling inpu
   assert.deepEqual(publicRun(setup()), publicRun(setup()));
 });
 
-test('A3 guarantees a perch and keeps the first two rolled swimmers when perch is missing', () => {
-  const hole = data.cells.find(cell => cell.id === 'A3');
-  const seed = [.52, .45, .32].flatMap(roll => [roll, .2, .5, .4, .1]);
-  let draw = 0;
-  const run = start(1000, () => seed[draw++ % seed.length], undefined, { campaign: { hole, area: hole.area } });
-  assert.deepEqual(publicRun(run).candidates.map(fish => fish.id), ['rock-bass', 'pike', 'perch']);
+test('goal spots guarantee their fish while keeping the first two rolled swimmers', () => {
+  for (const [id, rolls, expected] of [
+    ['A3', [.52, .45, .32], ['rock-bass', 'pike', 'perch']],
+    ['E4', [.52, .05, .55], ['rock-bass', 'perch', 'pike']],
+    ['B1', [.05, .12, .55], ['pike', 'rock-bass', 'walleye']],
+  ]) {
+    const hole = data.cells.find(cell => cell.id === id);
+    const seed = rolls.flatMap(roll => [roll, .2, .5, .4, .1]);
+    let draw = 0;
+    const run = start(1000, () => seed[draw++ % seed.length], undefined, { campaign: { hole, area: hole.area } });
+    assert.deepEqual(publicRun(run).candidates.map(fish => fish.id), expected, id);
+  }
 });

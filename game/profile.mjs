@@ -68,7 +68,10 @@ export function hasAreaAccess(profile, area) {
 
 // Each goal receipt is the catch key, in the same order as the goals. Old saves begin at the first.
 export function campaignGoal(profile) {
-  return campaignGoals[profile?.goalCatches?.length ?? 0];
+  const goal = campaignGoals[profile?.goalCatches?.length ?? 0];
+  if (!goal) return undefined;
+  const requiredPermit = goal.area && !hasAreaAccess(profile, goal.area) ? areaPermit(goal.area) : undefined;
+  return { ...goal, requiredPermit };
 }
 
 // The payout ledger holds Campaign awards only; Practice collection credit lives separately.
@@ -180,8 +183,9 @@ function award(profile, { key, outcome, catch: fish, speciesId, mode = 'campaign
     return { profile, status: 'duplicate-award' };
   }
   const goal = mode === 'campaign' && validSpecies ? campaignGoal(profile) : undefined;
-  const completesGoal = goal && goal.speciesId === speciesId;
-  const earned = goal && !completesGoal ? Math.max(1, Math.floor(points / 2)) : points;
+  const activeGoal = goal && !goal.requiredPermit;
+  const completesGoal = activeGoal && goal.speciesId === speciesId;
+  const earned = activeGoal && !completesGoal ? Math.max(1, Math.floor(points / 2)) : points;
   if (mode === 'campaign' && !Number.isSafeInteger(profile.coins + earned)) return { profile, status: 'no-award' };
   const caughtSpecies = validSpecies && !profile.caughtSpecies.includes(speciesId)
     ? [...profile.caughtSpecies, speciesId] : profile.caughtSpecies;

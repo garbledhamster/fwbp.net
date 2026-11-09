@@ -33,6 +33,8 @@ export const campaignAreas = {
 };
 export const campaignGoals = [
   { speciesId: 'perch', holeId: 'A3', clue: 'Look for yellow perch near the weeds on Starter Shore. Try a jig at A3.' },
+  { speciesId: 'pike', holeId: 'E4', clue: 'Look for northern pike along the shallower weed edge. Try a spoon at E4 on Starter Shore.' },
+  { speciesId: 'walleye', holeId: 'B1', area: 'deep-reef', clue: 'Look for walleye along the reef edge. Try a minnow at B1 in Deep Reef.' },
 ];
 const seekWindows = { Common: 30000, Uncommon: 25000, Rare: 20000 };
 const phaseWeights = {
