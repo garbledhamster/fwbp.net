@@ -1,6 +1,7 @@
 import { applyProfile, loadProfile } from './profile.mjs?v=connected-rpg';
 import { renderSpeciesVideo } from './species-video.mjs';
 import { collectibleSpecies, speciesArt, fishProfiles, lureTip } from './species-catalog.mjs';
+import { spriteHref } from './lake-sprites.mjs';
 
 const stylesheet = document.createElement('link');
 stylesheet.rel = 'stylesheet';
@@ -11,7 +12,7 @@ export const collectionIntroduction = 'Land fish in Campaign or Practice to add 
 const portrait = '<img class="collection-guide-portrait" src="./assets/branding/bryan-front-facing.webp" alt="Bryan" width="72" height="72">';
 const svg = id => {
   const [sheet, symbol, viewBox] = speciesArt[id];
-  return `<svg class="collection-fish-art" viewBox="${viewBox}" aria-hidden="true"><use href="./assets/${sheet}.svg#${symbol}"/></svg>`;
+  return `<svg class="collection-fish-art" viewBox="${viewBox}" aria-hidden="true"><use href="${spriteHref(sheet, symbol)}"/></svg>`;
 };
 
 // The site card and paused-outing card share the same content and explicit study action.

@@ -4,6 +4,7 @@ import { applyProfile, campaignMilestone, loadProfile, shopItems } from './profi
 import { lureTip } from './species-catalog.mjs';
 import { openYourLake } from './collection.mjs';
 import { renderSpeciesVideo } from './species-video.mjs';
+import { spriteHref } from './lake-sprites.mjs';
 
 const outingTime = createSuspensionClock();
 const endpoint = document.querySelector('meta[name="fishing-api"]')?.content;
@@ -22,7 +23,7 @@ const backgroundFish = {
 
 const fishArt = new Map(lakes['mille-lacs'].fish.map(({ id, art }) => [id, art]));
 const fishSvg = ([file, symbol, box]) =>
-  `<svg viewBox="${box}" aria-hidden="true"><use href="./assets/${file}.svg#${symbol}"/></svg>`;
+  `<svg viewBox="${box}" aria-hidden="true"><use href="${spriteHref(file, symbol)}"/></svg>`;
 
 for (const band of water) {
   for (const [id, x, y] of backgroundFish[band.dataset.dive] ?? []) {

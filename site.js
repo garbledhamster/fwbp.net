@@ -1,3 +1,4 @@
+import { spriteHref } from "./game/lake-sprites.mjs";
 import { openVideo } from './game/video-player.mjs';
 
 const episodes = [
@@ -83,7 +84,7 @@ function makeEpisode(episode) {
   art.className = "episode-art";
   art.setAttribute("aria-hidden", "true");
   art.innerHTML = '<svg class="artwork" viewBox="0 0 400 154" preserveAspectRatio="xMidYMid slice"><use/></svg>';
-  art.querySelector("use").setAttribute("href", "./assets/scenes.svg#bi-cover-" + episode.art);
+  art.querySelector("use").setAttribute("href", spriteHref("scenes", "bi-cover-" + episode.art));
   const image = document.createElement("img");
   image.alt = "";
   image.loading = "lazy";
