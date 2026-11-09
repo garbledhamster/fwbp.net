@@ -77,6 +77,25 @@ export async function practicePage(browser, { mobile = false, viewport, configur
     }
   }
 
+  async function closeSavedCatch() {
+    const popup = page.locator('.fishing-catch-popup');
+    if (await tray.getAttribute('data-mode') !== 'campaign' || !await popup.count()) return;
+    await popup.waitFor();
+    await closeDialog(popup, popup.locator('[data-reward-close]'));
+  }
+
+  async function selectTackle(id) {
+    const shop = page.getByRole('dialog', { name: 'Tackle shop' });
+    const item = shop.locator(`[data-item="${id}"]`);
+    if (await shop.locator('[data-shop-grid]').count() && !await item.isVisible()) {
+      const back = shop.locator('[data-shop-grid-back]');
+      if (await back.isVisible()) await press(back, 'Enter');
+      await press(shop.locator(`[data-shop-select="${id}"]`), 'Enter');
+    }
+    await item.waitFor();
+    return item;
+  }
+
   async function chooseMode(name = 'Practice') {
     const picker = page.getByRole('dialog', { name: 'Choose an outing' });
     await press(picker.getByRole('button', { name, exact: true }), 'Enter');
@@ -143,7 +162,7 @@ export async function practicePage(browser, { mobile = false, viewport, configur
   }
 
   return {
-    page, tray, action, launch, button, press, closeDialog, leave, errors, findFish, chooseMode, enter, reelToHole,
+    page, tray, action, launch, button, press, closeDialog, closeSavedCatch, selectTackle, leave, errors, findFish, chooseMode, enter, reelToHole,
     status: tray.getByRole('status'),
     timing: tray.locator('.fishing-timing'),
     tick: ms => page.clock.runFor(ms),
