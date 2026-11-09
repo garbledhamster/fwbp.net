@@ -44,11 +44,14 @@ test('loosening during a surge pays out line so the fish can be reeled and lifte
   assert.ok(reeled.paidOut < loose.paidOut);
   assert.ok(reeled.distance < loose.distance);
   assert.equal(reeled.pullUp, false);
-  rules.apply(run, { action: 'reel' }, 3400);
-  const ready = rules.apply(run, { action: 'reel' }, 3700);
-  assert.equal(ready.fight.pullUp, true);
-  assert.equal(ready.score, 0);
-  const landed = rules.apply(run, { action: 'lift' }, 4000);
+  let now = 3400;
+  while (!run.fight?.pullUp && now < 6400) {
+    rules.apply(run, { action: run.fight.tight ? 'loosen' : 'reel' }, now);
+    now += 300;
+  }
+  assert.equal(run.fight.pullUp, true);
+  assert.equal(run.score, 0);
+  const landed = rules.apply(run, { action: 'lift' }, now);
   assert.equal(landed.stage, 'landed');
   assert.equal(landed.score, 75);
 });
@@ -137,6 +140,69 @@ test('fish species and individual size change the load at the same depth', () =>
   for (const run of [perch, small, large]) rules.advanceLineFight(run, 2800);
   assert.ok(perch.fight.tension < small.fight.tension);
   assert.ok(small.fight.tension < large.fight.tension);
+});
+
+test('the same Campaign reel raises a heavier fish less at the same starting depth', () => {
+  const perch = hookedFish(.05, .4);
+  const small = hookedFish(.98, .1);
+  const large = hookedFish(.98, .9);
+  assert.equal(perch.fight.remaining, small.fight.remaining);
+  assert.equal(small.fight.remaining, large.fight.remaining);
+  // At this point in the surge cycle all three fights have the same clear line.
+  for (const run of [perch, small, large]) rules.advanceLineFight(run, 4200);
+  assert.equal(perch.fight.tension, small.fight.tension);
+  assert.equal(small.fight.tension, large.fight.tension);
+  const reel = run => rules.apply(run, { action: 'reel' }, 4200, { reelEffort: 1 }).fight;
+  const light = reel(perch);
+  const medium = reel(small);
+  const heavy = reel(large);
+  assert.ok(medium.remaining > light.remaining + .2, 'a perch comes up noticeably farther than a muskie');
+  assert.ok(heavy.remaining > medium.remaining, 'a bigger muskie comes up less at the same effort');
+  assert.ok(heavy.distance > light.distance, 'the line ends deeper on the heavier fish');
+  assert.ok(heavy.tension > light.tension, 'taking in the same line against more pull increases load');
+});
+
+test('an equally sized Campaign fish reels slower under more load even before the line is tight', () => {
+  const clear = hookedMuskie();
+  const loaded = hookedMuskie();
+  rules.apply(clear, { action: 'loosen' }, 4380);
+  for (const run of [clear, loaded]) rules.advanceLineFight(run, 4760);
+  assert.equal(clear.fight.distance, loaded.fight.distance);
+  assert.equal(loaded.fight.tight, false);
+  assert.ok(loaded.fight.tension > clear.fight.tension);
+  const reel = run => rules.apply(run, { action: 'reel' }, 4760, { reelEffort: 1 }).fight;
+  assert.ok(reel(loaded).distance > reel(clear).distance + .15, 'more tension means visibly less progress');
+});
+
+test('Campaign reel effort raises the same fish faster up to a cap without skipping the next move', () => {
+  const reel = reelEffort => rules.apply(hookedFish(.05, .4), { action: 'reel' }, 2300, { reelEffort }).fight;
+  const normal = reel(1);
+  const quick = reel(1.35);
+  const extreme = reel(1000);
+  assert.ok(quick.remaining < normal.remaining - .3, 'a quicker reel makes more progress');
+  assert.deepEqual(extreme, reel(1.5), 'huge effort cannot wind more than the strongest deliberate gesture');
+  assert.equal(extreme.pullUp, false, 'one input still leaves line to reel');
+  assert.deepEqual(reel(Infinity), normal, 'non-finite effort falls back to a regular reel');
+
+  const run = hookedFish(.05, .4);
+  rules.apply(run, { action: 'reel' }, 2300, { reelEffort: 1000 });
+  assert.throws(() => rules.apply(run, { action: 'reel' }, 2301, { reelEffort: 1000 }), /give the line a moment/i);
+  assert.throws(() => rules.apply(run, { action: 'lift' }, 2550), /ice hole/i);
+  const atHole = rules.apply(run, { action: 'reel' }, 2550, { reelEffort: 1000 });
+  assert.equal(atHole.fight.pullUp, true);
+  assert.equal(atHole.score, 0, 'reeling to the hole does not land the fish');
+  assert.throws(() => rules.apply(run, { action: 'lift' }, 2551), /give the line a moment/i);
+  assert.equal(rules.apply(run, { action: 'lift' }, 2800).stage, 'landed');
+});
+
+test('Practice line fight ignores Campaign reel effort', () => {
+  const reel = reelEffort => {
+    const run = rules.start(1000, () => 0, undefined, { practice: true });
+    rules.apply(run, { action: 'jig', lure: 'jig' }, 1300);
+    rules.apply(run, { action: 'reel' }, 2000);
+    return rules.apply(run, { action: 'reel' }, 2300, { reelEffort }).fight;
+  };
+  assert.deepEqual(reel(1000), reel(1));
 });
 
 test('a fresh Campaign encounter accepts Jig after the previous fish was lifted', () => {

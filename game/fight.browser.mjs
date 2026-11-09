@@ -19,7 +19,7 @@ async function fightGeometry(page) {
 }
 
 async function checkFight(browser, mobile, mode) {
-  const { leave, page, tray, action, button, status, press, enter, tick, findFish, errors } =
+  const { leave, page, tray, action, button, status, press, enter, tick, findFish, reelToHole, errors } =
     await practicePage(browser, { mobile });
   // Seed the first encounter with a standard muskie.
   await page.evaluate(() => {
@@ -75,10 +75,7 @@ async function checkFight(browser, mobile, mode) {
   assert.ok(await load.evaluate(meter => meter.value) < surgeLoad);
   assert.match(await status.textContent(), /reel it up toward the hole/i);
   const looseDepth = (await fightGeometry(page)).y;
-  for (let n = 0; n < 3; n++) {
-    await tick(300);
-    await press(action);
-  }
+  await reelToHole();
   assert.ok((await fightGeometry(page)).y < looseDepth, 'reeling a clear line brings the fish up');
   assert.equal(await action.textContent(), 'Pull up');
   const atHole = await fightGeometry(page);

@@ -73,6 +73,7 @@ const fightStepMs = 40;
 const surgeCycleMs = 2400;
 const reelLength = 1.5;
 const starterLineStrength = 8;
+const restingLoad = 1.1;
 const tightLoad = 4.8;
 
 function startLineFight(run, fish, encounter, now) {
@@ -84,7 +85,7 @@ function startLineFight(run, fish, encounter, now) {
   const pull = Math.min(3.3, Math.round(fish.pull * (0.9 + size * 0.5) * 10) / 10);
   run.fight = {
     lineStrength: run.campaign?.lineStrength ?? starterLineStrength, startDepth, pull, hookedAt: now, elapsed: 0,
-    distance: startDepth, remaining: startDepth, paidOut: startDepth, tension: 1.1,
+    distance: startDepth, remaining: startDepth, paidOut: startDepth, tension: restingLoad,
     x: 0, y: 0, slack: 0, tight: false, pullUp: false,
   };
   run.stage = 'fight';
@@ -100,7 +101,7 @@ function sampleFight(run) {
   fight.distance = fight.remaining + fight.y;
   fight.x = Math.sin(phase * 2 * Math.PI / surgeCycleMs) * (fight.pull / 2.8) * roomToRun;
   fight.slack = Math.max(0, fight.paidOut - fight.distance);
-  fight.tension = Math.round(Math.max(0, 1.1 + (fight.distance - fight.paidOut) * 2) * 10) / 10;
+  fight.tension = Math.round(Math.max(0, restingLoad + (fight.distance - fight.paidOut) * 2) * 10) / 10;
   fight.tight = fight.tension >= tightLoad;
   fight.pullUp = fight.remaining === 0;
   if (fight.tension > fight.lineStrength) {
@@ -130,7 +131,7 @@ export function advanceLineFight(run, now) {
   return changed;
 }
 
-function moveLineFight(run, action, target) {
+function moveLineFight(run, action, target, reelEffort) {
   const fight = run.fight;
   if (action === 'loosen') {
     const room = Math.max(0, fight.distance + reelLength - fight.paidOut);
@@ -140,9 +141,19 @@ function moveLineFight(run, action, target) {
     if (fight.tight) throw Error('Loosen the line before pulling up.');
     land(run, target);
     return;
+  } else if (run.campaign) {
+    const effort = Number.isFinite(reelEffort) ? Math.min(1.5, Math.max(.75, reelEffort)) : 1;
+    const takeUp = reelLength * effort;
+    fight.paidOut = Math.max(0, fight.paidOut - takeUp);
+    if (!fight.tight) {
+      // Winding line under resistance raises the fish less, leaving more load on the line.
+      const fishDrag = Math.max(0, fight.pull - .6) * .12;
+      const lineDrag = Math.max(0, (fight.tension - restingLoad) / (tightLoad - restingLoad)) * .34;
+      const travel = takeUp * (1 - fishDrag) * (1 - lineDrag);
+      fight.remaining = Math.max(0, fight.remaining - travel);
+    }
   } else {
-    // A hard run resists the reel. The same input takes up line but adds load.
-    const extra = run.practice && run.skills.lift && !fight.tight && fight.remaining === fight.startDepth
+    const extra = run.skills.lift && !fight.tight && fight.remaining === fight.startDepth
       ? Math.min(reelLength, Math.max(0, fight.remaining - reelLength)) : 0;
     const length = reelLength + extra;
     fight.paidOut = Math.max(0, fight.paidOut - length);
@@ -220,7 +231,7 @@ export function publicRun(run) {
   };
 }
 
-export function apply(run, input, now, { campaignElapsedMs = run.campaign?.elapsedMs } = {}) {
+export function apply(run, input, now, { campaignElapsedMs = run.campaign?.elapsedMs, reelEffort } = {}) {
   if (!input || Object.keys(input).some(key => !['action', 'lure', 'skill'].includes(key))) throw Error('Invalid action.');
   if (now >= run.expires) throw Error('This outing expired.');
   const jig = input.action === 'jig' && run.stage === 'seek' && Object.hasOwn(lures, input.lure);
@@ -287,7 +298,7 @@ export function apply(run, input, now, { campaignElapsedMs = run.campaign?.elaps
       run.cue = 'It slipped the hook. Jig again to bring it back.';
     }
   } else if (lineFight && ['reel', 'lift', 'loosen'].includes(input.action)) {
-    moveLineFight(run, input.action, target);
+    moveLineFight(run, input.action, target, reelEffort);
   } else if (run.stage === 'fight' && ['lift', 'loosen'].includes(input.action)) {
     const fight = run.fight;
     if (input.action === 'loosen') {
