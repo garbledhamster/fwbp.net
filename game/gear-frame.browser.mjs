@@ -49,10 +49,9 @@ await withBrowser(async browser=>{
     await press(selected.locator('[data-item-details]'));
     const details=page.locator('.fishing-item-details');
     await details.waitFor();
-    const closed = details.evaluate(el=>new Promise(resolve=>el.addEventListener('close',()=>resolve(),{once:true})));
     await page.keyboard.press('Escape');
-    await closed;
-    assert.equal(await selected.locator('[data-item-details]').evaluate(el=>el===document.activeElement),true);
+    await details.waitFor({state:'hidden'});
+    await selected.locator('[data-item-details]:focus').waitFor();
     await press(selected.locator('[data-shop-action="equip"]'));
     await gear.locator('[data-gear-message]').filter({hasText:/equipped for the next Campaign outing/}).waitFor().catch(async error=>{ console.error(viewport, await gear.locator('[data-gear-message]').textContent()); if(evidence)await page.screenshot({path:`${evidence}/failure-${viewport.width}.png`}); throw error; });
     assert.match(await gear.locator('.fishing-loadout').textContent(),/This outing.*Starter line.*Next Campaign outing.*Stronger line/s);

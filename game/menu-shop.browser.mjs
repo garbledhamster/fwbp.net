@@ -5,7 +5,7 @@ import { practicePage, withBrowser } from './browser-qa.mjs';
 // targeted-shop returns, and profile gear changing a fight already in progress.
 await withBrowser(async browser => {
   for (const viewport of [{ width: 1200, height: 720 }, { width: 320, height: 720 }, { width: 720, height: 320 }]) {
-    const { page, tray, action, enter, press, findFish, tick, errors } = await practicePage(browser, { mobile: viewport.width === 320 });
+    const { page, tray, action, enter, press, closeDialog, findFish, tick, errors } = await practicePage(browser, { mobile: viewport.width === 320 });
     await page.setViewportSize(viewport);
     const saved = () => page.evaluate(async () => (await import('./game/profile.mjs?v=16')).loadProfile());
     await page.evaluate(async () => {
@@ -89,9 +89,7 @@ await withBrowser(async browser => {
     await page.waitForFunction(() => !document.querySelector('[data-shop-back]').disabled);
     assert.equal((await saved()).equipped.line, 'stronger-line');
     assert.equal(await tray.locator('meter').evaluate(el => el.max), max, 'current outing keeps its equipment snapshot');
-    const shopClosed = shop.evaluate(el => new Promise(resolve => el.addEventListener('close', () => resolve(), { once: true })));
-    await press(shop.getByRole('button', { name: 'Back to Pause', exact: true }));
-    await shopClosed;
+    await closeDialog(shop, shop.getByRole('button', { name: 'Back to Pause', exact: true }));
     await press(pause.getByRole('button', { name: 'Gear', exact: true }));
     const gear = page.getByRole('dialog', { name: 'Gear', exact: true });
     assert.match(await gear.locator('.fishing-loadout').textContent(), /This outing.*Starter line.*Next Campaign outing.*Stronger line/s);

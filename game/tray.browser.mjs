@@ -53,7 +53,7 @@ async function checkTray(browser, mobile) {
   const { page, tray, launch, action, button, status, press, tick, findFish, waitForBite, chooseMode, errors, reelToHole, closeSavedCatch } =
     await practicePage(browser, { mobile, campaignLiveButtons: true });
   await page.evaluate(() => {
-    const rolls = [.05, .2, .5, .4, .1];
+    const rolls = [.05, .72, .39].flatMap(species => [species, .2, .5, .4, .1]);
     let draw = 0;
     Math.random = () => rolls[draw++ % rolls.length];
   });
@@ -110,6 +110,7 @@ async function checkTray(browser, mobile) {
   await waitForBite();
   const committedAt = await page.evaluate(() => Date.now());
   await press(action);
+  await tick(16);
   assert.match(await status.textContent(), /slipped the hook/i);
   await tick(28600);
   await findFish({ species: 'perch' });
