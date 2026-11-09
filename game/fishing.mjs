@@ -59,8 +59,9 @@ picker.innerHTML = `
     <button type="button" data-mode="campaign" data-area="${reefArea}" aria-describedby="reef-description">${campaignAreas[reefArea].name}</button>
     <p id="reef-description">${reefRequirement}</p>
     <button type="button" data-open-shop aria-describedby="shop-description">Tackle shop</button>
-    <button type="button" data-open-skills>Skills</button><p>Spend or reset Campaign skill points between outings.</p>
     <p id="shop-description">Spend coins and choose your gear between outings.</p>
+    <button type="button" data-open-skills aria-describedby="skills-description">Skills</button>
+    <p id="skills-description">Spend or reset Campaign skill points between outings.</p>
     <button type="button" data-mode="practice" aria-describedby="practice-description">Practice</button>
     <p id="practice-description">Practice with starter gear. Two catches reach Level 2: choose a longer hook window or an extra first clear pull.</p>
     ${endpoint ? `<button type="button" data-mode="ranked" aria-describedby="ranked-description">Ranked</button>
