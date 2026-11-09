@@ -44,6 +44,7 @@ export async function practicePage(browser, { mobile = false, viewport, configur
   const tray = page.getByRole('region', { name: 'Fishing controls' });
   const button = name => tray.getByRole('button', { name, exact: true });
   const action = tray.locator('.fishing-action');
+  const timing = tray.locator('.fishing-timing');
   const launch = page.getByRole('button', { name: 'Play fishing game', exact: true })
     .or(page.getByRole('link', { name: 'Fishing with Bryan, start fishing' }));
 
@@ -102,9 +103,11 @@ export async function practicePage(browser, { mobile = false, viewport, configur
     if (name === 'Campaign' || name === 'Deep Reef') {
       const map = page.locator('.fishing-map');
       const permit = page.locator('.fishing-permit');
+      const drill = page.locator('.fishing-drill');
+      const wallet = tray.locator('[data-wallet]');
       await map.waitFor();
       await press(map.locator('[data-map-drill]'), 'Enter');
-      await page.waitForFunction(() => document.querySelector('.fishing-permit[open], .fishing-drill[open]'));
+      await permit.or(drill).or(wallet).filter({ visible: true }).first().waitFor();
       if (await permit.isVisible()) {
         await press(permit.getByRole('button', { name: 'Get this permit' }), 'Enter');
         const shop = page.getByRole('dialog', { name: 'Tackle shop' });
@@ -113,9 +116,10 @@ export async function practicePage(browser, { mobile = false, viewport, configur
         await closeDialog(shop, shop.locator('[data-shop-back]'));
         await map.waitFor();
         await press(map.locator('[data-map-drill]'), 'Enter');
+        await drill.or(wallet).filter({ visible: true }).first().waitFor();
       }
-      await press(page.locator('[data-drill-skip]'), 'Enter');
-      await tray.locator('[data-wallet]').waitFor();
+      if (await drill.isVisible()) await press(drill.locator('[data-drill-skip]'), 'Enter');
+      await wallet.waitFor();
     }
     // Both local modes read the saved profile before the outing is ready.
     await tray.locator('[data-exit]:enabled').waitFor();
@@ -134,9 +138,40 @@ export async function practicePage(browser, { mobile = false, viewport, configur
       const pause = page.locator('.fishing-pause');
       await closeDialog(pause, pause.getByRole('button', { name: 'Leave outing', exact: true }));
     } else await press(button('Exit fishing'), 'Enter');
+    await tray.waitFor({ state: 'hidden' });
   }
 
-  async function findFish() {
+  async function findFish({ species } = {}) {
+    if (await tray.getAttribute('data-mode') === 'campaign') {
+      const swimmers = page.locator(species
+        ? `.fishing-swimmer[data-species="${species}"]`
+        : '.fishing-swimmer');
+      await swimmers.first().waitFor();
+      // Aiming is setup for these checks. The jig, hook and reel still use
+      // the same player inputs as the rest of the test.
+      let alignment;
+      for (let frame = 0; frame < 90; frame++) {
+        alignment = await swimmers.evaluateAll(fish => {
+          const lake = document.querySelector('.lake').getBoundingClientRect();
+          const rig = document.querySelector('.fishing-line-rig');
+          const lure = new DOMPoint(0, 0).matrixTransform(rig.getScreenCTM());
+          const positions = fish.map(el => ({
+            x: lake.left + parseFloat(el.style.getPropertyValue('--x')),
+            y: lake.top + parseFloat(el.style.getPropertyValue('--y')),
+            species: el.dataset.species,
+          }));
+          const nearest = positions.sort((a, b) => Math.abs(a.x - lure.x) - Math.abs(b.x - lure.x))[0];
+          const depthGap = nearest.y - lure.y;
+          if (Math.abs(depthGap) > 6) scrollBy({ top: depthGap, behavior: 'instant' });
+          return { depthGap, horizontalGap: Math.abs(nearest.x - lure.x), width: lake.width, species: nearest.species };
+        });
+        if (Math.abs(alignment.depthGap) <= 12 && alignment.horizontalGap <= Math.min(400, alignment.width * .35)) {
+          return alignment.species;
+        }
+        await page.clock.runFor(16);
+      }
+      assert.fail(`could not bring the Campaign lure near ${species ?? 'a fish'}: ${JSON.stringify(alignment)}`);
+    }
     await page.locator('.fishing-target').evaluate(el => {
       const box = el.getBoundingClientRect();
       window.scrollBy({ top: box.top + box.height / 2 - innerHeight * .35, behavior: 'instant' });
@@ -145,6 +180,16 @@ export async function practicePage(browser, { mobile = false, viewport, configur
       const button = document.querySelector('.fishing-action');
       return !button.disabled && button.getAttribute('aria-disabled') !== 'true';
     }, null, { polling: 25 });
+  }
+
+  async function waitForBite() {
+    // Campaign timing starts at the actual bite, after the fish swims to
+    // the jig. Advance in frame increments so timing-boundary tests stay exact.
+    for (let frame = 0; frame < 150; frame++) {
+      if (await timing.isVisible()) return;
+      await page.clock.runFor(16);
+    }
+    assert.fail(`the fish did not bite: ${await tray.getByRole('status').textContent()}`);
   }
 
   async function reelToHole({ keyboard = false } = {}) {
@@ -166,7 +211,7 @@ export async function practicePage(browser, { mobile = false, viewport, configur
   return {
     page, tray, action, launch, button, press, closeDialog, closeSavedCatch, selectTackle, leave, errors, findFish, chooseMode, enter, reelToHole,
     status: tray.getByRole('status'),
-    timing: tray.locator('.fishing-timing'),
+    timing, waitForBite,
     tick: ms => page.clock.runFor(ms),
   };
 }

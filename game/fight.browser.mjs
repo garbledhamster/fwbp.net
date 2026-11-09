@@ -7,11 +7,13 @@ async function fightGeometry(page) {
   return page.locator('.fishing-line-path').evaluate(path => {
     const point = path.getPointAtLength(path.getTotalLength()).matrixTransform(path.getScreenCTM());
     const start = path.getPointAtLength(0).matrixTransform(path.getScreenCTM());
-    const fish = document.querySelector('.fishing-target').getBoundingClientRect();
+    const target = document.querySelector('.fishing-target');
+    const fish = target.getBoundingClientRect();
+    const mouthX = target.hasAttribute('data-facing-right') ? 238 / 245 : 7 / 245;
     const tray = document.querySelector('.fishing-tray').getBoundingClientRect();
     return {
       x: point.x, y: point.y, distanceToHole: Math.hypot(point.x - start.x, point.y - start.y),
-      gap: Math.hypot(point.x - fish.left - fish.width * 7 / 245,
+      gap: Math.hypot(point.x - fish.left - fish.width * mouthX,
         point.y - fish.top - fish.height * 42 / 72),
       fishInView: fish.left >= 0 && fish.right <= innerWidth && fish.top >= 0 && fish.bottom < tray.top,
     };
@@ -19,7 +21,7 @@ async function fightGeometry(page) {
 }
 
 async function checkFight(browser, mobile, mode) {
-  const { leave, page, tray, action, button, status, press, enter, tick, findFish, reelToHole, errors } =
+  const { leave, page, tray, action, button, status, press, enter, tick, findFish, waitForBite, reelToHole, errors } =
     await practicePage(browser, { mobile, campaignLiveButtons: mode === 'Campaign' });
   // Seed the first encounter with a standard muskie.
   await page.evaluate(() => {
@@ -38,9 +40,10 @@ async function checkFight(browser, mobile, mode) {
 
   async function hook() {
     await enter(mode);
-    await findFish();
     await press(button('Spoon'));
+    await findFish({ species: 'muskie' });
     await press(action);
+    if (mode === 'Campaign') await waitForBite();
     await tick(700);
     await press(action);
   }

@@ -3,7 +3,7 @@ import { withBrowser, practicePage } from './browser-qa.mjs';
 await withBrowser(async browser => {
   for (const viewport of [{ width: 1200, height: 720 }, { width: 320, height: 720 }, { width: 720, height: 320 }]) {
   const qa = await practicePage(browser, { viewport, mobile: viewport.width < 900, campaignLiveButtons: true });
-  const { page, enter, findFish, press, action, tick, reelToHole } = qa;
+  const { page, enter, findFish, press, action, tick, waitForBite, reelToHole } = qa;
   const result = await page.evaluate(async () => {
     const m = await import('./game/profile.mjs?v=connected-rpg');
     let saved = await m.loadProfile();
@@ -32,8 +32,13 @@ await withBrowser(async browser => {
   const sizeRoll = viewport.width === 1200 ? .4 : viewport.width === 320 ? .75 : .95;
   await page.evaluate(sizeRoll => { const seed = Array(6).fill(0).flatMap(() => [.05, .2, .5, sizeRoll, .1]); let i = 0; Math.random = () => seed[i++ % seed.length]; }, sizeRoll);
   await enter('Campaign');
-  await findFish();
-  await press(action); await tick(700); await press(action); await reelToHole(); await press(action);
+  await findFish({ species: 'perch' });
+  await press(action);
+  await waitForBite();
+  await tick(700);
+  await press(action);
+  await reelToHole();
+  await press(action);
   const popup = page.locator('.fishing-catch-popup');
   await popup.waitFor();
   assert.match(await popup.locator('.fishing-reward-quality').textContent(), new RegExp(viewport.width === 1200 ? 'Bronze' : viewport.width === 320 ? 'Silver' : 'Gold'));

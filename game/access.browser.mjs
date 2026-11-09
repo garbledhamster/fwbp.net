@@ -7,7 +7,7 @@ const reefId = lakeMap.cells.find(cell => cell.area === 'deep-reef').id;
 
 async function checkAccess(browser, mobile) {
   const qa = await practicePage(browser, { mobile, campaignLiveButtons: true });
-  const { leave, page, launch, tray, action, status, enter, press, tick, findFish, errors, reelToHole } = qa;
+  const { leave, page, launch, tray, action, status, enter, press, tick, findFish, waitForBite, errors, reelToHole } = qa;
   const picker = page.getByRole('dialog', { name: 'Choose an outing' });
   const map = page.getByRole('dialog', { name: 'Campaign · Mille Lacs' });
   const cell = id => map.locator(`[data-map-cell="${id}"]`);
@@ -49,9 +49,10 @@ async function checkAccess(browser, mobile) {
     });
     return { status, coins: profile.coins, ownsLicense: profile.owned.includes('deep-reef-license'), revision: profile.revision };
   }, revision);
-  const land = async (fish, balance) => {
-    await findFish();
+  const land = async (species, fish, balance) => {
+    await findFish({ species });
     await press(action);
+    await waitForBite();
     await tick(700);
     await press(action);
     await reelToHole();
@@ -92,6 +93,7 @@ async function checkAccess(browser, mobile) {
 
   // Free starter claim is explicit and also returns to its area without auto-start.
   await press(cell(shoreId));
+  await press(map.locator('[data-map-drill]'));
   await waitPermit('Starter Shore', /^Starter Shore needs the Starter Shore permit.*free.*0 coins/);
   assert.match(await guide.textContent(), /Starter Shore.*free.*0 coins/is);
   await press(guide.getByRole('button', { name: 'Back to areas' }));
@@ -123,29 +125,33 @@ async function checkAccess(browser, mobile) {
     assert.ok(waterBounds.height < 37, 'the hole and depth fit the 320 px header in two lines');
     assert.ok(scoreBounds.x + scoreBounds.width <= menuBounds.x, 'the score and progress fit beside Menu');
   }
-  for (const balance of [10, 20, 30]) {
-    await land(/Yellow perch/i, balance);
-    if (balance === 20) assert.match(await status.textContent(), /Lake Regular.*Two Campaign catches saved/i);
+  for (const balance of [10, 15, 20]) {
+    await land('perch', /Yellow perch/i, balance);
+    if (balance === 15) assert.match(await status.textContent(), /Lake Regular.*Two Campaign catches saved/i);
     else assert.doesNotMatch(await status.textContent(), /Lake Regular/i, 'the badge is announced on the second committed catch only');
-    if (balance < 30) await press(action);
+    if (balance < 20) await press(action);
   }
+  await leave();
+  await seed(.05, .72, .39);
+  await enter('Campaign');
+  await land('perch', /Yellow perch/i, 25);
   await leave();
   await openPicker();
   await openSelectedHole(reef, reefId);
-  await waitPermit('Deep Reef', /^Deep Reef needs the Deep Reef permit.*25 coins.*30 coins/);
+  await waitPermit('Deep Reef', /^Deep Reef needs the Deep Reef permit.*25 coins.*25 coins/);
   await press(guide.getByRole('button', { name: 'Get this permit' }));
   await targetVisibleAndFocused(license);
   const stale = await attemptPurchase(broke.revision);
   assert.equal(stale.status, 'stale');
-  assert.equal(stale.coins, 30);
+  assert.equal(stale.coins, 25);
   assert.equal(stale.ownsLicense, false);
   assert.equal(await starter.count(), 0, 'the free Starter Shore permit is not the selected purchase');
   await press(buy);
   await license.getByText('Owned', { exact: true }).waitFor();
-  assert.match(await shop.locator('[data-shop-balance]').textContent(), /5 coins/);
+  assert.match(await shop.locator('[data-shop-balance]').textContent(), /0 coins/);
   const duplicate = await attemptPurchase();
   assert.equal(duplicate.status, 'already-owned');
-  assert.equal(duplicate.coins, 5);
+  assert.equal(duplicate.coins, 0);
   assert.equal(duplicate.ownsLicense, true);
   await qa.closeDialog(shop, back);
   await map.waitFor();
@@ -155,18 +161,17 @@ async function checkAccess(browser, mobile) {
   await page.reload({ waitUntil: 'domcontentloaded' });
   await seed(.2);
   await enter('Deep Reef');
-  await waitWallet(5);
+  await waitWallet(0);
   assert.match(await score.textContent(), new RegExp(`Mille Lacs.*${reefId}`));
-  await press(page.getByRole('button', { name: 'Choose Rock bass', exact: true }), 'Enter');
-  await land(/Rock bass/i, 20);
+  await land('rock-bass', /Rock bass/i, 7);
   assert.doesNotMatch(await status.textContent(), /Lake Regular/i, 'reload and further catches do not repeat the badge');
   await leave();
 
   await seed(.2);
   await enter('Campaign');
-  await waitWallet(20);
+  await waitWallet(7);
   assert.match(await score.textContent(), new RegExp(`Mille Lacs.*${shoreId}`));
-  await land(/Yellow perch/i, 30);
+  await land('perch', /Yellow perch/i, 12);
   assert.deepEqual(errors, []);
   await page.close();
 }

@@ -2,10 +2,11 @@ import assert from 'node:assert/strict';
 import { practicePage, withBrowser } from './browser-qa.mjs';
 
 await withBrowser(async browser => {
-  const { page, tray, action, status, enter, press, findFish, tick, errors, reelToHole } = await practicePage(browser, { campaignLiveButtons: true });
+  const { page, tray, action, status, enter, press, findFish, waitForBite, tick, errors, reelToHole } = await practicePage(browser, { campaignLiveButtons: true });
   await enter('Campaign');
-  await findFish();
+  await findFish({ species: 'perch' });
   await press(action);
+  await waitForBite();
   await tick(700);
   await press(action);
   await reelToHole();

@@ -3,13 +3,12 @@ import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { practicePage, withBrowser } from './browser-qa.mjs';
 
-async function campaign(browser, { mobile = false, seeded = true } = {}) {
-  const qa = await practicePage(browser, { mobile, seeded });
-  const { page, tray, tick, press, status, findFish } = qa;
+async function campaign(browser, { mobile = false } = {}) {
+  const qa = await practicePage(browser, { mobile });
+  const { page, tray, tick, press, status, findFish, waitForBite } = qa;
   const touch = mobile && await page.context().newCDPSession(page);
   const wait = ms => Promise.all([tick(ms), page.waitForTimeout(ms)]);
   const marker = page.locator('[data-line-gesture-marker]');
-  const target = page.locator('.fishing-target');
   const load = () => tray.locator('meter').evaluate(meter => meter.value);
   const depth = () => page.locator('.fishing-line-path').evaluate(path =>
     path.getPointAtLength(path.getTotalLength()).y - path.getPointAtLength(0).y);
@@ -48,10 +47,11 @@ async function campaign(browser, { mobile = false, seeded = true } = {}) {
     }
   }
 
-  async function hook(lure) {
-    await findFish();
+  async function hook(lure, species) {
     await press(tray.getByRole('group', { name: 'Lures' }).getByRole('button', { name: lure, exact: true }));
+    await findFish({ species });
     await gesture(mobile ? -60 : -100, await markerPoint());
+    await waitForBite();
     assert.equal(await marker.locator('[data-line-gesture-wait]').isVisible(), true);
     await wait(700);
     await gesture(mobile ? -60 : -100, await markerPoint());
@@ -59,14 +59,14 @@ async function campaign(browser, { mobile = false, seeded = true } = {}) {
   }
 
   const phase = () => page.locator('.lake').getAttribute('data-line-gesture');
-  return { ...qa, depth, gesture, hook, load, mobile, phase, target, wait, wheelPackets };
+  return { ...qa, depth, gesture, hook, load, phase, wait, wheelPackets };
 }
 
 async function controlledReel(browser, input, mobile = false) {
   const qa = await campaign(browser, { mobile });
   try {
     await qa.enter('Campaign');
-    await qa.hook('Jig');
+    await qa.hook('Jig', 'perch');
     // The hooked perch has finished its first surge. Hold the game clock still
     // for this comparison so a different input device cannot change the load.
     await qa.tick(1880);
@@ -81,14 +81,9 @@ async function controlledReel(browser, input, mobile = false) {
   }
 }
 
-const luresBySymbol = {
-  'bi-perch': 'Jig', 'rock-bass': 'Jig', 'bi-walleye': 'Minnow',
-  'pike': 'Spoon', 'bass': 'Minnow', 'muskie': 'Spoon',
-};
-
-async function randomFights(browser, mobile) {
-  const qa = await campaign(browser, { mobile, seeded: false });
-  const { page, target, status, phase, tray, depth, load, tick, gesture, wait } = qa;
+async function compareFights(browser, mobile) {
+  const qa = await campaign(browser, { mobile });
+  const { page, status, phase, tray, depth, load, tick, gesture, wait } = qa;
   const input = dy => gesture(dy * (mobile ? 60 : 100));
   const movements = {};
   const evidence = process.env.FISHING_EVIDENCE_DIR;
@@ -98,50 +93,51 @@ async function randomFights(browser, mobile) {
     await page.screenshot({ path: join(evidence, `resistance-${mobile ? 'touch' : 'wheel'}-${state}.png`), animations: 'disabled' });
   };
   try {
-    for (let attempt = 0; attempt < 32 && (!movements.light || !movements.heavy); attempt++) {
+    for (const { kind, species, lure, speciesRoll } of [
+      { kind: 'light', species: 'perch', lure: 'Jig', speciesRoll: .05 },
+      { kind: 'heavy', species: 'muskie', lure: 'Spoon', speciesRoll: .98 },
+    ]) {
+      // Same depth and size rolls for both encounters, with enough pull to
+      // exercise the tight-line cue on starter line during the muskie fight.
+      await page.evaluate(speciesRoll => {
+        const rolls = [speciesRoll, .2, .5, .4, .1];
+        let draw = 0;
+        Math.random = () => rolls[draw++ % rolls.length];
+      }, speciesRoll);
       await qa.enter('Campaign');
-      const symbol = (await target.locator('use').getAttribute('href')).split('#').at(-1)
-        .replace(/^fwbp-(?:lake-life|fish|scenes)-/, '');
-      const kind = ['bi-perch', 'rock-bass'].includes(symbol) ? 'light'
-        : ['pike', 'muskie'].includes(symbol) ? 'heavy' : undefined;
-      const y = await target.evaluate(el => parseFloat(el.style.getPropertyValue('--y')));
-      const other = movements[kind === 'light' ? 'heavy' : 'light'];
-      // Match the two fish within the same part of the opening depth band.
-      if (kind && !movements[kind] && (!other || Math.abs(y - other.y) <= 14)) {
-        await qa.hook(luresBySymbol[symbol]);
-        await tick(1880);
-        const before = await depth();
-        await input(-1);
-        movements[kind] = { symbol, y, fraction: (before - await depth()) / before };
-        if (kind === 'heavy') {
-          await wait(800);
-          for (let step = 0; step < 12 && !/line’s tight/i.test(await status.textContent()); step++) await tick(40);
-          assert.match(await status.textContent(), /line’s tight/i, 'the stronger fish loads starter line during its next surge');
-          const tight = await load();
-          await capture('tight');
-          await input(1);
-          assert.ok(await load() < tight, 'downward input relieves the measured load');
-          await capture('eased');
-          for (let pull = 0; pull < 24 && await phase() !== 'lift'; pull++) {
-            await wait(300);
-            assert.equal(await phase(), 'reel', 'the fish stays on the line');
-            await input(/line’s tight/i.test(await status.textContent()) ? 1 : -1);
-          }
-          assert.equal(await phase(), 'lift');
+      await qa.hook(lure, species);
+      await tick(1880);
+      const before = await depth();
+      await input(-1);
+      movements[kind] = (before - await depth()) / before;
+      assert.ok(movements[kind] > 0, `the first reel moves the ${species}`);
+      if (kind === 'heavy') {
+        await wait(800);
+        for (let step = 0; step < 12 && !/line’s tight/i.test(await status.textContent()); step++) await tick(40);
+        assert.match(await status.textContent(), /line’s tight/i, 'the stronger fish loads starter line during its next surge');
+        const tight = await load();
+        await capture('tight');
+        await input(1);
+        assert.ok(await load() < tight, 'downward input relieves the measured load');
+        await capture('eased');
+        for (let pull = 0; pull < 24 && await phase() !== 'lift'; pull++) {
           await wait(300);
-          await input(-1);
-          await tray.getByText(/(?:Northern pike|Muskie).*points/i).waitFor();
-          await page.locator('.fishing-catch-popup').getByRole('heading', { name: /^(Northern pike|Muskie)$/i }).waitFor();
-          await capture('landed');
-          await qa.closeSavedCatch();
+          assert.equal(await phase(), 'reel', 'the fish stays on the line');
+          await input(/line’s tight/i.test(await status.textContent()) ? 1 : -1);
         }
+        assert.equal(await phase(), 'lift');
+        await wait(300);
+        await input(-1);
+        await tray.getByText(/Muskie.*points/i).waitFor();
+        await page.locator('.fishing-catch-popup').getByRole('heading', { name: 'Muskie', exact: true }).waitFor();
+        await capture('landed');
+        await qa.closeSavedCatch();
       }
       await qa.leave();
     }
-    assert.ok(movements.light && movements.heavy, 'normal random encounters supplied a light and a heavy fish');
-    assert.ok(movements.heavy.fraction < movements.light.fraction, `a larger fish moves less: ${JSON.stringify(movements)}`);
+    assert.ok(movements.heavy < movements.light, `a larger fish moves less: ${JSON.stringify(movements)}`);
     assert.deepEqual(qa.errors, []);
-    console.log(`PASS: unseeded ${mobile ? 'phone swipe' : 'desktop wheel'} resistance, payout and lift ${JSON.stringify(movements)}`);
+    console.log(`PASS: perch and muskie ${mobile ? 'phone swipe' : 'desktop wheel'} resistance, payout and lift ${JSON.stringify(movements)}`);
   } finally {
     await page.close();
   }
@@ -166,5 +162,5 @@ await withBrowser(async browser => {
   assert.ok(quick > notch * 1.2, `a faster deliberate reel moves the same fish farther: ${quick} vs ${notch}`);
   assert.equal(extreme, quick, 'an extreme delta does not add power past the capped gesture');
   console.log(`PASS: normalized gesture distance, quiet wheel tail and effort cap ${JSON.stringify({ notch, lineNotch, oneLineNotch, trackpad, swipe, quick, extreme })}`);
-  for (const mobile of [false, true]) await randomFights(browser, mobile);
+  for (const mobile of [false, true]) await compareFights(browser, mobile);
 });

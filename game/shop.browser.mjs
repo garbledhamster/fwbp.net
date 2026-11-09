@@ -31,7 +31,7 @@ async function search(page, tray, action, mobile) {
 }
 
 async function checkShop(browser, mobile) {
-  const { leave, page, launch, tray, action, status, button, enter, press, tick, errors, reelToHole, closeSavedCatch } =
+  const { leave, page, launch, tray, action, status, button, enter, press, tick, findFish, waitForBite, errors, reelToHole, closeSavedCatch } =
     await practicePage(browser, { mobile, campaignLiveButtons: true });
   const picker = page.getByRole('dialog', { name: 'Choose an outing' });
   const shop = page.getByRole('dialog', { name: 'Tackle shop' });
@@ -76,9 +76,11 @@ async function checkShop(browser, mobile) {
       Math.random = () => rolls[draw++ % rolls.length];
     }, species);
     await enter(mode);
-    await search(page, tray, action, mobile);
+    if (mode === 'Practice') await search(page, tray, action, mobile);
     await press(tray.getByRole('group', { name: 'Lures' }).getByRole('button', { name: lure, exact: true }));
+    if (mode === 'Campaign') await findFish({ species: lure === 'Spoon' ? 'muskie' : 'perch' });
     await press(action);
+    if (mode === 'Campaign') await waitForBite();
     await tick(700);
     await press(action);
   }

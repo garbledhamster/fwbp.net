@@ -31,24 +31,37 @@ await withBrowser(async browser => {
       assert.ok(water.flat().every(fish => fish.decorative && fish.left >= 0 && fish.right <= viewport.width),
         'background fish stay inside the water and are decorative');
 
-      const target = page.locator('.fishing-target');
-      await target.waitFor();
-      const targetBand = await target.evaluate(fish => [...fish.parentElement.parentElement.children]
-        .filter(row => row.matches('.dive')).indexOf(fish.parentElement));
-      const scenery = water[targetBand === 0 ? 1 : 0][0];
-      await page.evaluate(y => {
-        const openWater = document.querySelector('.fishing-tray').getBoundingClientRect().top;
-        scrollTo({ top: scrollY + y - openWater / 2, behavior: 'instant' });
-      }, scenery.y);
-      await tick(64);
-      assert.equal(await action.isDisabled(), true, 'a visible background fish does not enable Jig');
-      await findFish();
-      assert.equal(await target.count(), 1);
-      assert.equal(await action.isEnabled(), true);
-      const cue = await target.evaluate(fish => getComputedStyle(fish, '::before').content);
-      assert.equal(cue, '""', 'the active fish has a distinct marker while searching');
-      const active = await target.boundingBox();
-      assert.ok(water.flat().every(fish => fish.width < active.width), 'the active fish is larger than the background fish');
+      if (mode === 'Campaign') {
+        const swimmers = page.locator('.fishing-swimmer');
+        await swimmers.first().waitFor();
+        assert.equal(await page.locator('.fishing-target, .fishing-candidate').count(), 0,
+          'Campaign has no preselected fish or selection controls');
+        await findFish();
+        const active = await swimmers.first().boundingBox();
+        assert.ok(water.flat().every(fish => fish.width < active.width), 'live swimmers are larger than background fish');
+        assert.ok(await swimmers.evaluateAll(fish => fish.every(el =>
+          !el.matches('button, [tabindex], [role=button]') && getComputedStyle(el, '::before').content === 'none')),
+          'free swimmers have no focus target or selection marker');
+      } else {
+        const target = page.locator('.fishing-target');
+        await target.waitFor();
+        const targetBand = await target.evaluate(fish => [...fish.parentElement.parentElement.children]
+          .filter(row => row.matches('.dive')).indexOf(fish.parentElement));
+        const scenery = water[targetBand === 0 ? 1 : 0][0];
+        await page.evaluate(y => {
+          const openWater = document.querySelector('.fishing-tray').getBoundingClientRect().top;
+          scrollTo({ top: scrollY + y - openWater / 2, behavior: 'instant' });
+        }, scenery.y);
+        await tick(64);
+        assert.equal(await action.isDisabled(), true, 'a visible background fish does not enable Jig');
+        await findFish();
+        assert.equal(await target.count(), 1);
+        assert.equal(await action.isEnabled(), true);
+        const cue = await target.evaluate(fish => getComputedStyle(fish, '::before').content);
+        assert.equal(cue, '""', 'the active fish has a distinct marker while searching');
+        const active = await target.boundingBox();
+        assert.ok(water.flat().every(fish => fish.width < active.width), 'the active fish is larger than the background fish');
+      }
 
       await leave();
       assert.equal(await ambient.filter({ visible: true }).count(), 0, 'leaving restores the illustrated site');

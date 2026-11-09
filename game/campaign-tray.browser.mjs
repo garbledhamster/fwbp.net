@@ -3,13 +3,13 @@ import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { practicePage, withBrowser } from './browser-qa.mjs';
 
-const luresBySymbol = {
-  'bi-perch': 'Jig', 'rock-bass': 'Jig', 'bi-walleye': 'Minnow',
-  'pike': 'Spoon', 'bass': 'Minnow', 'muskie': 'Spoon',
+const luresBySpecies = {
+  perch: 'Jig', 'rock-bass': 'Jig', walleye: 'Minnow',
+  pike: 'Spoon', smallmouth: 'Minnow', muskie: 'Spoon',
 };
 
 async function checkOuting(browser, mobile) {
-  const { page, tray, launch, button, press, enter, findFish, tick, closeDialog, errors } =
+  const { page, tray, launch, button, press, enter, findFish, waitForBite, tick, closeDialog, errors } =
     await practicePage(browser, { mobile });
   const touch = mobile && await page.context().newCDPSession(page);
   const marker = page.locator('[data-line-gesture-marker]');
@@ -76,6 +76,11 @@ async function checkOuting(browser, mobile) {
 
   try {
     await enter('Campaign');
+    const openedDay = await page.evaluate(async () => {
+      const { loadProfile } = await import('./game/profile.mjs');
+      return (await loadProfile()).day;
+    });
+    assert.equal(openedDay?.opened.length, 1, 'the outing starts with one saved hole');
     await assertLiveControlsHidden();
     await assertBaitTargets();
     await page.evaluate(() => {
@@ -108,18 +113,17 @@ async function checkOuting(browser, mobile) {
 
     for (let attempt = 1; attempt <= 6; attempt++) {
       assert.match(await tray.locator('[data-run-progress]').innerText(), new RegExp(`${attempt}/6$`));
-      await findFish();
+      const species = await findFish();
       await up.filter({ hasText: /Jig/ }).waitFor();
       assert.equal(await down.isVisible(), false, 'search only shows the upward guide');
-      const art = (await page.locator('.fishing-target use').getAttribute('href')).split('#').at(-1)
-        .replace(/^fwbp-(?:lake-life|fish|scenes)-/, '');
-      const lure = luresBySymbol[art];
-      assert.ok(lure, `the current fish has known art: ${art}`);
+      const lure = luresBySpecies[species];
+      assert.ok(lure, `the current fish has a known bait: ${species}`);
       if (attempt === 1) await press(lureButton(lure === 'Spoon' ? 'Jig' : 'Spoon'));
       await press(lureButton(lure));
       assert.equal(await lureButton(lure).getAttribute('aria-pressed'), 'true');
       if (attempt === 1) await capture('jig');
       await stroke(-1, true);
+      await waitForBite();
       assert.equal(await up.isVisible(), false, 'the marker withholds the hook arrow while waiting for gold');
       await tick(700);
       await up.filter({ hasText: /Set hook/ }).waitFor();
@@ -180,8 +184,12 @@ async function checkOuting(browser, mobile) {
       await advanceInput();
     }
     await tray.getByRole('status').filter({ hasText: 'Outing complete.' }).waitFor();
+    await page.waitForFunction(async () => {
+      const { loadProfile } = await import('./game/profile.mjs');
+      return (await loadProfile()).day === undefined;
+    }, undefined, { polling: 25 });
     await press(resultButton('Fish again'), 'Enter');
-    assert.equal(await tray.isVisible(), false, 'the sixth result returns to the map');
+    await tray.waitFor({ state: 'hidden' });
     const map = page.locator('.fishing-map');
     await map.waitFor();
     await press(map.locator('[data-map-back]'), 'Enter');

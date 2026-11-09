@@ -54,7 +54,7 @@ await withBrowser(async browser => {
       command(first, landing('second:0', 'perch')), command(second, landing('second:0', 'perch')),
     ]);
     assert.equal(secondCatch.filter(result => result.milestoneReached).length, 1, 'only the committed second Campaign award announces the milestone');
-    assert.equal((await command(first)).coins, 20);
+    assert.equal((await command(first)).coins, 15, 'a second perch earns half once Bryan asks for pike');
     const beforeStudy = await command(first);
     const learned = await command(first, { type: 'study', speciesId: 'walleye' });
     assert.equal(learned.status, 'studied');

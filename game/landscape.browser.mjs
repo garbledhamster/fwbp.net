@@ -5,7 +5,9 @@ import { practicePage, withBrowser } from './browser-qa.mjs';
 
 async function fightView(page) {
   return page.evaluate(() => {
-    const fish = document.querySelector('.fishing-target').getBoundingClientRect();
+    const target = document.querySelector('.fishing-target');
+    const fish = target.getBoundingClientRect();
+    const mouthX = target.hasAttribute('data-facing-right') ? 238 / 245 : 7 / 245;
     const tray = document.querySelector('.fishing-tray').getBoundingClientRect();
     const path = document.querySelector('.fishing-line-path');
     const hook = path.getPointAtLength(path.getTotalLength()).matrixTransform(path.getScreenCTM());
@@ -13,14 +15,14 @@ async function fightView(page) {
       trayTop: tray.top,
       fishTop: fish.top,
       fishBottom: fish.bottom,
-      gap: Math.hypot(hook.x - fish.left - fish.width * 7 / 245,
+      gap: Math.hypot(hook.x - fish.left - fish.width * mouthX,
         hook.y - fish.top - fish.height * 42 / 72),
     };
   });
 }
 
 async function checkLandscape(browser, mode) {
-  const { leave, page, tray, action, button, status, launch, press, enter, tick, findFish, selectTackle, errors } =
+  const { leave, page, tray, action, button, status, launch, press, enter, tick, findFish, waitForBite, selectTackle, errors } =
     await practicePage(browser, { mobile: true });
   await page.evaluate(() => {
     const rolls = [.98, .2, .5, .4, .1];
@@ -42,10 +44,12 @@ async function checkLandscape(browser, mode) {
   }
 
   await enter(mode);
-  await findFish();
   await press(button('Spoon'));
-  if (campaign) await swipe(-1, true);
-  else await press(action);
+  await findFish({ species: 'muskie' });
+  if (campaign) {
+    await swipe(-1, true);
+    await waitForBite();
+  } else await press(action);
   await tick(700);
   if (campaign) await swipe(-1, true);
   else await press(action);

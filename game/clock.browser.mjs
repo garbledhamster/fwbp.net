@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { practicePage, withBrowser } from './browser-qa.mjs';
 
 await withBrowser(async browser => {
-  const { leave, page, tray, launch, action, button, status, press, enter, tick, findFish, errors, reelToHole } =
+  const { leave, page, tray, launch, action, button, status, press, enter, tick, findFish, waitForBite, errors, reelToHole } =
     await practicePage(browser);
   const label = tray.locator('[data-phase]');
   const lake = page.locator('.lake');
@@ -20,10 +20,14 @@ await withBrowser(async browser => {
   assert.equal(await label.isVisible(), true, 'the phase is shown in the Campaign tray');
   await expectPhase('Day');
   const daylight = await color();
-  await tick(29200);
-  await findFish();
+  const dayStarted = await page.evaluate(() => Date.now());
+  await tick(28700);
+  await findFish({ species: 'perch' });
   await page.keyboard.press('j');
-  await tick(900);
+  await waitForBite();
+  await expectPhase('Day');
+  const approachFinished = await page.evaluate(() => Date.now());
+  await tick(Math.max(700, dayStarted + 30100 - approachFinished));
   await expectPhase('Dusk');
   const dusk = await color();
   assert.notEqual(dusk, daylight);
@@ -77,8 +81,9 @@ await withBrowser(async browser => {
   await enter('Campaign');
   await tick(31000);
   assert.equal(await tray.getByRole('timer').isVisible(), false, 'an uncommitted hole has no fish deadline');
-  await findFish();
+  await findFish({ species: 'perch' });
   await page.keyboard.press('j');
+  await waitForBite();
   await page.keyboard.press('r'); // An early hook attempt returns to searching after committing the fish.
   await tick(31000);
   await action.getByText('Next fish', { exact: true }).waitFor();

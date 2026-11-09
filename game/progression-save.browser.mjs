@@ -41,8 +41,8 @@ await withBrowser(async browser => {
   const award = { type: 'award', key: 'retry:0', speciesId: 'walleye', outcome: 'landed', catch: { points: 25 } };
   await assert.rejects(command(award)); assert.deepEqual((await command()).profile, reset.profile);
   const saved = await command(award); const duplicate = await command(award);
-  assert.equal(saved.profile.coins, 100); assert.equal(saved.progress.xp, 125);
-  assert.deepEqual(duplicate.profile, saved.profile); assert.equal(duplicate.progress.xp, 125);
+  assert.equal(saved.profile.coins, 87); assert.equal(saved.progress.xp, 112);
+  assert.deepEqual(duplicate.profile, saved.profile); assert.equal(duplicate.progress.xp, 112);
   assert.deepEqual(saved.profile.caughtSpecies, ['perch', 'pike', 'walleye']);
   assert.equal(saved.profile.elapsedMs, legacy.elapsedMs); assert.deepEqual(saved.profile.owned, legacy.owned);
   console.log('PASS: v19 credit, reload/replay, retained gear/training/clock/collection, free reset, failed atomic XP/coin/collection retry');

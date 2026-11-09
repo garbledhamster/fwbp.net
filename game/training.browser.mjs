@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { practicePage, withBrowser } from './browser-qa.mjs';
 
 async function checkTraining(browser, mobile) {
-  const { leave, enter, page, tray, action, press, tick, findFish, launch, selectTackle, status, errors, reelToHole } =
+  const { leave, enter, page, tray, action, press, tick, findFish, waitForBite, launch, selectTackle, status, errors, reelToHole } =
     await practicePage(browser, { mobile, campaignLiveButtons: true });
   const picker = page.getByRole('dialog', { name: 'Choose an outing' });
   const shop = page.getByRole('dialog', { name: 'Tackle shop' });
@@ -28,22 +28,23 @@ async function checkTraining(browser, mobile) {
     await select(picker.getByRole('button', { name: 'Back to the site' }));
   }
 
-  async function tryBite(species, lure, delay, expectLanding) {
+  async function tryBite(species, lure, delay, reward) {
     await page.evaluate(species => {
       const rolls = [species, .2, .5, .4, .1];
       let draw = 0;
       Math.random = () => rolls[draw++ % rolls.length];
     }, species);
     await enter('Campaign');
-    await findFish();
     await select(tray.getByRole('group', { name: 'Lures' }).getByRole('button', { name: lure, exact: true }));
+    await findFish({ species: lure === 'Jig' ? 'perch' : 'walleye' });
     await select(action);
+    await waitForBite();
     await tick(delay);
     await select(action);
-    if (expectLanding) {
+    if (reward) {
       await reelToHole();
       await select(action);
-      await tray.getByText(/Yellow perch.*\+10 coins/).waitFor();
+      await tray.getByText(new RegExp(`Yellow perch.*\\+${reward} coins`)).waitFor();
     } else {
       assert.match(await status.textContent(), /slipped the hook/i);
     }
@@ -80,7 +81,7 @@ async function checkTraining(browser, mobile) {
   assert.equal(await balance.textContent(), '20 coins');
   await closeShop();
 
-  await tryBite(.05, 'Jig', 2250, true);
+  await tryBite(.05, 'Jig', 2250, 10);
   await tryBite(.60, 'Minnow', 2250, false);
   await tryBite(.05, 'Jig', 2500, false);
 
@@ -109,7 +110,7 @@ async function checkTraining(browser, mobile) {
     ['already-owned', 10], ['already-owned', 10],
   ]);
   await closeShop();
-  await tryBite(.05, 'Jig', 2400, true);
+  await tryBite(.05, 'Jig', 2400, 5);
   assert.deepEqual(errors, []);
   await page.close();
 }

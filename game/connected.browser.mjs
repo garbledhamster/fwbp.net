@@ -6,7 +6,7 @@ import { practicePage, withBrowser } from './browser-qa.mjs';
 // Catches broken catch→card→video return, premature credit, lost study state,
 // parent-pause release, duplicate payouts and accidental next-outing gear application.
 async function connected(browser, viewport, mobile) {
-  const { page, tray, action, status, launch, enter, leave, press, closeDialog, tick, findFish, reelToHole, errors } =
+  const { page, tray, action, status, launch, enter, leave, press, closeDialog, tick, findFish, waitForBite, reelToHole, errors } =
     await practicePage(browser, { mobile, viewport, campaignLiveButtons: true, configure: async page => {
       // Playback availability is separately audited against public YouTube. Here a
       // blocked embed exercises our real dialog, public fallback and cleanup.
@@ -39,9 +39,10 @@ async function connected(browser, viewport, mobile) {
     if (mobile) assert.ok(box.width >= 44 && box.height >= 44, 'touch action has a 44px target');
   };
   async function land(lure = 'Minnow', fail = false) {
-    await findFish();
     await press(tray.getByRole('group', { name: 'Lures' }).getByRole('button', { name: lure, exact: true }));
+    await findFish({ species: lure === 'Minnow' ? 'walleye' : 'perch' });
     await press(action);
+    await waitForBite();
     await tick(700);
     await press(action);
     await reelToHole();
@@ -77,7 +78,7 @@ async function connected(browser, viewport, mobile) {
   await view.waitFor();
   assert.equal(await action.textContent(), 'Next fish');
   const credited = await saved();
-  assert.equal(credited.coins, 25);
+  assert.equal(credited.coins, 12);
   assert.deepEqual(credited.caughtSpecies, ['walleye']);
   assert.equal(Object.keys(credited.awards).length, 1);
   const result = await status.textContent();
@@ -110,7 +111,7 @@ async function connected(browser, viewport, mobile) {
   assert.equal(await status.textContent(), result, 'return keeps the same landed result');
   assert.equal(await selected(), 'minnow');
   assert.deepEqual((await saved()).awards, credited.awards);
-  assert.equal((await saved()).coins, 25);
+  assert.equal((await saved()).coins, credited.coins);
   assert.equal((await saved()).elapsedMs, credited.elapsedMs, 'nested browsing consumes no Campaign time');
 
   // Catch entry uses the same player and returns to its own exact trigger.
@@ -121,7 +122,7 @@ async function connected(browser, viewport, mobile) {
   assert.equal(await catchWatch.evaluate(el => el === document.activeElement), true);
   await closeDialog(reward, reward.locator('[data-reward-next]')); // Later fish, same outing and lure; newly studied cue appears.
   await tick(300);
-  await findFish();
+  await findFish({ species: 'walleye' });
   await page.locator('.fishing-studied-cue').filter({ hasText: /Minnow/ }).waitFor();
   assert.equal(await selected(), 'minnow');
   await press(tray.getByRole('button', { name: 'Menu', exact: true }));
@@ -156,7 +157,7 @@ async function connected(browser, viewport, mobile) {
   await leave();
   await page.reload({ waitUntil: 'domcontentloaded' });
   const returning = await saved();
-  assert.equal(returning.coins, 15);
+  assert.equal(returning.coins, 2);
   assert.equal(returning.equipped.line, 'stronger-line');
   assert.deepEqual(returning.studiedSpecies, ['walleye']);
   assert.deepEqual(returning.awards, credited.awards);

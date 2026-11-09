@@ -50,8 +50,13 @@ async function scrollStep(page, direction, mobile) {
 }
 
 async function checkTray(browser, mobile) {
-  const { page, tray, launch, action, button, status, press, tick, findFish, chooseMode, errors, reelToHole, closeSavedCatch } =
+  const { page, tray, launch, action, button, status, press, tick, findFish, waitForBite, chooseMode, errors, reelToHole, closeSavedCatch } =
     await practicePage(browser, { mobile, campaignLiveButtons: true });
+  await page.evaluate(() => {
+    const rolls = [.05, .2, .5, .4, .1];
+    let draw = 0;
+    Math.random = () => rolls[draw++ % rolls.length];
+  });
   await press(launch);
   const picker = page.getByRole('dialog', { name: 'Choose an outing' });
   assert.equal(await picker.isVisible(), true, 'the site entry offers a choice of outings');
@@ -60,8 +65,9 @@ async function checkTray(browser, mobile) {
   await chooseMode('Campaign');
   await tray.locator('[data-wallet]').waitFor();
   assert.match(await tray.locator('[data-score]').textContent(), /Mille Lacs.*Campaign/);
-  assert.equal(await action.isDisabled(), true);
-  assert.match(await status.textContent(), /scroll.*find the fish/i);
+  assert.equal(await action.isEnabled(), true, 'Campaign can jig without selecting a fish first');
+  assert.equal(await tray.getByRole('timer').isVisible(), false, 'looking for fish does not start the attempt');
+  assert.match(await status.textContent(), /scroll.*find the fish|jig near a fish/i);
 
   const initial = await assertAttached(page);
   await scrollStep(page, 1, mobile);
@@ -81,7 +87,7 @@ async function checkTray(browser, mobile) {
     await assertAttached(page);
   }
 
-  await findFish();
+  await findFish({ species: 'perch' });
   const box = await tray.boundingBox();
   assert.ok(box.x >= 0 && box.x + box.width <= (mobile ? 320 : 1000));
   const slots = await Promise.all(['Jig', 'Spoon', 'Minnow'].map(name =>
@@ -95,11 +101,23 @@ async function checkTray(browser, mobile) {
   const jiggled = await assertAttached(page);
   if (!mobile) assert.ok(jiggled.endY < still.endY - 3, 'the lure and line rise together during a jig');
   assert.match(await status.textContent(), /try a different lure/i);
+  assert.equal(await tray.getByRole('timer').isVisible(), false, 'a wrong lure leaves the attempt unspent');
+
   await press(tray.getByRole('group', { name: 'Lures' }).getByRole('button', { name: 'Jig', exact: true }));
-  await tick(29350);
-  assert.match(await tray.getByRole('timer').textContent(), /1s/);
+  await tick(300);
+  await findFish({ species: 'perch' });
   await press(action);
-  await tick(700);
+  await waitForBite();
+  const committedAt = await page.evaluate(() => Date.now());
+  await press(action);
+  assert.match(await status.textContent(), /slipped the hook/i);
+  await tick(28600);
+  await findFish({ species: 'perch' });
+  assert.match(await tray.getByRole('timer').textContent(), /[12]s/);
+  await press(action);
+  await waitForBite();
+  const secondBite = await page.evaluate(() => Date.now());
+  await tick(Math.max(700, committedAt + 30100 - secondBite));
   assert.match(await status.textContent(), /yeah, reel it/i, 'a late bite keeps its hook window');
   await press(action);
   await reelToHole();
