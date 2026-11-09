@@ -3,7 +3,7 @@ import { practicePage, withBrowser } from './browser-qa.mjs';
 
 async function checkMilestone(browser, choice) {
   const mobile = choice === 'Lift';
-  const { leave, enter, page, tray, action, button, status, errors, press, tick, findFish, reelToHole } =
+  const { leave, enter, launch, chooseMode, page, tray, action, button, status, errors, press, tick, findFish, reelToHole } =
     await practicePage(browser, { mobile });
   const celebration = page.locator('.fishing-celebration');
   const levelOne = tray.getByText(/0\s*\/\s*20 XP to Level 2/);
@@ -18,7 +18,9 @@ async function checkMilestone(browser, choice) {
     await press(action);
   };
 
-  await enter();
+  await press(launch, 'Enter');
+  assert.match(await page.locator('#practice-description').textContent(), /Two catches reach Level 2.*longer hook window.*extra first clear pull/);
+  await chooseMode();
   await findFish();
   await press(action);
   await press(action);

@@ -40,3 +40,9 @@ body[data-fish-mode] .fish-target[hidden] { display: none !important; }
 #fish-card [data-species-card] dl { font-size: .87rem; line-height: 1.45; }
 #fish-card [data-species-card] dt { font-weight: bold; margin-top: 10px; }
 #fish-card [data-species-card] dd { margin: 3px 0; }
+:is(.collection-dialog, #fish-card) [data-bryan-video] {
+  display: flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 10px;
+  color: #354f3a; font-weight: bold; line-height: 1.4;
+}
+:is(.collection-dialog, #fish-card) [data-bryan-video] .tackle-icon { flex: none; width: 24px; height: 24px; }
+.collection-dialog :focus-visible { outline: 3px solid #654916; outline-offset: 2px; }

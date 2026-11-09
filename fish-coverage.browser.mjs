@@ -83,7 +83,8 @@ await withBrowser(async browser => {
 
       await page.getByRole('button', { name: 'Play fishing game' }).click();
       await page.getByRole('button', { name: 'Practice', exact: true }).click();
-      await page.getByRole('button', { name: 'Exit fishing' }).click();
+      await page.getByRole('button', { name: 'Menu', exact: true }).click();
+      await page.locator('.fishing-pause').getByRole('button', { name: 'Leave outing', exact: true }).click();
       assert.equal(await page.getByRole('button', { name: 'Play fishing game' }).isVisible(), true);
 
       await page.emulateMedia({ reducedMotion: 'no-preference' });

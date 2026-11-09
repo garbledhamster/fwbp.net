@@ -1,7 +1,8 @@
 import { fishProfiles } from "./assets/fish-profiles.js";
 
 import { speciesArt as species } from "./game/species-catalog.mjs";
-import { loadProfile } from "./game/profile.mjs?v=16";
+import { loadProfile } from "./game/profile.mjs?v=connected-rpg";
+import { renderSpeciesVideo } from "./game/species-video.mjs";
 import { fillSpeciesCard } from "./game/collection.mjs";
 
 const debris = {
@@ -210,7 +211,7 @@ document.addEventListener("click", event => {
   fillSpeciesCard(frame.querySelector('[data-species-card]'), key, {
     profile: collection,
     onChange: profile => { collection = profile; },
-    onVideo: (id, container) => document.dispatchEvent(new CustomEvent('fishing:species-video', { detail: { speciesId: id, container } })),
+    onVideo: renderSpeciesVideo,
   });
   const title = frame.querySelector('h2');
   title.id = 'fish-card-name';

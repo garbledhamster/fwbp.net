@@ -1,7 +1,9 @@
 import { createSuspensionClock } from './suspension.mjs';
-import { advanceLineFight, apply, campaignAreas, campaignPhase, lakes, lures, practiceLevelXp, practiceSkills, publicRun, skills, start, starterArea } from './rules.mjs?v=lake-balance';
-import { applyProfile, loadProfile, shopItems } from './profile.mjs?v=16';
+import { advanceLineFight, apply, campaignAreas, campaignPhase, lakes, lures, practiceLevelXp, practiceSkills, publicRun, skills, start, starterArea } from './rules.mjs?v=connected-rpg';
+import { applyProfile, campaignMilestone, loadProfile, shopItems } from './profile.mjs?v=connected-rpg';
 import { lureTip } from './species-catalog.mjs';
+import { openYourLake } from './collection.mjs';
+import { renderSpeciesVideo } from './species-video.mjs';
 
 const outingTime = createSuspensionClock();
 const endpoint = document.querySelector('meta[name="fishing-api"]')?.content;
@@ -55,7 +57,7 @@ picker.innerHTML = `
     <button type="button" data-open-shop aria-describedby="shop-description">Tackle shop</button>
     <p id="shop-description">Spend coins and choose your gear between outings.</p>
     <button type="button" data-mode="practice" aria-describedby="practice-description">Practice</button>
-    <p id="practice-description">Practice the Campaign controls with starter gear.</p>
+    <p id="practice-description">Practice with starter gear. Two catches reach Level 2: choose a longer hook window or an extra first clear pull.</p>
     ${endpoint ? `<button type="button" data-mode="ranked" aria-describedby="ranked-description">Ranked</button>
       <p id="ranked-description">Fish for a score on the public board.</p>` : ''}
   </div>
@@ -186,6 +188,7 @@ tray.innerHTML = `
           `<button type="button" data-skill="${id}"><span>${icon(id)} ${skills[id]}</span><small>${description}</small></button>`).join('')}
       </div>
     </div>
+    <div class="fishing-catch-actions" hidden><button type="button" data-catch-lake>${icon('your-lake')}<span>View in Your Lake</span></button><div data-catch-video></div></div>
     <details hidden><summary>Catch log</summary><ul></ul></details>
     <form hidden><label>Nickname <input name="nickname" maxlength="20" required></label> <button>Post score</button></form>
     <ol data-board hidden></ol>
@@ -278,7 +281,10 @@ let launch, previousScroll, run, state, token, target, busy, failed, biteAt, fra
 let mode, rigFrame, fightFrame, jigAt = -Infinity;
 let retractTimer, retractFrame, retractAt;
 let lastTouchY;
-let profile, outingId, catchReward, catchSaveFailed;
+let profile, outingId, catchReward, catchSaveFailed, settledCatch;
+const catchActions = tray.querySelector('.fishing-catch-actions');
+const catchLake = tray.querySelector('[data-catch-lake]');
+const catchVideo = tray.querySelector('[data-catch-video]');
 let biteDepth;
 let encounterTip;
 const studiedCue = document.createElement('p');
@@ -567,7 +573,8 @@ function renderGear() {
     <div data-gear-milestone></div>
     <p>Practice: two catches reach Level 2. Choose Line Control for a longer hook window or Lift for an extra first clear pull.</p>
     <p data-gear-message role="status"></p>`;
-  pause.dispatchEvent(new CustomEvent('fishing:gear-rendered', { bubbles: true, detail: { profile } }));
+  const milestone = campaignMilestone(profile);
+  content.querySelector('[data-gear-milestone]').textContent = `${milestone.name}: ${milestone.earned ? 'earned' : `${milestone.catches} / ${milestone.goal} Campaign catches saved`}. ${milestone.description}`;
 }
 
 function showPausePanel(panel) {
@@ -612,6 +619,7 @@ pause.addEventListener('click', async event => {
   if (destination === 'leave') { pause.close(); leave(); }
   if (destination === 'controls') showPausePanel('controls');
   if (destination === 'shop') void openShop();
+  if (destination === 'your-lake') openOutingLake();
   if (destination === 'gear') {
     let loaded;
     try { loaded = await loadProfile(); } catch { /* Gear offers a retry through Pause. */ }
@@ -1190,6 +1198,33 @@ function placeFish() {
   scenes[state.fish.depth ?? state.index].append(target);
 }
 
+function outingVideo(speciesId, container) {
+  renderSpeciesVideo(speciesId, container, { acquireSuspension });
+}
+
+function openOutingLake(initialSpecies) {
+  if (busy || !usesLinePhysics() || tray.hidden || document.querySelector('#your-lake')) return;
+  const release = acquireSuspension();
+  try { openYourLake({ initialSpecies, onVideo: outingVideo, onClose: release }); }
+  catch (error) { release(); throw error; }
+}
+
+catchLake.addEventListener('click', () => {
+  if (!catchActions.hidden && settledCatch) openOutingLake(settledCatch.speciesId);
+});
+
+function renderCatchActions() {
+  const visible = usesLinePhysics() && state?.stage === 'landed' && settledCatch && !busy && !catchSaveFailed;
+  catchActions.hidden = !visible;
+  if (!visible) {
+    catchActions.removeAttribute('data-key');
+    catchVideo.replaceChildren();
+  } else if (catchActions.dataset.key !== settledCatch.key) {
+    catchActions.dataset.key = settledCatch.key;
+    outingVideo(settledCatch.speciesId, catchVideo);
+  }
+}
+
 function renderStudiedCue() {
   const visible = usesLinePhysics() && encounterTip && state?.fish
     && ['seek', 'bite', 'fight'].includes(state.stage) && fishInView();
@@ -1203,6 +1238,7 @@ function renderStudiedCue() {
 
 function render() {
   renderStudiedCue();
+  renderCatchActions();
   const campaign = mode === 'campaign';
   const linePhysics = usesLinePhysics();
   const modeName = { campaign: 'Campaign', practice: 'Practice', ranked: 'Ranked' }[mode];
@@ -1291,7 +1327,7 @@ function render() {
   if (state?.stage === 'bite') target?.removeAttribute('data-facing-right');
   target?.classList.toggle('is-biting', showCatch || ['bite', 'fight'].includes(state?.stage));
   if (target) target.hidden = !showCatch && state?.stage === 'landed';
-  const canUpgrade = state?.stage === 'landed' && state.skillPoints && !failed;
+  const canUpgrade = state?.stage === 'landed' && state.skillPoints && !failed && (!linePhysics || Boolean(settledCatch)) && !busy && !catchSaveFailed;
   skillRow.hidden = campaign || !canUpgrade || Boolean(state?.practice);
   practiceChoice.hidden = !canUpgrade || !state?.practice;
   for (const button of practiceButtons) button.disabled = busy;
@@ -1327,6 +1363,7 @@ async function begin(selectedMode = mode, selectedArea = campaignArea) {
   practiceError = undefined;
   profile = outingId = catchReward = encounterTip = undefined;
   campaignMilestoneNotice = false;
+  settledCatch = undefined;
   catchSaveFailed = false;
   lure = 'jig';
   const current = ++generation;
@@ -1548,6 +1585,7 @@ async function saveCatchCoins(current) {
     if (result.milestoneReached) campaignMilestoneNotice = true;
     catchReward = mode === 'campaign' ? result.earned ?? profile.awards[key] : undefined;
     catchSaveFailed = false;
+    settledCatch = { key, speciesId };
     document.dispatchEvent(new CustomEvent('fishing:catch-saved', { detail: { mode, key, speciesId, profile, milestoneReached: result.milestoneReached === true } }));
   } catch {
     if (current === generation) catchSaveFailed = true;
@@ -1567,7 +1605,7 @@ async function retryCatchCoins() {
 
 async function perform(move, input = {}) {
   if (busy || outingTime.suspended || !state) return;
-  if (move === 'next') campaignMilestoneNotice = false;
+  if (move === 'next') { campaignMilestoneNotice = false; settledCatch = undefined; }
   const prior = state;
   const focused = document.activeElement;
   const current = generation;

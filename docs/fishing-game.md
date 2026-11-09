@@ -1,6 +1,6 @@
 # Fishing beneath the ice
 
-Choose **Play fishing game** to fish in the lake beneath the site. The site content gives way to open water. A fixed line hangs from the ice hole, and the lure bounces up and down when you jig. Watch how the fish responds to learn which lure works. The catch log records the pairing after you land it.
+Choose **Play fishing game** to fish in the lake beneath the site. The site content gives way to open water. A fixed line hangs from the ice hole, and the lure bounces up and down when you jig. Watch how the fish responds to learn which lure works. The catch log records the pairing after you land it. After a Campaign or Practice catch saves, choose **Next fish**, **View in Your Lake**, or a Bryan video when one is available for that species. Cards and videos return to the same catch, outing and selected lure. A failed save offers **Save catch** before these next steps become available.
 
 ## Strategy
 
@@ -16,17 +16,21 @@ Each outing has six encounters. Common fish give you 30 seconds, Uncommon fish 2
 
 GitHub Pages continues to serve the site. A dedicated Firebase project, `fwbp-fishing-game`, hosts the optional ranked API. The browser owns animation and input. A single HTTPS function owns ranked encounters, action order, server timing, catch values and submission. Firestore transactions serialize updates to a run and accept one public score per run. Direct database access is denied. The server accepts action and nickname fields and derives the points itself. Use random bearer tokens, fixed run limits, constrained names, start quotas, expiring records and bounded function instances. A script can still imitate valid play.
 
-Practice uses the Campaign fishing rules in memory with Starter Shore tackle and a fresh clock. It is labeled before play and its scores stay out of the public board. A ranked connection failure offers a fresh practice outing. It never converts a practice result into a ranked entry.
+Practice uses the Campaign fishing rules with Starter Shore tackle and a fresh clock. Its XP and skill choice last for that outing. Saved catches and learned tips enter Your Lake, while the Campaign wallet, equipment, clock and award ledger stay unchanged. Practice is labeled before play and its scores stay out of the public board. A ranked connection failure offers a fresh practice outing. It never converts a practice result into a ranked entry.
 
 ## Engineering
 
-Reuse the existing SVG fish. Add an interactive layer above the decorative lake art while hiding and disabling normal site content. Use a compact bottom tackle tray with three named slots and one large action control. Keep the fish and bobber visually prominent. Make the same select, jig and reel sequence work with mouse, touch and keyboard. Escape and the Exit button restore the original scroll and focus. Honor reduced motion and provide text for each bite and catch state.
+Reuse the existing SVG fish. Add an interactive layer above the decorative lake art while hiding and disabling normal site content. Use a compact bottom tackle tray with three named slots and one large action control. Keep the fish and bobber visually prominent. Make the same select, jig and reel sequence work with mouse, touch and keyboard. In Campaign and Practice, **Menu** or Escape opens Pause. **Leave outing** restores the original site scroll and focus. Ranked retains **Exit fishing**. Honor reduced motion and provide text for each bite and catch state.
+
+Pause offers Resume fishing, Gear, Tackle shop, Your Lake and Controls. Local dialogs hold the outing's encounter, fight, lighting and animation clocks. Your Lake stays above Pause, and a video stays above its source card; closing each dialog returns focus to its own entry control. Closing Your Lake leaves Pause open until the player resumes. Ranked timing keeps running and its results do not write to the local collection.
 
 Use one rule module for the practice adapter and the ranked API. Keep species values and timings together. Test the happy path, wrong lure, early and late reel, expired and stale requests, forged score fields, retry and one-entry submission. Exercise a real browser on desktop and phone and verify the numbered release includes the game files.
 
 ## Operations
 
 Ship the site with its existing numbered release process. Deploy and probe the ranked API before configuring the frontend to use it. If billing or cloud permissions block Functions, the site can publish with practice available. Verify both live URLs, then verify an anonymous ranked catch, score submission and duplicate request against the production backend before announcing ranked play. Document the project, deployment commands, console access and checks below once verified.
+
+The explicit `site_files` list in `gitpush` includes every browser module, collection CSS and the assets folder. Keep runtime profile and rules import URLs consistent, and update index script/CSS cache versions when releasing changes. Rehearse the archive locally before publishing; existing numbered folders stay read-only.
 
 Rollback by reverting the site feature and publishing a fresh numbered version. Restore ranking by repairing the same backend endpoint. Review function traffic, Firestore TTL, quota pressure and public nicknames after launch.
 
@@ -77,8 +81,20 @@ Campaign cycles through 30 seconds of day, 30 seconds of dusk and 45 seconds of 
 
 The browser saves the wallet, tackle, training, licenses, clock and credited catches together. An outing uses the equipment you chose when you started it. Practice uses the same tackle tray, fight and lighting cycle with the starter hook and 8 lb line. It starts in daylight and keeps its XP and skill choice for that outing. Ranked uses server timing, points and gear rules; campaign purchases never enter its requests.
 
+Gear distinguishes the loadout for this outing from equipment selected for the next Campaign outing. Shop categories jump to lines, hooks, training and licenses. Browse the hook carousel with its buttons, arrow keys or a swipe; Details explains each item's effect. Buying or equipping gear during a paused outing changes the next Campaign loadout.
+
+### Your Lake and fish videos
+
+Your Lake tracks the six Mille Lacs game species after a Campaign or Practice landing is saved. Open a caught species and choose **Learn this tip** to save its lure cue. The cue appears on later encounters with that species; learning during an encounter leaves that fish's guidance unchanged. Older saves keep their wallet and tackle, with species tracking starting from new saved landings.
+
+The site's **Your Lake** toggle reveals caught game species and the collection count. Outside that mode, the original 23-species reference remains available. The same species cards serve the site and an outing, with a species reference link even when Bryan has no matching footage.
+
+Contextual videos appear only for the verified walleye, northern pike, smallmouth bass and muskie footage in the [video audit](bryan-videos.md). Yellow perch and rock bass have no contextual video action. The player includes a public YouTube link if its embed cannot play. Closing it removes the iframe and returns to the same card or saved catch.
+
 ### Run the game checks
 
 Run `node --test game/*.test.mjs` for the rules. Start the local site as described in the README. Set `FISHING_QA_URL` to that URL, then run `for check in game/*.browser.mjs; do node "$check" || break; done`. If Playwright is installed outside the checkout, set `PLAYWRIGHT_MODULE` to its module path. Use `CHROME_PATH` to point Playwright to an installed Chrome.
 
 The seeded shop check finds and lands a fish, buys and equips stronger line, and compares the same hard pull after dusk on desktop and at 320 px. Set `FISHING_EVIDENCE_DIR` to capture the catch, shop and both surge outcomes when running `node game/shop.browser.mjs`.
+
+Run `node game/connected.browser.mjs` for the real free-permit launch, catch save failure and retry, collection study, supported and unsupported video actions, nested focus and pause holds, and existing-save reload. It covers desktop, 320 px touch and 720×320 touch landscape; `FISHING_EVIDENCE_DIR` captures those views. Run the separate rules and browser test wave after all implementation slices and art are integrated.

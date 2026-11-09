@@ -96,4 +96,4 @@ await withBrowser(async browser => {
     await page.close();
   }
 });
-console.log('About, latest video, lakebed and Fish Guide verified at 320px and 1280px.');
+console.log('About, latest video, lakebed and Your Lake verified at 320px and 1280px.');

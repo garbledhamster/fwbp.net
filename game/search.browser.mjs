@@ -81,7 +81,7 @@ async function checkDesktop(browser) {
   });
   assert.ok(await scrollY(page) < below, 'find the third fish by scrolling back up');
   await page.keyboard.press('Escape');
-    await press(page.locator('.fishing-pause').getByRole('button', { name: 'Leave outing', exact: true }));
+  await press(page.locator('.fishing-pause').getByRole('button', { name: 'Leave outing', exact: true }));
   await page.waitForTimeout(400); // Let any native PageUp animation finish.
   assert.equal(await scrollY(page), saved, 'exit restores the site scroll position');
   assert.equal(await launch.evaluate(el => el === document.activeElement), true);
@@ -156,7 +156,7 @@ async function checkRetreatVisibility(browser) {
 }
 
 const checks = [
-  ['wheel down, keyboard back up, and Fish Guide', checkDesktop],
+  ['wheel down, keyboard back up, and Your Lake', checkDesktop],
   ['320px touch search', checkTouch],
   ['fish visibility updates after it backs away', checkRetreatVisibility],
 ];

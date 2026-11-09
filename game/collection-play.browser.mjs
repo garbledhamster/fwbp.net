@@ -3,7 +3,7 @@ import { practicePage, withBrowser } from './browser-qa.mjs';
 
 await withBrowser(async browser => {
   for (const mobile of [false, true]) {
-    const { page, tray, action, status, enter, press, findFish, tick, reelToHole, errors } = await practicePage(browser, { mobile });
+    const { page, tray, action, status, enter, leave, press, findFish, tick, reelToHole, errors } = await practicePage(browser, { mobile });
     const savedProfile = () => page.evaluate(async () => {
       const { loadProfile } = await import('./game/profile.mjs?v=16');
       return loadProfile();
@@ -47,7 +47,7 @@ await withBrowser(async browser => {
     assert.equal(Object.keys(saved.collectionAwards).length, 1);
     assert.equal(await page.evaluate(() => window.savedCatches.length), 1);
     assert.equal(await page.evaluate(() => window.savedCatches[0].mode), 'practice');
-    await press(tray.getByRole('button', { name: 'Exit fishing', exact: true }));
+    await leave();
 
     // Learning during an existing encounter takes effect when the next encounter starts.
     await page.evaluate(() => { Math.random = () => .05; });
@@ -68,7 +68,7 @@ await withBrowser(async browser => {
     assert.equal(await collection.count(), 0);
     assert.equal(await tray.isVisible(), true, 'nested Escape does not end the outing');
     assert.equal(await cue.isHidden(), true, 'current fish does not reveal a newly learned tip');
-    await press(tray.getByRole('button', { name: 'Exit fishing', exact: true }));
+    await leave();
     await enter();
     await findFish();
     assert.equal(await cue.isVisible(), true);

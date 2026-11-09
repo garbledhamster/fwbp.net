@@ -24,7 +24,7 @@ if [[ -n "$(git diff --name-only --diff-filter=DMRT FETCH_HEAD HEAD -- ':(glob)v
   exit 1
 fi
 
-site_files=(index.html styles.css brands.css site.js brands.js assets game/fishing.css game/fishing.mjs game/rules.mjs game/profile.mjs)
+site_files=(index.html styles.css brands.css site.js brands.js assets game/fishing.css game/fishing.mjs game/rules.mjs game/profile.mjs game/suspension.mjs game/species-catalog.mjs game/collection.mjs game/collection.css game/bryan-videos.mjs game/video-player.mjs game/species-video.mjs)
 number=0
 while IFS= read -r name; do
   if [[ "$name" =~ ^v([1-9][0-9]*)$ ]] && (( BASH_REMATCH[1] > number )); then

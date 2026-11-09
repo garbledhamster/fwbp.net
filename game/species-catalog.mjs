@@ -1,5 +1,5 @@
 import { fishProfiles } from "../assets/fish-profiles.js";
-import { lakes, lures } from "./rules.mjs?v=16";
+import { lakes, lures } from "./rules.mjs?v=connected-rpg";
 
 export const speciesArt = {
   pike: ["lake-life", "pike", "0 0 230 72"],

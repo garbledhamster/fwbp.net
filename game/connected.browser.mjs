@@ -82,6 +82,8 @@ async function connected(browser, viewport, mobile) {
   const result = await status.textContent();
   assert.equal(await selected(), 'minnow');
   await capture('saved-catch');
+  await onscreen(action);
+  await onscreen(tray.locator('[data-bryan-video]'));
   await onscreen(view);
   await press(view);
   await lake.getByRole('heading', { name: 'Walleye', exact: true }).waitFor();
@@ -97,10 +99,12 @@ async function connected(browser, viewport, mobile) {
   await tick(60000);
   await capture('video-fallback');
   await press(player.getByRole('button', { name: 'Close video', exact: true }));
+  await player.locator('iframe').waitFor({ state: 'detached' });
   assert.equal(await player.locator('iframe').count(), 0);
   assert.equal(await watch.evaluate(el => el === document.activeElement), true);
   assert.equal(await lake.getByRole('heading', { name: 'Walleye', exact: true }).isVisible(), true);
   await press(lake.getByRole('button', { name: 'Return to outing', exact: true }));
+  await lake.waitFor({ state: 'detached' });
   assert.equal(await view.evaluate(el => el === document.activeElement), true);
   assert.equal(await status.textContent(), result, 'return keeps the same landed result');
   assert.equal(await selected(), 'minnow');
@@ -112,6 +116,7 @@ async function connected(browser, viewport, mobile) {
   const catchWatch = tray.locator('[data-bryan-video]');
   await press(catchWatch, 'Enter');
   await press(player.getByRole('button', { name: 'Close video', exact: true }));
+  await player.locator('iframe').waitFor({ state: 'detached' });
   assert.equal(await catchWatch.evaluate(el => el === document.activeElement), true);
   await press(action); // Later fish, same outing and lure; newly studied cue appears.
   await tick(300);
@@ -125,6 +130,7 @@ async function connected(browser, viewport, mobile) {
   await lake.getByRole('heading', { name: 'Your Lake', exact: true }).waitFor();
   await tick(60000);
   await press(lake.getByRole('button', { name: 'Return to outing', exact: true }));
+  await lake.waitFor({ state: 'detached' });
   assert.equal(await pause.isVisible(), true, 'collection leaves the original Pause open');
   assert.equal(await pauseLake.evaluate(el => el === document.activeElement), true);
   await tick(60000);
@@ -148,6 +154,18 @@ async function connected(browser, viewport, mobile) {
   assert.equal(returning.equipped.line, 'stronger-line');
   assert.deepEqual(returning.studiedSpecies, ['walleye']);
   assert.deepEqual(returning.awards, credited.awards);
+  await press(page.locator('#fish-guide-toggle'), 'Enter');
+  await page.locator('.fish-mode-hint').filter({ hasText: /1 \/ 6/ }).waitFor();
+  await press(page.locator('.fish-target[data-fish="walleye"]:visible').first(), 'Enter');
+  const siteCard = page.locator('#fish-card');
+  const siteWatch = siteCard.locator('[data-bryan-video]');
+  await press(siteWatch, 'Enter');
+  await press(player.getByRole('button', { name: 'Close video', exact: true }));
+  await player.locator('iframe').waitFor({ state: 'detached' });
+  assert.equal(await siteWatch.evaluate(el => el === document.activeElement), true);
+  assert.equal(await siteCard.getByRole('heading', { name: 'Walleye', exact: true }).isVisible(), true);
+  await press(siteCard.getByRole('button', { name: 'Close fish card', exact: true }));
+  await press(page.locator('#fish-guide-toggle'), 'Enter');
   await seed(.05); // Unsupported exact-species video: yellow perch.
   await enter('Campaign');
   await land('Jig');

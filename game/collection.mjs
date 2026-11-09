@@ -1,9 +1,10 @@
-import { applyProfile, loadProfile } from './profile.mjs?v=16';
+import { applyProfile, loadProfile } from './profile.mjs?v=connected-rpg';
+import { renderSpeciesVideo } from './species-video.mjs';
 import { collectibleSpecies, speciesArt, fishProfiles, lureTip } from './species-catalog.mjs';
 
 const stylesheet = document.createElement('link');
 stylesheet.rel = 'stylesheet';
-stylesheet.href = new URL('./collection.css', import.meta.url).href;
+stylesheet.href = new URL('./collection.css?v=connected-rpg', import.meta.url).href;
 document.head.append(stylesheet);
 
 export const collectionIntroduction = 'Land fish in Campaign or Practice to add them to Your Lake. Open a caught fish and learn its lure tip for your next encounter.';
@@ -62,7 +63,7 @@ export function fillSpeciesCard(container, id, { profile, onChange, onVideo } = 
   // The video lane provides the exact-species availability and a modal above this card.
   const videoContainer = container.querySelector('[data-video]');
   if (onVideo) onVideo(id, videoContainer);
-  else document.dispatchEvent(new CustomEvent('fishing:species-video', { detail: { speciesId: id, container: videoContainer } }));
+  else renderSpeciesVideo(id, videoContainer);
 }
 
 /** Caller holds its local pause until onClose. Nested cards never close the collection. */
