@@ -1,4 +1,4 @@
-import { campaignGoals, lakes } from './rules.mjs?v=campaign-smooth-swim';
+import { campaignGoals, createCampaignRoster, lakes } from './rules.mjs?v=campaign-map-discovery';
 import lakeMap from './lake-map-data.mjs';
 
 const speciesIds = new Set(lakes['mille-lacs'].fish.map(fish => fish.id));
@@ -23,7 +23,7 @@ export const campaignXpLevels = [0, 10, 40, 90, 160, 260, 400, 600, 850, 1200];
 export const campaignTechniques = [
   { id: 'line-control-1', name: 'Line Control I', level: 2, cost: 1, effect: '350 ms more to set any hook. Paid Line Control already grants this rank.', path: 'control', rank: 1 },
   { id: 'lure-work-1', name: 'Lure Work I', level: 2, cost: 1, effect: 'The hook window opens 125 ms earlier after a bite.', path: 'lure', rank: 1 },
-  { id: 'drilling-1', name: 'Drilling', level: 2, cost: 1, effect: 'Open 2 new holes per day, starting the next day.', path: 'drilling', rank: 1 },
+  { id: 'drilling-1', name: 'Drilling', level: 2, cost: 1, effect: 'Open 3 new holes per day, starting the next day.', path: 'drilling', rank: 1 },
   { id: 'line-control-2', name: 'Line Control II', level: 4, cost: 2, requires: 'line-control-1', effect: '700 ms more to set any hook in total.', path: 'control', rank: 2 },
   { id: 'lure-work-2', name: 'Lure Work II', level: 4, cost: 2, requires: 'lure-work-1', effect: 'The hook window opens 250 ms earlier after a bite.', path: 'lure', rank: 2 },
 ];
@@ -95,6 +95,7 @@ function starterProfile() {
     owned: ['starter-line', 'starter-hook'],
     equipped: { line: 'starter-line', hook: 'starter-hook' },
     awards: {},
+    catchLocations: {},
     elapsedMs: 0,
   };
 }
@@ -126,10 +127,18 @@ function collectionProfile(stored) {
   const studiedSpecies = [...new Set((Array.isArray(profile.studiedSpecies) ? profile.studiedSpecies : []).filter(id => caughtSpecies.includes(id)))];
   const collectionAwards = profile.collectionAwards && typeof profile.collectionAwards === 'object'
     && !Array.isArray(profile.collectionAwards) ? profile.collectionAwards : {};
+  const { day: savedDay } = profile;
+  // A saved day gains the extra slot when its roster storage is first added.
+  const day = savedDay && !savedDay.rosters ? {
+    ...savedDay,
+    allowance: [1, 2].includes(savedDay.allowance) ? savedDay.allowance + 1 : savedDay.allowance,
+    rosters: {},
+  } : savedDay;
   const sameIds = (saved, normalized) => Array.isArray(saved)
     && saved.length === normalized.length && saved.every((id, index) => id === normalized[index]);
   if (profile.version >= 2 && sameIds(profile.caughtSpecies, caughtSpecies)
-    && sameIds(profile.studiedSpecies, studiedSpecies) && collectionAwards === profile.collectionAwards) return profile;
+    && sameIds(profile.studiedSpecies, studiedSpecies) && collectionAwards === profile.collectionAwards
+    && day === profile.day) return profile;
   return {
     ...profile,
     version: Math.max(2, profile.version ?? 1),
@@ -137,6 +146,7 @@ function collectionProfile(stored) {
     caughtSpecies,
     studiedSpecies,
     collectionAwards,
+    ...(day && { day }),
   };
 }
 
@@ -168,7 +178,7 @@ export function loadProfile() {
   return readProfile();
 }
 
-function award(profile, { key, outcome, catch: fish, speciesId, mode = 'campaign' }) {
+function award(profile, { key, outcome, catch: fish, speciesId, mode = 'campaign', dayId, cellId, fishKey }) {
   const points = fish?.points;
   const localMode = mode === 'campaign' || mode === 'practice';
   // An omitted species remains compatible with already-open older releases.
@@ -181,6 +191,20 @@ function award(profile, { key, outcome, catch: fish, speciesId, mode = 'campaign
   // Old numeric payout keys cannot be replayed to invent collection history.
   if (Object.hasOwn(profile.awards, key) || Object.hasOwn(profile.collectionAwards, key)) {
     return { profile, status: 'duplicate-award' };
+  }
+  const hasLocation = mode === 'campaign' && (dayId !== undefined || cellId !== undefined || fishKey !== undefined);
+  let remaining;
+  if (hasLocation) {
+    if (!validSpecies || typeof dayId !== 'string' || !dayId || typeof cellId !== 'string' || !cellId
+      || typeof fishKey !== 'string' || !fishKey) return { profile, status: 'no-award' };
+    const { day } = profile;
+    if (day?.id !== dayId) return { profile, status: 'stale-day' };
+    const roster = day.rosters[cellId];
+    if (!day.opened.includes(cellId) || !Array.isArray(roster)) return { profile, status: 'no-award' };
+    const entry = roster.find(entry => entry.key === fishKey);
+    if (!entry) return { profile, status: 'hole-fish-gone' };
+    if (entry.speciesId !== speciesId) return { profile, status: 'no-award' };
+    remaining = roster.filter(entry => entry.key !== fishKey);
   }
   const goal = mode === 'campaign' && validSpecies ? campaignGoal(profile) : undefined;
   const activeGoal = goal && !goal.requiredPermit;
@@ -197,6 +221,10 @@ function award(profile, { key, outcome, catch: fish, speciesId, mode = 'campaign
       awards: mode === 'campaign' ? { ...profile.awards, [key]: earned } : profile.awards,
       collectionAwards: mode === 'practice' ? { ...profile.collectionAwards, [key]: speciesId } : profile.collectionAwards,
       caughtSpecies,
+      ...(hasLocation && {
+        day: { ...profile.day, rosters: { ...profile.day.rosters, [cellId]: remaining } },
+        catchLocations: { ...profile.catchLocations, [key]: { cellId, speciesId } },
+      }),
       ...(completesGoal && { goalCatches: [...(profile.goalCatches ?? []), key] }),
     },
     status: 'awarded',
@@ -245,13 +273,13 @@ function saveClock(profile, { elapsedMs, dayId }) {
   return { profile: { ...profile, elapsedMs }, status: 'clock-saved' };
 }
 
-function updateDay(profile, { type, dayId, cellId }) {
+function updateDay(profile, { type, dayId, cellId, elapsedMs }) {
   const { day } = profile;
   if (type === 'begin-day') {
     if (day) return { profile, status: 'day-current' };
-    const allowance = techniqueState(profile, 'drilling-1').status === 'learned' ? 2 : 1;
+    const allowance = techniqueState(profile, 'drilling-1').status === 'learned' ? 3 : 2;
     return {
-      profile: { ...profile, revision: profile.revision + 1, day: { id: crypto.randomUUID(), allowance, opened: [] } },
+      profile: { ...profile, revision: profile.revision + 1, day: { id: crypto.randomUUID(), allowance, opened: [], rosters: {} } },
       status: 'day-started',
     };
   }
@@ -264,11 +292,24 @@ function updateDay(profile, { type, dayId, cellId }) {
   const cell = lakeMap.cells.find(cell => cell.id === cellId);
   if (!cell) return { profile, status: 'invalid' };
   if (!hasAreaAccess(profile, cell.area)) return { profile, status: 'permit-required' };
-  if (day.opened.includes(cellId)) return { profile, status: 'hole-current' };
-  if (day.opened.length >= day.allowance) return { profile, status: 'daily-limit' };
+  const alreadyOpen = day.opened.includes(cellId);
+  const roster = day.rosters[cellId];
+  if (alreadyOpen && Array.isArray(roster)) return { profile, status: roster.length ? 'hole-current' : 'hole-quiet' };
+  if (!alreadyOpen && day.opened.length >= day.allowance) return { profile, status: 'daily-limit' };
+  const currentElapsed = Number.isSafeInteger(elapsedMs) && elapsedMs >= 0 ? elapsedMs : profile.elapsedMs;
+  const goal = campaignGoal(profile);
+  const newRoster = createCampaignRoster(cell, currentElapsed, undefined, goal?.requiredPermit ? undefined : goal?.speciesId);
   return {
-    profile: { ...profile, revision: profile.revision + 1, day: { ...day, opened: [...day.opened, cellId] } },
-    status: 'hole-opened',
+    profile: {
+      ...profile,
+      revision: profile.revision + 1,
+      day: {
+        ...day,
+        opened: alreadyOpen ? day.opened : [...day.opened, cellId],
+        rosters: { ...day.rosters, [cellId]: newRoster },
+      },
+    },
+    status: alreadyOpen ? 'hole-current' : 'hole-opened',
   };
 }
 

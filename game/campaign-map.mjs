@@ -1,31 +1,75 @@
 import lakeMap from './lake-map-data.mjs';
+import { collectibleSpecies } from './species-catalog.mjs';
 export const mapCells = lakeMap.cells;
 export const firstShoreHole = mapCells.find((cell) => cell.area === 'starter-shore').id;
 const map = document.createElement('dialog');
 map.className = 'fishing-picker fishing-map';
 map.setAttribute('aria-labelledby', 'lake-map-title');
-map.innerHTML = `<h2 id="lake-map-title">Campaign · Mille Lacs</h2>
-  <p>Choose a spot to check the water. You can return to a hole you opened today.</p>
-  <div class="fishing-map-overlays"><label><input type="checkbox" data-map-depth checked> Depth</label>
-  <label><input type="checkbox" data-map-temperature> Temperature</label></div>
+const lockMark = '<span class="fishing-map-lock-mark" aria-hidden="true"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3.5" y="7" width="9" height="7" rx="1"/><path d="M5.5 7V4.5a2.5 2.5 0 0 1 5 0V7"/></svg></span>';
+map.innerHTML = `<div class="fishing-map-scroll">
+  <header class="fishing-map-heading">
+    <h2 id="lake-map-title">Campaign · Mille Lacs</h2>
+    <button type="button" data-map-help aria-haspopup="dialog" aria-controls="map-help">
+      <img src="./assets/branding/bryan-headshot.webp" alt="" width="38" height="40"> Ask Bryan
+    </button>
+  </header>
+  <div class="fishing-map-tools">
+    <fieldset class="fishing-map-overlays"><legend>Map layer</legend>
+      <label><input type="radio" name="map-layer" data-map-depth checked> Depth</label>
+      <label><input type="radio" name="map-layer" data-map-temperature> Temperature</label>
+    </fieldset>
+    <div data-map-legend>
+      <ul data-depth-legend aria-label="Depth legend">
+        <li><span data-depth="shallow" aria-hidden="true"></span>10–15 ft</li>
+        <li><span data-depth="middle" aria-hidden="true"></span>16–25 ft</li>
+        <li><span data-depth="deep" aria-hidden="true"></span>26–35 ft</li>
+      </ul>
+      <ul data-temperature-legend aria-label="Water temperature legend" hidden>
+        <li><span data-temperature="35" aria-hidden="true"></span>35 °F</li>
+        <li><span data-temperature="36" aria-hidden="true"></span>36 °F</li>
+        <li><span data-temperature="37" aria-hidden="true"></span>37 °F</li>
+        <li><span data-temperature="38" aria-hidden="true"></span>38 °F</li>
+      </ul>
+    </div>
+    <ul class="fishing-map-markers fishing-map-access-key" aria-label="Spot access legend">
+      <li><span class="fishing-map-unlocked-mark" aria-hidden="true"></span>Unlocked</li>
+      <li>${lockMark}Locked · permit needed</li>
+    </ul>
+    <p data-map-info></p>
+  </div>
   <div class="fishing-map-layout"><div class="fishing-map-water" role="group" aria-label="Mille Lacs water cells">
     <img src="./assets/maps/mille-lacs.svg" alt="Mille Lacs shoreline and depth contours, north at the top" width="500" height="500">
-    <div class="fishing-map-cells">${mapCells.map((cell) => `<button type="button" data-map-cell="${cell.id}" style="left:${cell.x / 5}%;top:${cell.y / 5}%"></button>`).join('')}</div></div>
-    <section class="fishing-map-inspector" aria-labelledby="map-hole-title"><h3 id="map-hole-title"></h3><p data-map-info></p><p data-map-permit></p><p data-map-fish></p><p data-map-budget></p></section></div>
-  <p data-map-legend>Depth in feet: light cells 5–15 ft; medium 20–25 ft; dark 30–35 ft.</p>
-  <p class="fishing-map-note">Depths rounded from Minnesota DNR contours. Temperature and likely fish are gameplay estimates.</p>
-  <p data-map-message role="status"></p>
+    <div class="fishing-map-cells">${mapCells.map((cell) => `<button type="button" data-map-cell="${cell.id}" style="left:${cell.x / 5}%;top:${cell.y / 5}%">${cell.id}${lockMark}</button>`).join('')}</div></div>
+    <section class="fishing-map-inspector" aria-labelledby="map-hole-title"><h3 id="map-hole-title"></h3>
+      <p data-map-permit><strong data-map-access-label></strong> <span data-map-permit-name></span></p><p data-map-fish></p>
+      <p data-map-history hidden>Past catch here. See Your Lake for your catch history.</p><p data-map-budget></p>
+      <ul class="fishing-map-markers" aria-label="Map markers">
+        <li><span class="fishing-map-open-mark" aria-hidden="true"></span>Open hole today</li>
+        <li><span class="fishing-map-past-mark" aria-hidden="true"></span>Past catch</li>
+      </ul>
+    </section>
+  </div>
+  <p class="fishing-map-note">Depths are rounded from Minnesota DNR contours. Near-bottom temperatures are game estimates.</p>
+  <small>Bathymetry © Minnesota Department of Natural Resources. Simplified for gameplay only.
+    <a href="https://www.dnr.state.mn.us/sitetools/data_software_license.html" target="_blank" rel="noopener">Data terms</a></small>
+  </div>
   <div class="fishing-map-actions">
     <div class="fishing-map-plan">
+      <p data-map-message role="status"></p>
       <p data-map-goal></p>
       <p data-map-allowance role="status"></p>
     </div>
     <button type="button" data-map-back>Back</button>
     <button type="button" data-map-end>End day</button>
     <button type="button" data-map-drill>Drill hole</button>
-  </div>
-  <small>Bathymetry © Minnesota Department of Natural Resources. Simplified for gameplay; not for navigation.
-    <a href="https://www.dnr.state.mn.us/sitetools/data_software_license.html" target="_blank" rel="noopener">Data terms</a></small>`;
+  </div>`;
+const help = document.createElement('dialog');
+help.id = 'map-help';
+help.className = 'fishing-picker fishing-frame fishing-map-help';
+help.setAttribute('aria-labelledby', 'map-help-title');
+help.innerHTML = `<h2 id="map-help-title">Bryan’s map tips</h2>
+  <p data-map-layer-tip></p><p data-map-habitat-tip></p>
+  <button type="button" data-map-help-close>Back to the map</button>`;
 const drill = document.createElement('dialog');
 drill.className = 'fishing-picker fishing-drill';
 drill.setAttribute('aria-labelledby', 'drill-title');
@@ -40,54 +84,68 @@ confirm.className = 'fishing-picker fishing-end-attempt';
 confirm.setAttribute('aria-labelledby', 'end-attempt-title');
 confirm.innerHTML =
   '<h2 id="end-attempt-title">End this attempt?</h2><p data-end-message></p><button type="button" data-end-confirm>End attempt</button> <button type="button" data-end-cancel>Keep fishing</button>';
-document.body.append(map, drill, confirm);
+document.body.append(map, help, drill, confirm);
 let context,
   selected = firstShoreHole,
   turns = 0,
   requiredTurns,
   saving = false,
   confirmCallback;
-const names = {
-  perch: 'Yellow perch',
-  pike: 'Northern pike',
-  'rock-bass': 'Rock bass',
-  walleye: 'Walleye',
-  smallmouth: 'Smallmouth bass',
-  muskie: 'Muskie',
+const habitatTips = {
+  'Weed edge': 'In early winter, look for the outside edge of the weeds. Healthy weeds give small fish cover, and larger fish can feed along that edge.',
+  'Reef edge': 'Look for the slope where the reef drops into deeper water. Fish can move along that edge to feed, especially in the lower light around dawn or dusk.',
+  'Deep basin': 'Compare the basin with the nearest shallower spot. Start near the slope if you want to try the edge where those two depths meet.',
 };
+const quietMessage = 'This hole is quiet. Choose another spot to fish.';
 function drawMap() {
   const cell = mapCells.find((c) => c.id === selected);
-  const { allowance, opened } = context.day;
+  const { allowance, opened, rosters } = context.day;
   const remaining = allowance - opened.length;
   const accessible = context.hasAccess(cell.area);
+  const access = accessible ? 'Unlocked' : 'Locked';
   const alreadyOpen = opened.includes(cell.id);
+  const roster = alreadyOpen ? rosters?.[cell.id] : undefined;
+  const quiet = roster?.length === 0;
+  const recognized = new Set(context.recognizedSpecies);
+  const pastCatches = new Set(context.pastCatchSpots);
   const temperature = map.querySelector('[data-map-temperature]').checked;
-  const depth = map.querySelector('[data-map-depth]').checked;
+
   for (const button of map.querySelectorAll('[data-map-cell]')) {
     const c = mapCells.find((c) => c.id === button.dataset.mapCell);
     const owned = context.hasAccess(c.area);
+    const open = opened.includes(c.id);
+    const pastCatch = pastCatches.has(c.id);
     button.setAttribute(
       'aria-label',
-      `${c.id}, ${c.habitat}, ${c.depthFt} ft${temperature ? `, ${c.temperatureF} °F` : ''}, ${owned ? 'permit owned' : 'permit required'}${opened.includes(c.id) ? ', hole open' : ''}`,
+      `${c.id}, ${c.habitat}, ${c.depthFt} ft${temperature ? `, ${c.temperatureF} °F modeled near the bottom` : ''}, ${owned ? 'permit owned' : 'permit required'}${open ? ', hole open' : ''}${pastCatch ? ', past catch' : ''}`,
     );
     button.setAttribute('aria-pressed', String(c.id === selected));
-    button.dataset.depth = depth
-      ? c.depthFt <= 15
-        ? 'shallow'
-        : c.depthFt <= 25
-          ? 'middle'
-          : 'deep'
-      : 'off';
+    button.dataset.spotAccess = owned ? 'unlocked' : 'locked';
+    const depthBand = c.depthFt <= 15 ? 'shallow' : c.depthFt <= 25 ? 'middle' : 'deep';
+    button.dataset.depth = temperature ? 'off' : depthBand;
     button.dataset.temperature = temperature ? String(c.temperatureF) : 'off';
-    button.toggleAttribute('data-hole-open', opened.includes(c.id));
+    button.toggleAttribute('data-hole-open', open);
+    button.toggleAttribute('data-past-catch', pastCatch);
   }
+  map.querySelector('[data-depth-legend]').hidden = temperature;
+  map.querySelector('[data-temperature-legend]').hidden = !temperature;
   map.querySelector('#map-hole-title').textContent = `${cell.id} · ${cell.habitat}`;
-  map.querySelector('[data-map-info]').textContent =
-    `${cell.depthFt} ft deep · ${cell.temperatureF} °F modeled water`;
-  map.querySelector('[data-map-permit]').textContent =
-    `${cell.area === 'starter-shore' ? 'Starter Shore' : 'Deep Reef'} permit · ${context.hasAccess(cell.area) ? 'Owned' : 'Required'}`;
-  map.querySelector('[data-map-fish]').textContent =
-    `Likely fish: ${cell.likely.map((id) => names[id]).join(', ')}.`;
+  map.querySelector('[data-map-info]').textContent = temperature
+    ? `${cell.id} · ${access} · ${cell.temperatureF} °F near-bottom estimate · ${cell.depthFt} ft deep`
+    : `${cell.id} · ${access} · ${cell.depthFt} ft deep`;
+  const accessLabel = map.querySelector('[data-map-access-label]');
+  accessLabel.dataset.spotAccess = accessible ? 'unlocked' : 'locked';
+  accessLabel.textContent = access;
+  map.querySelector('[data-map-permit-name]').textContent =
+    `${cell.area === 'starter-shore' ? 'Starter Shore' : 'Deep Reef'} permit · ${accessible ? 'Owned' : 'Required'}`;
+  const present = new Set(roster?.map((fish) => fish.speciesId));
+  const familiar = collectibleSpecies.filter(({ id }) => present.has(id) && recognized.has(id)).map(({ name }) => name);
+  const fishInfo = map.querySelector('[data-map-fish]');
+  fishInfo.hidden = !alreadyOpen;
+  fishInfo.textContent = quiet ? quietMessage : familiar.length
+    ? `Recognized at this hole · ${familiar.join(', ')}`
+    : alreadyOpen ? 'No familiar fish spotted here yet.' : '';
+  map.querySelector('[data-map-history]').hidden = !pastCatches.has(cell.id);
   map.querySelector('[data-map-budget]').textContent =
     context.budget === undefined
       ? 'Six encounters in this outing.'
@@ -95,29 +153,40 @@ function drawMap() {
   map.querySelector('[data-map-goal]').textContent = context.goalClue;
   map.querySelector('[data-map-allowance]').textContent = `${remaining} of ${allowance} new holes available today.`;
   const open = map.querySelector('[data-map-drill]');
-  open.disabled = accessible && !alreadyOpen && !remaining;
+  const outOfHoles = accessible && !alreadyOpen && !remaining;
+  open.disabled = accessible && (quiet || outOfHoles);
   open.textContent = !accessible ? 'Check permit' : alreadyOpen ? 'Fish this hole' : 'Drill hole';
-  map.querySelector('[data-map-message]').textContent = open.disabled
-    ? 'You’ve opened all your new holes for today. Return to a marked hole or end the day.'
+  map.querySelector('[data-map-message]').textContent = outOfHoles
+    ? 'You’ve opened all your new holes for today. Return to an open hole or end the day.'
     : '';
-  map.querySelector('[data-map-legend]').textContent = [
-    depth ? 'Depth: light 5–15 ft · medium 20–25 ft · dark 30–35 ft.' : '',
-    temperature ? 'Temperature: cyan 35 °F → violet 38 °F (modeled).' : '',
-  ]
-    .filter(Boolean)
-    .join(' ');
 }
+const helpButton = map.querySelector('[data-map-help]');
+const helpClose = help.querySelector('[data-map-help-close]');
+helpButton.onclick = () => {
+  if (saving) return;
+  const cell = mapCells.find((c) => c.id === selected);
+  const temperature = map.querySelector('[data-map-temperature]').checked;
+  help.querySelector('[data-map-layer-tip]').textContent = temperature
+    ? 'In winter, the water just under the ice can be colder than the water near the bottom. These shades show an estimate near the bottom. Compare them with the habitat and the time of day when you decide where to fish.'
+    : 'Look for spots that change shade over a short distance. That’s where the bottom drops away. Try a spot near the change so you can fish along the slope.';
+  help.querySelector('[data-map-habitat-tip]').textContent = habitatTips[cell.habitat];
+  help.showModal();
+  helpClose.focus();
+};
+helpClose.onclick = () => help.close();
+help.addEventListener('close', () => helpButton.focus());
 function focusSelectedCell() {
   const cell = map.querySelector(`[data-map-cell="${selected}"]`);
-  cell.focus();
-  const footer = map.querySelector('.fishing-map-actions');
-  const overlap = cell.getBoundingClientRect().bottom + 6 - footer.getBoundingClientRect().top;
-  if (overlap > 0) map.scrollTop += overlap;
+  cell.focus({ preventScroll: true });
+  cell.scrollIntoView({ block: 'nearest' });
 }
 
 export function openCampaignMap(options) {
   context = options;
   selected = options.selected ?? selected;
+  showMap();
+}
+function showMap() {
   drawMap();
   map.showModal();
   focusSelectedCell();
@@ -167,7 +236,7 @@ map.addEventListener('cancel', (e) => {
 map.querySelector('[data-map-back]').onclick = back;
 map.querySelector('[data-map-end]').onclick = () => void save(map, { type: 'end-day' }, context.onEnd);
 map.querySelector('[data-map-drill]').onclick = () => {
-  if (saving) return;
+  if (saving || map.querySelector('[data-map-drill]').disabled) return;
   const cell = mapCells.find((c) => c.id === selected);
   if (!context.hasAccess(cell.area)) {
     map.close();
@@ -204,10 +273,14 @@ async function save(surface, command, next) {
       context.day = profile.day;
       if (surface === drill) {
         drill.close();
-        openCampaignMap({ ...context, selected });
+        showMap();
       } else drawMap();
-      if (status !== 'daily-limit') {
-        map.querySelector('[data-map-message]').textContent = status === 'permit-required'
+      const mapMessage = map.querySelector('[data-map-message]');
+      if (status === 'hole-quiet') {
+        mapMessage.textContent = quietMessage;
+        focusSelectedCell();
+      } else if (status !== 'daily-limit') {
+        mapMessage.textContent = status === 'permit-required'
           ? 'Check the permit for this spot before fishing here.'
           : 'Couldn’t open this spot. Choose a spot and try again.';
       }
@@ -245,7 +318,7 @@ drill.querySelector('[data-drill-skip]').onclick = finish;
 function backToMap() {
   if (saving) return;
   drill.close();
-  openCampaignMap({ ...context, selected });
+  showMap();
 }
 drill.querySelector('[data-drill-back]').onclick = backToMap;
 drill.addEventListener('cancel', (e) => {

@@ -6,7 +6,7 @@ The [DNR General Data and Software License Agreement](https://www.dnr.state.mn.u
 
 `mille-lacs.svg` is original SVG game art over the simplified outline and contours. `game/lake-map-data.mjs` contains the matching drawing coordinates and 16 playable cells. `tools/build-lake-map.py` rebuilds both with Python and Shapely. It queries only this lake, rejects truncated query responses, simplifies shoreline by 55 meters and contours by 70 meters, and maps both to the same 500 × 500 view box. Cell centers outside the outline are excluded. Cell depth is the nearest sourced contour's absolute depth in feet, with a minimum gameplay depth of 5 ft. It is an approximation within a game cell, not a sounding at that location.
 
-Habitat categories, temperature, fish likelihood, cell permits and encounter weights are gameplay estimates. Temperature is modeled from depth. The map and rules need no live mapping request. The forest pattern, colors, north marker and selection UI are original game artwork. The drilling scene reuses the existing Bryan Field Comic portrait and dawn lake art with an original SVG hand auger.
+Habitat categories, temperature, cell permits and encounter weights are gameplay estimates. The near-bottom temperature estimate is modeled from depth. The map and rules need no live mapping request. The forest pattern, colors, north marker and selection UI are original game artwork. The drilling scene reuses the existing Bryan Field Comic portrait and dawn lake art with an original SVG hand auger.
 
 To rebuild from the site checkout:
 

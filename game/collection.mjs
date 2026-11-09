@@ -1,11 +1,11 @@
-import { applyProfile, loadProfile } from './profile.mjs?v=campaign-smooth-swim';
+import { applyProfile, loadProfile } from './profile.mjs?v=campaign-map-discovery';
 import { renderSpeciesVideo } from './species-video.mjs';
 import { collectibleSpecies, speciesArt, fishProfiles, lureTip } from './species-catalog.mjs';
 import { spriteHref } from './lake-sprites.mjs';
 
 const stylesheet = document.createElement('link');
 stylesheet.rel = 'stylesheet';
-stylesheet.href = new URL('./collection.css?v=connected-rpg', import.meta.url).href;
+stylesheet.href = new URL('./collection.css?v=campaign-map-discovery', import.meta.url).href;
 document.head.append(stylesheet);
 
 export const collectionIntroduction = 'Land fish in Campaign or Practice to add them to Your Lake. Open a caught fish and learn its lure tip for your next encounter.';
@@ -16,18 +16,37 @@ const svg = id => {
 };
 
 // The site card and paused-outing card share the same content and explicit study action.
-export function fillSpeciesCard(container, id, { profile, onChange, onVideo } = {}) {
+export function fillSpeciesCard(container, id, { profile, onChange, onVideo, showCatchSpots = false } = {}) {
   const fish = fishProfiles[id];
   const tip = lureTip(id);
   container.innerHTML = `<div class="collection-guide">${portrait}<div><p class="collection-eyebrow">Bryan’s fish guide</p><h2></h2><p data-family></p></div></div>
     ${svg(id)}<dl><dt>How to spot it</dt><dd data-feature></dd><dt>Where it lives</dt><dd data-habitat></dd></dl>
     <p data-note></p><a data-source target="_blank" rel="noopener">Species reference ↗</a>
+    ${showCatchSpots ? '<section class="collection-catch-spots" data-catch-spots hidden><h3>Campaign catch spots</h3><ul></ul></section>' : ''}
     <div class="collection-study"><p data-tip role="status"></p><button type="button" data-study>Learn this tip</button></div><div data-video></div>`;
   container.querySelector('h2').textContent = fish.name;
   for (const field of ['family', 'feature', 'habitat', 'note']) {
     container.querySelector(`[data-${field}]`).textContent = fish[field] ?? '';
   }
   container.querySelector('[data-source]').href = fish.source;
+  const catchSpots = container.querySelector('[data-catch-spots]');
+  const renderCatchSpots = () => {
+    if (!catchSpots) return;
+    const counts = new Map();
+    for (const location of Object.values(profile?.catchLocations ?? {})) {
+      if (location?.speciesId !== id || !location.cellId) continue;
+      const { cellId } = location;
+      counts.set(cellId, (counts.get(cellId) ?? 0) + 1);
+    }
+    const list = catchSpots.querySelector('ul');
+    list.replaceChildren();
+    for (const [cellId, count] of counts) {
+      const spot = document.createElement('li');
+      spot.textContent = `${cellId} · ${count} ${count === 1 ? 'catch' : 'catches'}`;
+      list.append(spot);
+    }
+    catchSpots.hidden = !counts.size;
+  };
   const study = container.querySelector('[data-study]');
   const status = container.querySelector('[data-tip]');
   const renderStudy = () => {
@@ -47,12 +66,14 @@ export function fillSpeciesCard(container, id, { profile, onChange, onVideo } = 
       status.prepend(lureIcon);
     }
   };
+  renderCatchSpots();
   renderStudy();
   study.addEventListener('click', async () => {
     study.disabled = true;
     try {
       const result = await applyProfile({ type: 'study', speciesId: id });
       profile = result.profile;
+      renderCatchSpots();
       renderStudy();
       onChange?.(profile);
       document.dispatchEvent(new CustomEvent('fishing:profile-changed', { detail: { profile } }));
@@ -81,7 +102,7 @@ export function openYourLake({ onClose, onVideo, initialSpecies } = {}) {
   const card = id => {
     cardOpener = dialog.querySelector(`[data-species="${id}"]`);
     back.hidden = false;
-    fillSpeciesCard(content, id, { profile, onChange: saved => { profile = saved; }, onVideo });
+    fillSpeciesCard(content, id, { profile, onChange: saved => { profile = saved; }, onVideo, showCatchSpots: true });
     back.focus({ preventScroll: true });
   };
   const list = () => {

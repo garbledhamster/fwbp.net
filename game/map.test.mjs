@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import data from './lake-map-data.mjs';
 import * as rules from './rules.mjs';
-const { start, apply, publicRun, moveToHole, abandonHoleFish, stepCampaignFish } = rules;
+const { start, apply, publicRun, moveToHole, abandonHoleFish, stepCampaignFish, createCampaignRoster } = rules;
 const shore = data.cells.find((c) => c.area === 'starter-shore');
 const reef = data.cells.find((c) => c.depthFt >= 30);
 const setup = (hole = shore) =>
@@ -98,7 +98,7 @@ test('a matching jig can draw fish but only contact commits the attempt and star
   abandonHoleFish(r, retry + 650);
   assert.equal(r.index, 1);
   assert.equal(r.committed, false);
-  assert.equal(publicRun(r).candidates.length, 2);
+  assert.equal(publicRun(r).candidates.length, 3, 'a released fish remains at its hole');
   assert.equal(r.seekUntil, null);
   assert.throws(() => abandonHoleFish(r, retry + 750), /No committed/);
 });
@@ -183,16 +183,33 @@ test('same hole yields identical playable conditions regardless of drilling inpu
   assert.deepEqual(publicRun(setup()), publicRun(setup()));
 });
 
-test('goal spots guarantee their fish while keeping the first two rolled swimmers', () => {
+test('suitable spots guarantee the active goal fish while keeping the first two rolled swimmers', () => {
   for (const [id, rolls, expected] of [
     ['A3', [.52, .45, .32], ['rock-bass', 'pike', 'perch']],
+    ['E4', [.52, .45, .32], ['rock-bass', 'pike', 'perch']],
     ['E4', [.52, .05, .55], ['rock-bass', 'perch', 'pike']],
     ['B1', [.05, .12, .55], ['pike', 'rock-bass', 'walleye']],
   ]) {
     const hole = data.cells.find(cell => cell.id === id);
     const seed = rolls.flatMap(roll => [roll, .2, .5, .4, .1]);
     let draw = 0;
-    const run = start(1000, () => seed[draw++ % seed.length], undefined, { campaign: { hole, area: hole.area } });
-    assert.deepEqual(publicRun(run).candidates.map(fish => fish.id), expected, id);
+    const roster = createCampaignRoster(hole, 0, () => seed[draw++ % seed.length], expected.at(-1));
+    assert.deepEqual(roster.map(fish => fish.speciesId), expected, id);
   }
+  const otherReef = data.cells.find(cell => cell.id === 'D1');
+  assert.ok(createCampaignRoster(otherReef, 0, () => .1, 'walleye').some(fish => fish.speciesId === 'walleye'));
+});
+
+test('a saved roster controls the fish when returning and a quiet hole stays empty on reload', () => {
+  const roster = createCampaignRoster(shore, 0, () => .2, 'perch');
+  const r = start(1000, () => .99, undefined, { campaign: { hole: shore, roster } });
+  assert.deepEqual(publicRun(r).candidates.map(fish => fish.id), roster.map(fish => fish.speciesId));
+  moveToHole(r, reef, 2000);
+  moveToHole(r, shore, 3000, 0, roster.slice(1));
+  assert.deepEqual(publicRun(r).candidates.map(fish => fish.key), roster.slice(1).map(fish => fish.key));
+  moveToHole(r, shore, 4000, 0, []);
+  assert.deepEqual(publicRun(r).candidates, []);
+  assert.throws(() => jig(r, 4500), /quiet for today/);
+  const reloaded = start(5000, () => .3, undefined, { campaign: { hole: shore, roster: [] } });
+  assert.deepEqual(publicRun(reloaded).candidates, []);
 });

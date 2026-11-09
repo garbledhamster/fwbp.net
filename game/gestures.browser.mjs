@@ -153,16 +153,35 @@ async function checkGestures(browser, layout) {
   assert.match(await status.textContent(), /reel it up toward the hole/i, 'a deliberate click or tap in gold sets the hook');
   assert.equal(await page.locator('.fishing-line').getAttribute('data-line-cue'), 'hook', 'the hook shows the stronger tug cue');
   assert.equal(await scrollY(), preJigScroll, 'hook does not browse depths');
+  const balance = marker.getByRole('meter', { name: 'Line balance' });
+  const inputLabel = touch ? 'Swipe' : 'Scroll';
+  await balance.waitFor();
+  assert.match(await balance.getAttribute('aria-valuetext'), /Balanced/);
+  assert.match(await up.innerText(), new RegExp(`↑ ${inputLabel} up`));
+  const assertGuideGap = async () => {
+    const guide = await marker.locator('[data-fight-guide]').boundingBox();
+    const fish = await page.locator('.fishing-target.is-hooked').boundingBox();
+    const trayBox = await tray.boundingBox();
+    assert.ok(guide && fish && guide.x >= 0 && guide.x + guide.width <= fish.x - 11,
+      'the meter stays on screen with a gap left of the fish');
+    assert.ok(guide.y >= 0 && guide.y + guide.height <= trayBox.y, 'the meter stays above the controls');
+  };
+  await assertGuideGap();
 
   await tick(800);
   const tightLoad = await load();
   assert.match(await status.textContent(), /line’s tight/i);
   assert.equal(await up.isVisible(), false, 'a tight line offers no upward cue');
-  assert.match(await down.innerText(), /↓ Loosen/, 'the downward cue stays visible under load');
+  assert.match(await down.innerText(), new RegExp(`↓ ${inputLabel} down`), 'the downward cue stays visible under load');
+  assert.match(await down.innerText(), /Loosen/);
+  assert.match(await balance.getAttribute('aria-valuetext'), /Tight/);
+  await assertGuideGap();
   await settleInput();
   const tightScroll = await scrollY();
   await gesture(await waterPoint(), 0, 65);
   assert.ok(await load() < tightLoad, 'a downward gesture away from the marker pays out line');
+  assert.doesNotMatch(await balance.getAttribute('aria-valuetext'), /Tight/);
+  assert.match(await up.innerText(), new RegExp(`↑ ${inputLabel} up`));
   assert.equal(await scrollY(), tightScroll, 'paying out line does not scroll the page');
   const easedDepth = await depth();
   await gesture(await waterPoint(), 0, -65);
@@ -266,7 +285,7 @@ async function checkKeyboard(browser) {
 }
 
 async function checkExpiredRetry(browser) {
-  const { page, action, enter, findFish, waitForBite, tick } = await practicePage(browser);
+  const { page, action, enter, findFish, waitForBite, tick, press } = await practicePage(browser);
   await page.evaluate(() => { Math.random = () => .98; });
   await enter('Campaign');
   await page.keyboard.press('2');
@@ -289,6 +308,8 @@ async function checkExpiredRetry(browser) {
   const previous = await others.first().getAttribute('style');
   await tick(64);
   assert.notEqual(await others.first().getAttribute('style'), previous, 'the other fish keep swimming');
+  await press(action);
+  assert.equal(await released.count(), 1, 'a fish that escaped remains in the day’s roster');
   await page.close();
 }
 
@@ -300,5 +321,5 @@ await withBrowser(async browser => {
   await checkKeyboard(browser);
   console.log('PASS: Campaign keyboard depth, bait response, jig and hook');
   await checkExpiredRetry(browser);
-  console.log('PASS: Campaign retry expiry removes only the released fish');
+  console.log('PASS: Campaign retry expiry releases only the committed fish');
 });

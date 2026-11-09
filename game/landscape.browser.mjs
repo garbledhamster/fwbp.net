@@ -78,6 +78,10 @@ async function checkLandscape(browser, mode) {
     assert.equal(await loosen.isVisible(), false);
     const cue = await marker.locator('[data-line-gesture-down]').boundingBox();
     assert.ok(cue?.y >= 0 && cue.y + cue.height <= landscape.trayTop, 'Loosen guide stays in the visible water');
+    const guide = await marker.locator('[data-fight-guide]').boundingBox();
+    const fish = await page.locator('.fishing-target.is-hooked').boundingBox();
+    assert.ok(guide.x >= 0 && guide.x + guide.width <= fish.x - 11,
+      'rotation keeps the balance meter separated to the left of the fish');
   }
   const touchTargets = campaign ? [button('Menu'), ...['Jig', 'Spoon', 'Minnow'].map(button)] : [action, loosen];
   for (const control of touchTargets) {

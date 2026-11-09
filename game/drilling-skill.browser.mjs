@@ -7,7 +7,8 @@ const profileCommand = (page, command) => page.evaluate(async input => {
 }, command);
 
 await withBrowser(async browser => {
-  const qa = await practicePage(browser);
+  const context = await browser.newContext();
+  const qa = await practicePage(context);
   const { page, press, tray } = qa;
   const picker = page.getByRole('dialog', { name: 'Choose an outing' });
   const skills = page.getByRole('dialog', { name: 'Campaign Skills' });
@@ -56,11 +57,11 @@ await withBrowser(async browser => {
 
   await showMap();
   const first = (await profileCommand(page)).day;
-  assert.equal(first.allowance, 1);
+  assert.equal(first.allowance, 2);
   await press(map.locator('[data-map-back]'), 'Enter');
   await showSkills();
   assert.match(await skills.textContent(), /Level 2 · 35 XP.*1 skill point saved/);
-  assert.match(await drilling.textContent(), /2 new holes.*next day.*1 point/is);
+  assert.match(await drilling.textContent(), /3 new holes.*next day.*1 point/is);
   await press(drilling.getByRole('button', { name: 'Learn', exact: true }), 'Enter');
   await drilling.getByRole('button', { name: 'Learned' }).waitFor();
   assert.match(await skills.textContent(), /0 skill points saved/);
@@ -73,27 +74,43 @@ await withBrowser(async browser => {
   assert.match(await skills.textContent(), /0 skill points saved/);
   await qa.closeDialog(skills, skills.locator('[data-skills-close]'));
   await showMap();
-  assert.match(await allowance.textContent(), /1 of 1 new holes/);
+  assert.match(await allowance.textContent(), /2 of 2 new holes/);
   await press(map.locator('[data-map-end]'), 'Enter');
   await showMap();
-  assert.match(await allowance.textContent(), /2 of 2 new holes/);
+  assert.match(await allowance.textContent(), /3 of 3 new holes/);
 
   await fish('A3', true);
   await returnToMap();
-  assert.match(await allowance.textContent(), /1 of 2 new holes/);
+  assert.match(await allowance.textContent(), /2 of 3 new holes/);
   await fish('E4', true);
   await returnToMap();
   assert.deepEqual(await marks.evaluateAll(cells => cells.map(cell => cell.dataset.mapCell)), ['A3', 'E4']);
-  assert.match(await allowance.textContent(), /0 of 2 new holes/);
-  await press(cell('B1'), 'Enter');
+  assert.match(await allowance.textContent(), /1 of 3 new holes/);
+
+  const trained = (await profileCommand(page)).day;
+  const other = await context.newPage();
+  await other.goto(page.url(), { waitUntil: 'domcontentloaded' });
+  const thirdHole = await profileCommand(other, { type: 'open-hole', dayId: trained.id, cellId: 'B1' });
+  assert.equal(thirdHole.status, 'hole-opened');
+  assert.equal(thirdHole.profile.day.rosters.B1.length, 3);
+  await other.close();
+
+  await press(cell('C1'), 'Enter');
   assert.match(await map.locator('[data-map-permit]').textContent(), /Owned/);
+  await press(open, 'Enter');
+  await press(drill.locator('[data-drill-skip]'), 'Enter');
+  await map.waitFor();
+  assert.deepEqual(await marks.evaluateAll(cells => cells.map(cell => cell.dataset.mapCell)), ['B1', 'A3', 'E4']);
+  assert.match(await allowance.textContent(), /0 of 3 new holes/);
   assert.equal(await open.isDisabled(), true);
   assert.match(await map.locator('[data-map-message]').textContent(), /end the day/);
   await fish('A3', false);
   await returnToMap();
   await fish('E4', false);
+  await returnToMap();
+  await fish('B1', false);
   const upgraded = (await profileCommand(page)).day;
-  assert.deepEqual(upgraded.opened, ['A3', 'E4']);
+  assert.deepEqual(upgraded, thirdHole.profile.day, 'the stale fourth drill and reopening saved holes preserve the trained day');
 
   await page.reload({ waitUntil: 'domcontentloaded' });
   await press(qa.launch, 'Enter');
@@ -104,13 +121,13 @@ await withBrowser(async browser => {
   assert.deepEqual((await profileCommand(page)).day, upgraded);
   await qa.closeDialog(skills, skills.locator('[data-skills-close]'));
   await showMap();
-  assert.equal(await marks.count(), 2);
-  assert.match(await allowance.textContent(), /0 of 2 new holes/);
+  assert.equal(await marks.count(), 3);
+  assert.match(await allowance.textContent(), /0 of 3 new holes/);
   await press(map.locator('[data-map-end]'), 'Enter');
   await showMap();
   assert.equal(await marks.count(), 0);
-  assert.match(await allowance.textContent(), /1 of 1 new holes/);
+  assert.match(await allowance.textContent(), /2 of 2 new holes/);
   assert.deepEqual(qa.errors, []);
 });
 
-console.log('Drilling unlock, persisted point spend, two saved holes and next-day reset passed.');
+console.log('Drilling unlock, persisted point spend, three saved holes, stale limit and next-day reset passed.');

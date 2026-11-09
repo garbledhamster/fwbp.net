@@ -71,7 +71,6 @@ for row in range(5):
             'temperatureF': 34 + round(depth / 10),
             'habitat': 'Weed edge' if shallow else 'Reef edge' if depth <= 25 else 'Deep basin',
             'area': 'starter-shore' if shallow else 'deep-reef',
-            'likely': ['perch', 'pike', 'rock-bass'] if shallow else ['walleye', 'smallmouth', 'muskie'],
             'weightBonus': {'perch': 8, 'pike': 3} if shallow else {'walleye': 8, 'muskie': 3, 'smallmouth': 3},
         })
 
