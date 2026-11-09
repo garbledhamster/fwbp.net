@@ -2,10 +2,6 @@ import { lakes } from './rules.mjs?v=connected-rpg';
 
 const speciesIds = new Set(lakes['mille-lacs'].fish.map(fish => fish.id));
 export const shopItems = [
-  { id: 'pro-line', category: 'line', name: 'Pro line', cost: 100, level: 10, effect: '18 lb breaking strength.', strength: 18 },
-  { id: 'pro-hook', category: 'hook', name: 'Pro jig setup', cost: 80, level: 10, effect: '400 ms more to set a Jig bite.', lure: 'jig', windowMs: 400 },
-  { id: 'waxworm-bait', category: 'bait', name: 'Waxworm bait', cost: 15, level: 2, effect: 'Carry with Jig for 150 ms more to set the hook.', lure: 'jig', windowMs: 150 },
-  { id: 'live-minnow', category: 'bait', name: 'Live minnow', cost: 75, level: 10, effect: 'Carry with Minnow for 250 ms more to set the hook.', lure: 'minnow', windowMs: 250 },
   { id: 'starter-line', category: 'line', name: 'Starter line', cost: 0, effect: '8 lb breaking strength; 100 ms more to set the hook with Jig.', strength: 8, lure: 'jig', windowMs: 100 },
   { id: 'stronger-line', category: 'line', name: 'Stronger line', cost: 10, level: 2, effect: '12 lb breaking strength.', strength: 12 },
   { id: 'starter-hook', category: 'hook', name: 'Standard hooks', cost: 0, effect: 'Stock hooks for Jig, Spoon, and Minnow. Standard timing.' },
@@ -14,6 +10,10 @@ export const shopItems = [
   { id: 'line-control', category: 'training', name: 'Line Control', cost: 20, effect: 'Rank 1 gives you 350 ms more to set the hook with any lure.', rank: 1 },
   { id: 'starter-license', category: 'license', name: 'Starter Shore permit', cost: 0, effect: 'Free game access to Starter Shore on Mille Lacs.', area: 'starter-shore' },
   { id: 'deep-reef-license', category: 'license', name: 'Deep Reef permit', cost: 25, effect: 'Game access to Deep Reef on Mille Lacs.', area: 'deep-reef' },
+  { id: 'pro-line', category: 'line', name: 'Pro line', cost: 100, level: 10, effect: '18 lb breaking strength.', strength: 18 },
+  { id: 'pro-hook', category: 'hook', name: 'Pro jig setup', cost: 80, level: 10, effect: '400 ms more to set a Jig bite.', lure: 'jig', windowMs: 400 },
+  { id: 'waxworm-bait', category: 'bait', name: 'Waxworm bait', cost: 15, level: 2, effect: 'Carry with Jig for 150 ms more to set the hook.', lure: 'jig', windowMs: 150 },
+  { id: 'live-minnow', category: 'bait', name: 'Live minnow', cost: 75, level: 10, effect: 'Carry with Minnow for 250 ms more to set the hook.', lure: 'minnow', windowMs: 250 },
 ];
 
 // XP is a projection of the existing, once-only Campaign payout ledger. Spending
