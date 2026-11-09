@@ -56,6 +56,11 @@ The lure hangs from the ice hole on one continuous line. Jig bounces it vertical
 The first reel uses the gold timing band. In Practice, Bryan tells you to wait at the bite and calls “Yeah, reel it!” when the window opens. A bite before the fish’s deadline gives you the full reel window. If the window closes, press **Reel** to resolve the attempt. You can jig again if the fish still has time left. In Campaign and Practice, **Loosen** when the line tightens, **Reel** when it clears, and **Pull up** when the fish reaches the ice hole. Reeling against a tight line raises tension and can break it. In Ranked, the server decides timing and points, and a standard common fish can land on the first reel.
 
 
+Bryan speaks in the Field Comic bubble during Campaign and Practice. A slipped hook, a catch, and a fish that runs out its timer each use a different portrait. Use **Try again** in the bubble to jig after a missed hook, or **Next fish** after a catch or departure. While a fish is hooked, the cue beside the line shows whether to reel up or loosen.
+
+A wrong lure makes the fish back away. Rare fish leave after two wrong jigs and other fish leave after three. The next encounter starts with a fresh count. Scroll upward again at the ice hole to bring the lure in. It stays visible at the rim when you stop scrolling.
+
+
 ### Campaign
 
 Choose **Campaign** from **Play fishing game**. Scroll to find a fish and follow the line down from the ice hole. Jig with a lure the fish responds to, then set the hook in the gold window. Every hooked fish has to come back to the ice hole. A deeper fish takes more reeling, and the fish’s species and size affect how hard it pulls. Use **Loosen** when the line tightens, reel when it clears, and choose **Pull up** when the fish reaches the hole. The gauge compares the current load with the rating of your equipped line.

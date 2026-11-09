@@ -87,7 +87,7 @@ export async function practicePage(browser, { mobile = false, configure } = {}) 
       if (label === 'Pull up') return reels;
       assert.equal(label, 'Reel', 'the fish is still hooked');
       const cue = await tray.getByRole('status').textContent();
-      const tight = /Line tight/i.test(cue);
+      const tight = /line’s tight/i.test(cue);
       if (!tight) reels++;
       await press(tight ? button('Loosen') : action);
     }

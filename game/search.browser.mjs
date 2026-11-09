@@ -121,7 +121,7 @@ async function checkTouch(browser) {
   await page.close();
 }
 
-async function checkInspectVisibility(browser) {
+async function checkRetreatVisibility(browser) {
   const { enter, page, tray, action, button, press, tick, errors } = await practicePage(browser);
   const fish = page.locator('.fishing-target');
   await page.evaluate(() => {
@@ -134,7 +134,7 @@ async function checkInspectVisibility(browser) {
   const trayTop = (await tray.boundingBox()).y;
   await fish.evaluate((el, top) => {
     const box = el.getBoundingClientRect();
-    window.scrollBy({ top: box.top + box.height / 2 - top + 15, behavior: 'instant' });
+    window.scrollBy({ top: box.top + box.height / 2 - top + 4, behavior: 'instant' });
   }, trayTop);
   await page.waitForFunction(() => document.querySelector('.fishing-action').ariaDisabled !== 'true',
     null, { polling: 25 });
@@ -142,21 +142,13 @@ async function checkInspectVisibility(browser) {
 
   await press(button('Spoon'));
   await press(action, 'Enter');
-  await fish.evaluate(el => {
-    const inspect = el.getAnimations().find(animation => animation.animationName === 'fishing-inspect');
-    inspect.pause();
-    inspect.currentTime = inspect.effect.getTiming().duration * .45;
-    window.scrollBy({ top: -2, behavior: 'instant' });
-  });
-  await page.waitForFunction(() => document.querySelector('.fishing-action').ariaDisabled === 'true',
-    null, { polling: 25 });
+  await page.waitForTimeout(420);
+  await tick(40);
+  assert.equal(await action.isDisabled(), true, 'a fish that backs below the tray cannot be jigged');
 
-  await fish.evaluate(el => new Promise(resolve => {
-    el.addEventListener('animationend', resolve, { once: true });
-    el.getAnimations().find(animation => animation.animationName === 'fishing-inspect').finish();
-  }));
-  const box = await fish.boundingBox();
-  assert.ok(box.y + box.height / 2 < (await tray.boundingBox()).y);
+  await page.evaluate(() => window.scrollBy({ top: 90, behavior: 'instant' }));
+  await page.waitForFunction(() => document.querySelector('.fishing-action').ariaDisabled !== 'true',
+    null, { polling: 25 });
   assert.equal(await action.isEnabled(), true, 'Jig becomes available when the fish comes back into view');
   assert.deepEqual(errors, []);
   await page.close();
@@ -165,7 +157,7 @@ async function checkInspectVisibility(browser) {
 const checks = [
   ['wheel down, keyboard back up, and Fish Guide', checkDesktop],
   ['320px touch search', checkTouch],
-  ['fish visibility updates after inspecting a lure', checkInspectVisibility],
+  ['fish visibility updates after it backs away', checkRetreatVisibility],
 ];
 await withBrowser(async browser => {
   const results = await Promise.allSettled(checks.map(([, check]) => check(browser)));

@@ -99,8 +99,7 @@ async function checkShop(browser, mobile) {
   const landedBox = await landedFish.boundingBox();
   assert.ok(landedBox.y >= 0 && landedBox.y + landedBox.height < (await tray.boundingBox()).y,
     'keep the landed fish visible above the tray');
-  assert.equal(await button('Loosen').evaluate(el => el.classList.contains('fishing-recommended')), false,
-    'a landed catch no longer recommends Loosen');
+  assert.equal(await button('Loosen').isHidden(), true, 'a landed catch leaves the outcome action in Bryan’s bubble');
   assert.match(await wallet.textContent(), /10 coins/);
   assert.equal(await phase.count(), 1, 'the Campaign tray names the current light phase');
   assert.equal(await phase.textContent(), 'Day');
@@ -146,7 +145,7 @@ async function checkShop(browser, mobile) {
   await tick(800);
   assert.equal(await meter.evaluate(el => el.value), 6.7);
   await press(action);
-  assert.match(await status.textContent(), /line tight.*loosen/i);
+  assert.match(await status.textContent(), /line’s tight.*loosen/i);
   assert.equal(await meter.evaluate(el => el.value), 9.7, 'the same surge holds on 12 lb line');
   assert.match(await wallet.textContent(), /0 coins/);
   await capture('held');

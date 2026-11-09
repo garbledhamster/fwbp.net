@@ -38,7 +38,7 @@ async function checkBite(browser) {
     const live = document.querySelector('.fishing-status');
     window.liveRegionUpdates = [];
     new MutationObserver(() => window.liveRegionUpdates.push(live.textContent))
-      .observe(live, { childList: true });
+      .observe(live, { childList: true, subtree: true });
   });
   await keyboard.down('Enter');
   await keyboard.down('Enter'); // A held key must not reel automatically.
@@ -49,11 +49,11 @@ async function checkBite(browser) {
   await tick(45);
   assert.match(await cue(), /yeah, reel it!/i);
   await tick(1550);
-  assert.match(await cue(), /window passed.*reel.*again/i);
+  assert.match(await cue(), /missed the window.*reel.*again/i);
   assert.equal(await timing.isVisible(), true);
   assert.deepEqual(await page.evaluate(() => window.liveRegionUpdates.map(text =>
-    text.match(/wait for gold|yeah, reel it!|window passed/i)?.[0].toLowerCase())),
-  ['wait for gold', 'yeah, reel it!', 'window passed']);
+    text.match(/wait for gold|yeah, reel it!|missed the window/i)?.[0].toLowerCase())),
+  ['wait for gold', 'yeah, reel it!', 'missed the window']);
   await keyboard.press('Space');
   assert.match(await cue(), /slipped the hook.*jig again/i);
 

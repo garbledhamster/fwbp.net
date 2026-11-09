@@ -32,7 +32,7 @@ async function checkOuting(browser, mobile) {
   assert.match(await score.textContent(), /0 pts.*1\/6/);
   if (!mobile) {
     assert.match(await target.getAttribute('class'), /is-escaping/);
-    await tick(600);
+    await tick(750);
   }
   assert.equal(await target.count(), 0);
   await page.setViewportSize({ width: mobile ? 330 : 1100, height: 720 });

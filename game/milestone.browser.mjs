@@ -72,7 +72,7 @@ async function checkMilestone(browser, choice) {
   await press(action);
   await tick(2250);
   if (choice !== 'Line Control') {
-    assert.match(await status.textContent(), /window passed/i);
+    assert.match(await status.textContent(), /missed the window/i);
     await press(action);
     assert.match(await status.textContent(), /slipped the hook/i);
     assert.equal(await levelTwo.isVisible(), true);
@@ -81,7 +81,7 @@ async function checkMilestone(browser, choice) {
   }
   assert.match(await status.textContent(), /yeah, reel it!/i);
   await press(action);
-  assert.match(await status.textContent(), /line clear.*reel/i);
+  assert.match(await status.textContent(), /reel it up toward the hole/i);
   assert.equal(await levelTwo.isVisible(), true, 'hooking a fighter earns no XP yet');
   assert.equal(await reelToHole(), choice === 'Lift' ? 3 : 4, 'Lift saves a clear reel on this walleye');
   await press(action);
@@ -99,7 +99,7 @@ async function checkMilestone(browser, choice) {
     assert.match(await tray.locator('[data-score]').textContent(), /0 pts/);
     await press(action);
     await tick(2250);
-    assert.match(await status.textContent(), /window passed/i, 'a new outing resets Line Control');
+    assert.match(await status.textContent(), /missed the window/i, 'a new outing resets Line Control');
   }
   assert.deepEqual(errors, []);
   await page.close();

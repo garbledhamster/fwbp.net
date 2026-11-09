@@ -103,7 +103,7 @@ function sampleFight(run) {
   fight.pullUp = fight.remaining === 0;
   if (fight.tension > fight.lineStrength) {
     run.snap = { tension: fight.tension, lineStrength: fight.lineStrength };
-    miss(run);
+    miss(run, 'snapped');
     run.cue = `Line snapped at ${fight.tension} lb on ${fight.lineStrength} lb line.`;
   }
 }
@@ -175,7 +175,7 @@ export function start(now, random = Math.random, lake = 'mille-lacs', { practice
     stage: 'seek', biteAt: 0, catch: null, cue: 'Fish in view. Pick a lure and jig.',
     version: 0, submitted: false,
     ...(practice && { practice: true, landed: 0 }),
-    ...(usesLineFight && { snap: null }),
+    ...(usesLineFight && { snap: null, wrongLures: 0, reaction: null }),
     ...(campaign && {
       campaign: { ...campaign, area, hook: campaign.hook && { ...campaign.hook }, lineStrength: campaign.lineStrength ?? starterLineStrength },
     }),
@@ -201,6 +201,7 @@ export function publicRun(run) {
     ...((run.campaign || run.practice) && {
       lineStrength: run.campaign?.lineStrength ?? starterLineStrength,
       snap: run.snap, fight: run.fight && { ...run.fight },
+      wrongLures: run.wrongLures, reaction: run.reaction,
     }),
   };
 }
@@ -225,9 +226,19 @@ export function apply(run, input, now, { campaignElapsedMs = run.campaign?.elaps
   const target = lakes[run.lake].fish[encounter?.species];
   if (jig) {
     if (input.lure === target.lure) {
+      if (run.campaign || run.practice) run.reaction = null;
       run.stage = 'bite';
       run.biteAt = now;
       run.cue = 'Yeah, reel it! Wait for the marker to reach the gold band.';
+    } else if (run.campaign || run.practice) {
+      run.wrongLures++;
+      if (run.wrongLures >= (target.rarity === 'Rare' ? 2 : 3)) {
+        miss(run, 'spooked');
+        run.cue = run.stage === 'done' ? 'That fish spooked. Outing complete.' : 'That fish spooked and swam off.';
+      } else {
+        run.reaction = 'wrong-lure';
+        run.cue = 'Try a different lure.';
+      }
     } else {
       run.cue = 'Keep on jigging! It looked, but try a different lure.';
     }
@@ -258,6 +269,7 @@ export function apply(run, input, now, { campaignElapsedMs = run.campaign?.elaps
       }
     } else {
       run.stage = 'seek';
+      if (run.campaign || run.practice) run.reaction = 'slipped-hook';
       run.cue = 'It slipped the hook. Jig again to bring it back.';
     }
   } else if (lineFight && ['reel', 'lift', 'loosen'].includes(input.action)) {
@@ -296,6 +308,8 @@ export function apply(run, input, now, { campaignElapsedMs = run.campaign?.elaps
     run.catch = null;
     if (run.campaign || run.practice) {
       run.snap = null;
+      run.wrongLures = 0;
+      run.reaction = null;
       run.last = now - moveIntervalMs;
     }
     run.stage = run.index === run.encounters.length ? 'done' : 'seek';
@@ -315,7 +329,8 @@ function seekExpired(run, now) {
   return Number.isFinite(run.seekUntil) && now >= run.seekUntil;
 }
 
-function miss(run) {
+function miss(run, reaction = 'timer') {
+  if (run.campaign || run.practice) run.reaction = reaction;
   const last = run.index + 1 === run.encounters.length;
   run.stage = last ? 'done' : 'missed';
   if (last) run.index++;

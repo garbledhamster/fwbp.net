@@ -51,7 +51,7 @@ async function checkFight(browser, mobile, mode) {
   assert.equal(await load.evaluate(meter => meter.max), 8);
   const initial = await fightGeometry(page);
   const initialLoad = await load.evaluate(meter => meter.value);
-  assert.match(await status.textContent(), /line clear.*reel/i);
+  assert.match(await status.textContent(), /reel it up toward the hole/i);
 
   await tick(800);
   const surge = await fightGeometry(page);
@@ -60,7 +60,7 @@ async function checkFight(browser, mobile, mode) {
   assert.ok(surge.gap < 1 && surge.fishInView, 'the line follows the mouth and stays in the playable water');
   const surgeLoad = await load.evaluate(meter => meter.value);
   assert.ok(surgeLoad > initialLoad);
-  assert.match(await status.textContent(), /line tight.*loosen/i);
+  assert.match(await status.textContent(), /line’s tight.*loosen/i);
   assert.equal(await loosen.evaluate(el => el.classList.contains('fishing-recommended')), true);
   assert.equal(await color(loosen), gold);
   assert.notEqual(await color(action), gold);
@@ -73,7 +73,7 @@ async function checkFight(browser, mobile, mode) {
   assert.ok(scrolled.y < surge.y - 20 && scrolled.gap < 1, 'scroll changes the view without moving the hook off the mouth');
   await press(loosen);
   assert.ok(await load.evaluate(meter => meter.value) < surgeLoad);
-  assert.match(await status.textContent(), /line clear.*reel/i);
+  assert.match(await status.textContent(), /reel it up toward the hole/i);
   const looseDepth = (await fightGeometry(page)).y;
   for (let n = 0; n < 3; n++) {
     await tick(300);
@@ -85,7 +85,7 @@ async function checkFight(browser, mobile, mode) {
   assert.ok(atHole.distanceToHole < 1 && atHole.gap < 1, 'Pull up is offered only at the ice hole');
   assert.ok(atHole.y >= 0, 'the camera follows the fish back to the visible hole');
   assert.equal((await action.boundingBox()).x, reelSlot.x);
-  assert.match(await status.textContent(), /pull up/i);
+  assert.match(await status.textContent(), /pull it up/i);
   await capture('haul-hole');
   await tick(300);
   await press(action);

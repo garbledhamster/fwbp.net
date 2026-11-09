@@ -164,3 +164,21 @@ test('Practice hooks a perch with starter gear and awards XP only after it reach
   assert.equal(landed.score, 10);
   assert.equal(landed.practice.xp, 10);
 });
+
+test('wrong lures move local fish away and spook a muskie sooner than a perch', () => {
+  for (const options of [{ campaign: {} }, { practice: true }]) {
+    for (const [roll, limit] of [[.05, 3], [.98, 2]]) {
+      let draw = 0;
+      const rolls = [roll, .2, .5, .4, .1];
+      const run = rules.start(1000, () => rolls[draw++ % rolls.length], undefined, options);
+      for (let attempt = 1; attempt <= limit; attempt++) {
+        const state = rules.apply(run, { action: 'jig', lure: 'minnow' }, 1000 + attempt * 300);
+        assert.equal(state.wrongLures, attempt);
+        assert.equal(state.stage, attempt < limit ? 'seek' : 'missed');
+        assert.equal(state.reaction, attempt < limit ? 'wrong-lure' : 'spooked');
+        assert.equal(state.score, 0);
+      }
+      assert.equal(rules.apply(run, { action: 'next' }, 3000).wrongLures, 0);
+    }
+  }
+});

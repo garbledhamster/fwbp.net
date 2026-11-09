@@ -35,7 +35,7 @@ async function checkLandscape(browser, mode) {
   await tick(700);
   await press(action);
   await tick(800);
-  assert.match(await status.textContent(), /line tight/i);
+  assert.match(await status.textContent(), /line’s tight/i);
   const portrait = await fightView(page);
   assert.ok(portrait.fishTop >= 0 && portrait.fishBottom < portrait.trayTop);
   const load = tray.locator('meter');
@@ -68,7 +68,7 @@ async function checkLandscape(browser, mode) {
   }
 
   await press(loosen);
-  assert.match(await status.textContent(), /line clear/i);
+  assert.match(await status.textContent(), /reel it up toward the hole/i);
   assert.ok(await load.evaluate(el => el.value) < beforeRotation);
   const beforeScroll = await fightView(page);
   await page.evaluate(() => scrollBy(0, 24));
