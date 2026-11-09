@@ -12,7 +12,7 @@ await withBrowser(async browser => {
     assert.equal(await label.getAttribute('data-phase'), name.toLowerCase());
   };
   const savedProfile = () => page.evaluate(async () => {
-    const { loadProfile } = await import('./game/profile.mjs?v=15');
+    const { loadProfile } = await import('./game/profile.mjs?v=16');
     return loadProfile();
   });
 
@@ -64,10 +64,19 @@ await withBrowser(async browser => {
   assert.equal((await savedProfile()).elapsedMs, beforePractice.elapsedMs);
   assert.equal((await savedProfile()).revision, beforePractice.revision, 'clock saves do not change shop revisions');
   const afterStaleWrite = await page.evaluate(async elapsedMs => {
-    const { applyProfile } = await import('./game/profile.mjs?v=15');
+    const { applyProfile } = await import('./game/profile.mjs?v=16');
     return (await applyProfile({ type: 'clock', elapsedMs: elapsedMs - 5000 })).profile;
   }, beforePractice.elapsedMs);
   assert.equal(afterStaleWrite.elapsedMs, beforePractice.elapsedMs, 'older clock writes do not roll back the phase');
+  await enter('Campaign');
+  await tick(31000);
+  await action.getByText('Next fish', { exact: true }).waitFor();
+  await page.clock.fastForward(20 * 60 * 1000);
+  assert.match(await action.textContent(), /Fish again/i, 'an idle campaign outing ends at expiry');
+  const atExpiry = (await savedProfile()).elapsedMs;
+  assert.ok(atExpiry <= beforePractice.elapsedMs + 20 * 60 * 1000);
+  await tick(10000);
+  assert.equal((await savedProfile()).elapsedMs, atExpiry, 'an expired outing no longer advances the clock');
   assert.deepEqual(errors, []);
   await page.close();
   console.log('PASS: Campaign lighting, active bite at dusk, and clock persistence');

@@ -1,5 +1,5 @@
-import { advanceCampaignFight, apply, campaignAreas, campaignPhase, lures, practiceLevelXp, practiceSkills, publicRun, skills, start, starterArea } from './rules.mjs?v=15';
-import { applyProfile, loadProfile, shopItems } from './profile.mjs?v=15';
+import { advanceCampaignFight, apply, campaignAreas, campaignPhase, lures, practiceLevelXp, practiceSkills, publicRun, skills, start, starterArea } from './rules.mjs?v=16';
+import { applyProfile, loadProfile, shopItems } from './profile.mjs?v=16';
 
 const endpoint = document.querySelector('meta[name="fishing-api"]')?.content;
 const scenes = [...document.querySelectorAll('.dive[data-dive]')].slice(0, 6);
@@ -97,11 +97,14 @@ line.setAttribute('hidden', '');
 line.setAttribute('aria-hidden', 'true');
 line.innerHTML = `<path class="fishing-line-path"/><g class="fishing-line-rig">
   <use width="24" height="24"/><circle class="fishing-line-eye" r="2.6"/>
+</g><g class="fishing-line-callout" hidden>
+  <path d="M2 -3l20 -34h28"/><text x="31" y="-46">Line tight</text>
 </g>`;
 lake.append(line);
 const linePath = line.querySelector('path');
 const lineRig = line.querySelector('g');
 const lineLure = line.querySelector('use');
+const lineCallout = line.querySelector('.fishing-line-callout');
 const celebration = document.createElement('div');
 celebration.className = 'fishing-celebration';
 celebration.hidden = true;
@@ -162,7 +165,7 @@ const practiceButtons = [...practiceChoice.querySelectorAll('button')];
 const slots = [...tray.querySelectorAll('[data-lure]')];
 let launch, previousScroll, run, state, token, target, busy, failed, biteAt, frame;
 let mode, rigFrame, fightFrame, jigAt = -Infinity;
-let profile, outingId, catchReward;
+let profile, outingId, catchReward, catchSaveFailed;
 let campaignArea = starterArea;
 let pickerGeneration = 0;
 let clock, clockWrite, suspendedClock;
@@ -180,7 +183,7 @@ const phaseNames = { day: 'Day', dusk: 'Dusk', night: 'Night' };
 
 function campaignElapsed() {
   if (!clock) return profile?.elapsedMs ?? 0;
-  return Math.floor(performance.now() - clock.origin);
+  return Math.floor(Math.min(performance.now(), clock.until) - clock.origin);
 }
 
 function showPhase(phase) {
@@ -197,6 +200,14 @@ function saveCampaignClock(elapsedMs) {
 
 function tickCampaignClock() {
   const current = clock;
+  if (performance.now() >= current.until) {
+    state = { ...state, stage: 'done', fish: null, fight: null, snap: null, cue: 'This outing expired.' };
+    clearBite();
+    stopCountdown();
+    removeTarget();
+    render();
+    return;
+  }
   const elapsedMs = campaignElapsed();
   const phase = campaignPhase(elapsedMs);
   if (phase === current.phase && elapsedMs - current.checkpoint < 5000) return;
@@ -210,8 +221,9 @@ function tickCampaignClock() {
 
 function startCampaignClock(elapsedMs) {
   const phase = campaignPhase(elapsedMs);
+  const now = performance.now();
   clock = {
-    origin: performance.now() - elapsedMs, phase, checkpoint: elapsedMs,
+    origin: now - elapsedMs, until: now + Math.max(0, run.expires - Date.now()), phase, checkpoint: elapsedMs,
     timer: setInterval(tickCampaignClock, 250),
   };
   showPhase(phase);
@@ -385,7 +397,7 @@ function campaignMouth() {
   return { x: fish.left + fish.width * x, y: fish.top + fish.height * y };
 }
 
-function drawCampaignLine(eye, slack = 0) {
+function drawCampaignLine(eye, slack = 0, tight = false) {
   const visible = !tray.hidden && mode === 'campaign' && state?.fish && !failed && state.stage !== 'landed';
   line.toggleAttribute('hidden', !visible);
   if (!visible) return;
@@ -407,6 +419,8 @@ function drawCampaignLine(eye, slack = 0) {
   lineLure.setAttribute('x', -lureX);
   lineLure.setAttribute('y', -lureY);
   lineLure.toggleAttribute('hidden', Boolean(eye));
+  lineCallout.toggleAttribute('hidden', !tight);
+  if (tight) lineCallout.setAttribute('transform', `translate(${x} ${y})`);
 }
 
 function positionCampaignLine() {
@@ -420,7 +434,7 @@ function positionCampaignLine() {
     const loadRatio = Math.min(1, fight.tension / fight.lineStrength);
     curve = Math.min(54, fight.slack * 7 + (1 - loadRatio) * 14);
   }
-  drawCampaignLine(attached ? campaignMouth() : undefined, curve);
+  drawCampaignLine(attached ? campaignMouth() : undefined, curve, fight?.tight === true);
 }
 
 function fightCue(fight) {
@@ -613,7 +627,7 @@ function render() {
   runProgress.textContent = state
     ? `${modeName} · ${state.score} pts · ${Math.min(state.index + 1, state.count)}/${state.count}` : '';
   const practiceFight = !campaign && !token && state?.stage === 'fight';
-  const tight = campaign ? state?.fight?.tight : practiceFight && state.fight.tension >= 60;
+  const tight = campaign ? state?.fight?.tight === true : practiceFight && state.fight.tension >= 60;
   const pullUp = campaign ? state?.fight?.pullUp : state?.fight?.pulls === 1;
   const practiceBite = !token && state?.stage === 'bite';
   let cue = state?.cue ?? 'Opening the lake…';
@@ -624,6 +638,7 @@ function render() {
   else if (state?.stage === 'landed' && cue.endsWith('points')) {
     cue = `All right! ${cue}`;
     if (campaign && Number.isFinite(catchReward)) cue += ` · +${coins(catchReward)}`;
+    if (campaign && catchSaveFailed) cue += '. Couldn’t save coins for this catch. Select Save coins to try again.';
     if (state.practice?.xp === practiceLevelXp) {
       if (state.skillPoints) cue += '. Level 2! Choose a skill.';
       else cue += `. ${state.skills.control ? skills.control : skills.lift} selected.`;
@@ -642,7 +657,8 @@ function render() {
   }
   const [actionIcon, label] = failed ? ['next', 'Practice'] : ({
     seek: ['jig', 'Jig'], bite: ['reel', 'Reel'], fight: pullUp ? ['lift', 'Pull up'] : ['reel', 'Reel'],
-    landed: ['next', 'Next fish'], missed: ['next', 'Next fish'], done: ['next', 'Fish again'],
+    landed: campaign && catchSaveFailed ? ['next', 'Save coins'] : ['next', 'Next fish'],
+    missed: ['next', 'Next fish'], done: ['next', 'Fish again'],
   }[state?.stage] ?? ['next', 'Wait']);
   setAction(actionIcon, label);
   action.disabled = busy || !state;
@@ -673,8 +689,9 @@ function render() {
     slot.disabled = busy || state?.stage !== 'seek';
     slot.setAttribute('aria-pressed', String(slot.dataset.lure === lure));
   });
-  target?.classList.toggle('is-biting', ['bite', 'fight'].includes(state?.stage));
-  if (target) target.hidden = state?.stage === 'landed';
+  const showCatch = campaign && state?.stage === 'landed';
+  target?.classList.toggle('is-biting', showCatch || ['bite', 'fight'].includes(state?.stage));
+  if (target) target.hidden = !showCatch && state?.stage === 'landed';
   const canUpgrade = state?.stage === 'landed' && state.skillPoints && !failed;
   skillRow.hidden = campaign || !canUpgrade || Boolean(state?.practice);
   practiceChoice.hidden = !canUpgrade || !state?.practice;
@@ -709,6 +726,8 @@ async function begin(selectedMode = mode, selectedArea = campaignArea) {
   jigActivation = fightActivation = false;
   practiceError = undefined;
   profile = outingId = catchReward = undefined;
+  catchSaveFailed = false;
+  lure = 'jig';
   const current = ++generation;
   busy = true;
   failed = false;
@@ -745,7 +764,6 @@ async function begin(selectedMode = mode, selectedArea = campaignArea) {
   }
   if (!state) {
     if (mode === 'ranked') mode = 'practice';
-    lure = 'jig';
     const lineStrength = shopItems.find(item => item.id === profile?.equipped.line)?.strength;
     const equippedHook = shopItems.find(item => item.id === profile?.equipped.hook);
     const hook = equippedHook?.windowMs ? { lure: equippedHook.lure, windowMs: equippedHook.windowMs } : undefined;
@@ -851,6 +869,31 @@ slots.forEach(slot => slot.addEventListener('click', () => {
   render();
 }));
 
+async function saveCatchCoins(current) {
+  const key = `${outingId}:${state.index}`;
+  catchReward = undefined;
+  try {
+    const result = await applyProfile({ type: 'award', key, outcome: state.stage, catch: state.catch });
+    if (current !== generation) return;
+    profile = result.profile;
+    catchReward = result.earned ?? profile.awards[key];
+    catchSaveFailed = false;
+  } catch {
+    if (current === generation) catchSaveFailed = true;
+  }
+}
+
+async function retryCatchCoins() {
+  const current = generation;
+  busy = true;
+  render();
+  await saveCatchCoins(current);
+  if (current !== generation) return;
+  busy = false;
+  render();
+  action.focus({ preventScroll: true });
+}
+
 async function perform(move, input = {}) {
   const prior = state;
   const focused = document.activeElement;
@@ -882,16 +925,8 @@ async function perform(move, input = {}) {
       state = { ...state, cue: 'It looked. Try a different lure and jig again.' };
     }
     if (mode === 'campaign' && state.stage === 'landed' && prior.stage !== 'landed') {
-      const key = `${outingId}:${state.index}`;
-      try {
-        const result = await applyProfile({ type: 'award', key, outcome: state.stage, catch: state.catch });
-        if (current !== generation) return;
-        profile = result.profile;
-        catchReward = result.earned;
-      } catch {
-        if (current !== generation) return;
-        state = { ...state, cue: `${state.cue}. Couldn’t save coins for this catch.` };
-      }
+      await saveCatchCoins(current);
+      if (current !== generation) return;
     }
     if (mode !== 'campaign' && state.stage === 'landed' && prior.stage !== 'landed') {
       if (!state.practice) celebrateCatch(state.index + 2);
@@ -950,6 +985,7 @@ action.addEventListener('click', () => {
   jigActivation = fightActivation = false;
   if (startedBeforeMiss && ['missed', 'done'].includes(state.stage)) return;
   if (failed || state.stage === 'done') return begin(failed ? 'practice' : mode);
+  if (mode === 'campaign' && state.stage === 'landed' && catchSaveFailed) return retryCatchCoins();
   if (state.stage === 'seek' && !fishInView()) return updateSearch();
   const fightMove = mode === 'campaign' && !state.fight?.pullUp ? 'reel' : 'lift';
   const move = { seek: 'jig', bite: 'reel', fight: fightMove, landed: 'next', missed: 'next' }[state.stage];

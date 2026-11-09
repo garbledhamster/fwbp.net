@@ -44,6 +44,7 @@ async function checkShop(browser, mobile) {
   const wallet = tray.locator('[data-wallet]');
   const phase = tray.locator('[data-phase]');
   const evidence = process.env.FISHING_EVIDENCE_DIR;
+  if (evidence && !mobile) await page.setViewportSize({ width: 1586, height: 992 });
 
   async function capture(step) {
     if (!evidence) return;
@@ -91,6 +92,13 @@ async function checkShop(browser, mobile) {
 
   await startWith(.05, 'Jig');
   await textVisible(tray, /Yellow perch.*\+10 coins/i);
+  const landedFish = page.locator('.fishing-target');
+  assert.ok(await landedFish.isVisible(), 'show the fish with its catch payout');
+  const landedBox = await landedFish.boundingBox();
+  assert.ok(landedBox.y >= 0 && landedBox.y + landedBox.height < (await tray.boundingBox()).y,
+    'keep the landed fish visible above the tray');
+  assert.equal(await button('Loosen').evaluate(el => el.classList.contains('fishing-recommended')), false,
+    'a landed catch no longer recommends Loosen');
   assert.match(await wallet.textContent(), /10 coins/);
   assert.equal(await phase.count(), 1, 'the Campaign tray names the current light phase');
   assert.equal(await phase.textContent(), 'Day');

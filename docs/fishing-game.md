@@ -37,7 +37,7 @@ Rollback by reverting the site feature and publishing a fresh numbered version. 
 
 ## Lake, grades and skills
 
-Mille Lacs is the first lake. Keep its roster and encounter weights in a lake profile so a future outing can choose another profile at the start. This release has no lake picker. Start with yellow perch, rock bass, walleye, northern pike, smallmouth bass and muskellunge. The odds, lure pairings and size bands are game rules. The two record catches used as reference are a 58¼-inch muskie and a 46¼-inch northern pike from Mille Lacs. [Minnesota DNR species report](https://files.dnr.state.mn.us/publications/fisheries/special_reports/151.pdf) · [Minnesota DNR catch-and-release records](https://www.dnr.state.mn.us/fishing/catch-and-release.html)
+Mille Lacs is the first lake. Keep its roster and encounter weights in a lake profile so a future outing can choose another profile at the start. Practice and Ranked use this lake profile without a picker. Start with yellow perch, rock bass, walleye, northern pike, smallmouth bass and muskellunge. The odds, lure pairings and size bands are game rules. The two record catches used as reference are a 58¼-inch muskie and a 46¼-inch northern pike from Mille Lacs. [Minnesota DNR species report](https://files.dnr.state.mn.us/publications/fisheries/special_reports/151.pdf) · [Minnesota DNR catch-and-release records](https://www.dnr.state.mn.us/fishing/catch-and-release.html)
 
 Each fish has a length and grade. Trophy and record lengths score more. A rare gilded color adds its own bonus and is a fictional game variant. In Ranked, players can invest the point from each catch in Quick Bite, Line Control, or Lift. Quick Bite opens the reel window sooner. Line Control keeps it open longer, and Lift reduces the extra pulls for fish that fight. Ranks reset for each outing.
 
@@ -56,6 +56,18 @@ The lure hangs from the ice hole on one continuous line. Jig bounces it vertical
 The first reel uses the gold timing band. In Practice, Bryan tells you to wait at the bite and calls “Yeah, reel it!” when the window opens. A bite before the fish’s deadline gives you the full reel window. If the window closes, press **Reel** to resolve the attempt. You can jig again if the fish still has time left. Common fish usually land on the first reel. Stronger or trophy fish pull the line tight. **Loosen** to drop the tension, then **Reel** when the line clears. Use **Pull up** on the last turn. Reeling against a tight line raises tension and can break it. Tougher fish surge more often. The ranked server still decides accepted timing and points.
 
 
+### Campaign
+
+Choose **Campaign** from **Play fishing game**. Scroll to find a fish and follow the line down from the ice hole. Jig with a lure the fish responds to, then set the hook in the gold window. Strong fish pull on their own. When the line tightens, use **Loosen** to give the fish room. Reel when it clears and use **Pull up** when the fish is close. The gauge compares the current load with the rating of your equipped line.
+
+Land fish to earn coins. To spend them, exit the outing and choose **Tackle shop** from the outing menu. The 8 lb starter line, starter hook and Starter Shore license are free. A standard Yellow perch earns enough for the 12 lb line. The Fine-wire hook gives Jig 200 ms more to set the hook, and Line Control training gives all lures 350 ms more. The Deep Reef license opens a second area of Mille Lacs with a different mix of fish.
+
+Campaign cycles through 30 seconds of day, 30 seconds of dusk and 45 seconds of night during an outing. The light and phase label change together. The new odds apply when you move to the next fish; the current fish keeps its countdown. The clock pauses between outings.
+
+The browser saves the wallet, tackle, training, licenses, clock and credited catches together. An outing uses the equipment you chose when you started it. Practice keeps its own XP and skill choice for that outing. Ranked uses server timing, points and gear rules; campaign purchases never enter its requests.
+
 ### Run the game checks
 
-Run `node --test game/rules.test.mjs` for the shared rules. To replay the seeded browser checks, start the local site as described in the README. Set `FISHING_QA_URL` to that URL and run `node game/search.browser.mjs`, `node game/escape.browser.mjs`, `node game/cues.browser.mjs` and `node game/milestone.browser.mjs`. If Playwright is installed outside the checkout, set `PLAYWRIGHT_MODULE` to its module path. Use `CHROME_PATH` if you need to point Playwright to an installed Chrome.
+Run `node --test game/*.test.mjs` for the rules. Start the local site as described in the README. Set `FISHING_QA_URL` to that URL, then run `for check in game/*.browser.mjs; do node "$check" || break; done`. If Playwright is installed outside the checkout, set `PLAYWRIGHT_MODULE` to its module path. Use `CHROME_PATH` to point Playwright to an installed Chrome.
+
+The seeded shop check finds and lands a fish, buys and equips stronger line, and compares the same hard pull after dusk on desktop and at 320 px. Set `FISHING_EVIDENCE_DIR` to capture the catch, shop and both surge outcomes when running `node game/shop.browser.mjs`.

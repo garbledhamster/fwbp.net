@@ -29,7 +29,7 @@ async function checkAccess(browser, mobile) {
     null, { polling: 25 },
   );
   const attemptPurchase = revision => page.evaluate(async savedRevision => {
-    const { loadProfile, applyProfile } = await import(new URL('./game/profile.mjs?v=15', location.href));
+    const { loadProfile, applyProfile } = await import(new URL('./game/profile.mjs?v=16', location.href));
     const current = await loadProfile();
     const { status, profile } = await applyProfile({
       type: 'buy', id: 'deep-reef-license', revision: savedRevision ?? current.revision,

@@ -42,8 +42,15 @@ await withBrowser(async browser => {
   assert.equal(profileBefore.equipped.line, 'stronger-line');
   assert.equal(profileBefore.coins, 25);
 
+  await enter('Campaign');
+  await press(tray.locator('[data-lure="spoon"]'));
+  assert.equal(await tray.locator('[data-lure="spoon"]').getAttribute('aria-pressed'), 'true');
+  await press(tray.getByRole('button', { name: 'Exit fishing' }));
+
   await enter('Ranked');
   await tray.getByText(/Mille Lacs · Ranked · 0 pts/).waitFor();
+  assert.equal(await tray.locator('[data-lure="jig"]').getAttribute('aria-pressed'), 'true',
+    'Ranked starts with its own lure selection');
   await findFish();
   await press(action);
   await action.getByText('Reel', { exact: true }).waitFor();

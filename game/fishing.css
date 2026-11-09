@@ -232,6 +232,14 @@ body.fishing .dive-ceiling { transform: none !important; }
 }
 .fishing-line-rig use { fill: none; stroke: #ffedbd; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .fishing-line-eye { fill: #f2ba58; stroke: #6a552c; stroke-width: .75; }
+.fishing-line-callout path { fill: none; stroke: #ffedbd; stroke-width: 1.4; }
+.fishing-line-callout text { fill: #ffedbd; font: bold 21px Georgia, serif; }
+body.fishing:has(.fishing-tray[data-mode="campaign"]) .fishing-target {
+  width: clamp(72px, 14vw, 195px);
+}
+@media (max-width: 700px) {
+  .fishing-line-callout { display: none; }
+}
 body.fishing:has(.fishing-tray[data-mode="campaign"]) .fishing-target:is(.is-biting, .is-hooked) {
   left: calc(var(--bite-x, var(--line-x)) + var(--fight-x, 0px));
   top: calc(var(--bite-y, 44%) + var(--fight-y, 0px));
