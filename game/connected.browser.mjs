@@ -142,7 +142,7 @@ async function connected(browser, viewport, mobile) {
   const stronger = shop.locator('[data-item="stronger-line"]');
   await press(stronger.getByRole('button', { name: 'Buy Stronger line', exact: true }));
   await press(stronger.getByRole('button', { name: 'Equip Stronger line', exact: true }));
-  await stronger.getByText('Equipped', { exact: true }).waitFor();
+  await stronger.getByText('Equipped for next outing', { exact: true }).waitFor();
   await shop.getByRole('status').filter({ hasText: 'Stronger line equipped for the next Campaign outing.' }).waitFor();
   await closeDialog(shop, shop.getByRole('button', { name: 'Back to Pause', exact: true }));
   assert.equal(await shop.isVisible(), false);

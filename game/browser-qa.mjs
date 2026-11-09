@@ -127,6 +127,8 @@ export async function practicePage(browser, { mobile = false, viewport, configur
   }
 
   async function leave() {
+    const reward = page.locator('.fishing-catch-popup[open]');
+    if (await reward.count()) await closeSavedCatch();
     if (await button('Menu').isVisible()) {
       await press(button('Menu'), 'Enter');
       const pause = page.locator('.fishing-pause');

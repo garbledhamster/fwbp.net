@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { practicePage, withBrowser } from './browser-qa.mjs';
 
 async function checkTraining(browser, mobile) {
-  const { leave, enter, page, tray, action, press, tick, findFish, launch, button, status, errors, reelToHole } =
+  const { leave, enter, page, tray, action, press, tick, findFish, launch, selectTackle, status, errors, reelToHole } =
     await practicePage(browser, { mobile, campaignLiveButtons: true });
   const picker = page.getByRole('dialog', { name: 'Choose an outing' });
   const shop = page.getByRole('dialog', { name: 'Tackle shop' });
@@ -20,10 +20,7 @@ async function checkTraining(browser, mobile) {
   async function openShop() {
     await select(launch);
     await select(picker.getByRole('button', { name: 'Tackle shop' }));
-    await shop.locator('[data-item="starter-line"]').waitFor();
-    while (!await hook.isVisible()) await select(shop.getByRole('button', { name: 'Next hook', exact: true }));
-    assert.equal(await hook.isVisible(), true, 'the hook carousel reaches the Fine-wire jig setup');
-    assert.equal(await training.isVisible(), true, 'the shop lists Line Control training');
+    await shop.locator('[data-shop-grid]').waitFor();
   }
 
   async function closeShop() {
@@ -54,18 +51,20 @@ async function checkTraining(browser, mobile) {
   }
 
   await openShop();
+  await selectTackle('finesse-hook');
   assert.match(await hook.textContent(), /200 ms.*Jig.*15 coins/is);
-  assert.match(await training.textContent(), /Rank 1.*350 ms.*any lure.*20 coins/is);
   assert.equal(await buyHook.isDisabled(), true);
+  await selectTackle('line-control');
+  assert.match(await training.textContent(), /Rank 1.*350 ms.*any lure.*20 coins/is);
   assert.equal(await buyTraining.isDisabled(), true);
   await closeShop();
 
   const funded = await page.evaluate(async () => {
     const { applyProfile, loadProfile } = await import(new URL('./game/profile.mjs', location.href));
     const starter = await loadProfile();
-    for (const id of ['finesse-hook', 'line-control']) {
+    for (const [id, expected] of [['finesse-hook', 'locked'], ['line-control', 'unaffordable']]) {
       const refused = await applyProfile({ type: 'buy', id, revision: starter.revision });
-      if (refused.status !== 'unaffordable' || refused.profile.coins !== 0) throw Error('Unaffordable purchase altered the wallet');
+      if (refused.status !== expected || refused.profile.coins !== 0) throw Error('A refused purchase altered the wallet');
     }
     return applyProfile({ type: 'award', key: 'training-fixture:0', outcome: 'landed', catch: { points: 35 } });
   });
@@ -73,18 +72,20 @@ async function checkTraining(browser, mobile) {
 
   await tryBite(.05, 'Jig', 2250, false);
   await openShop();
+  await selectTackle('finesse-hook');
   await select(buyHook);
   await hook.getByText('Owned', { exact: true }).waitFor();
   await select(hook.getByRole('button', { name: 'Equip Fine-wire jig setup' }));
-  await hook.getByText('Equipped', { exact: true }).waitFor();
+  await hook.getByText('Equipped for next outing', { exact: true }).waitFor();
   assert.equal(await balance.textContent(), '20 coins');
   await closeShop();
 
   await tryBite(.05, 'Jig', 2250, true);
-  await tryBite(.55, 'Minnow', 2250, false);
+  await tryBite(.60, 'Minnow', 2250, false);
   await tryBite(.05, 'Jig', 2500, false);
 
   await openShop();
+  await selectTackle('line-control');
   await select(buyTraining);
   await training.getByText('Owned', { exact: true }).waitFor();
   assert.equal(await balance.textContent(), '10 coins');
@@ -92,9 +93,11 @@ async function checkTraining(browser, mobile) {
   await page.reload({ waitUntil: 'domcontentloaded' });
   await openShop();
   assert.equal(await balance.textContent(), '10 coins');
-  await hook.getByText('Equipped', { exact: true }).waitFor();
-  await training.getByText('Owned', { exact: true }).waitFor();
+  await selectTackle('finesse-hook');
+  await hook.getByText('Equipped for next outing', { exact: true }).waitFor();
   assert.equal(await buyHook.count(), 0);
+  await selectTackle('line-control');
+  await training.getByText('Owned', { exact: true }).waitFor();
   assert.equal(await buyTraining.count(), 0);
   const repeated = await page.evaluate(async () => {
     const { applyProfile, loadProfile } = await import(new URL('./game/profile.mjs', location.href));

@@ -31,7 +31,7 @@ async function search(page, tray, action, mobile) {
 }
 
 async function checkShop(browser, mobile) {
-  const { leave, page, launch, tray, action, status, button, enter, press, tick, errors, reelToHole } =
+  const { leave, page, launch, tray, action, status, button, enter, press, tick, errors, reelToHole, closeSavedCatch } =
     await practicePage(browser, { mobile, campaignLiveButtons: true });
   const picker = page.getByRole('dialog', { name: 'Choose an outing' });
   const shop = page.getByRole('dialog', { name: 'Tackle shop' });
@@ -95,16 +95,15 @@ async function checkShop(browser, mobile) {
   await reelToHole();
   await press(action);
   await textVisible(tray, /Yellow perch.*\+10 coins/i);
-  const landedFish = page.locator('.fishing-target');
-  assert.ok(await landedFish.isVisible(), 'show the fish with its catch payout');
-  const landedBox = await landedFish.boundingBox();
-  assert.ok(landedBox.y >= 0 && landedBox.y + landedBox.height < (await tray.boundingBox()).y,
-    'keep the landed fish visible above the tray');
+  const popup = page.locator('.fishing-catch-popup');
+  await popup.locator('.fishing-reward-art svg').waitFor();
+  assert.match(await popup.textContent(), /Yellow perch.*10 coins/s, 'show the fish with its saved payout');
   assert.equal(await button('Loosen').isHidden(), true, 'a landed catch leaves the outcome action in Bryan’s bubble');
   assert.match(await wallet.textContent(), /10 coins/);
   assert.equal(await phase.count(), 1, 'the Campaign tray names the current light phase');
   assert.equal(await phase.textContent(), 'Day');
   await capture('catch');
+  await closeSavedCatch();
   await tick(30000);
   await phase.filter({ hasText: 'Dusk' }).waitFor();
   await leave();

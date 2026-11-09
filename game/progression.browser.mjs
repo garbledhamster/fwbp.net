@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { withBrowser, practicePage } from './browser-qa.mjs';
 await withBrowser(async browser => {
   for (const viewport of [{ width: 1200, height: 720 }, { width: 320, height: 720 }, { width: 720, height: 320 }]) {
-  const qa = await practicePage(browser, { viewport, mobile: viewport.width < 900 });
+  const qa = await practicePage(browser, { viewport, mobile: viewport.width < 900, campaignLiveButtons: true });
   const { page, enter, findFish, press, action, tick, reelToHole } = qa;
   const result = await page.evaluate(async () => {
     const m = await import('./game/profile.mjs?v=connected-rpg');

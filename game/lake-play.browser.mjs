@@ -15,7 +15,7 @@ await withBrowser(async browser => {
       assert.equal(await ambient.filter({ visible: true }).count(), 0, 'the site keeps its own illustrated fish');
 
       await enter(mode);
-      const water = await page.locator('.lake > .dive').evaluateAll(bands => bands.map(band =>
+      const water = await page.locator('.lake > .dive:visible').evaluateAll(bands => bands.map(band =>
         [...band.querySelectorAll('.fishing-background-fish')].filter(fish =>
           fish.getClientRects().length && getComputedStyle(fish).visibility === 'visible')
           .map(fish => {
@@ -24,7 +24,8 @@ await withBrowser(async browser => {
               decorative: fish.getAttribute('aria-hidden') === 'true'
                 && getComputedStyle(fish).pointerEvents === 'none' };
           })));
-      assert.ok(water.every(band => band.length > 0), 'there are visible background fish through the deepest water');
+      assert.equal(water.length, mode === 'Campaign' ? 2 : 7, 'the water ends at the selected hole depth in Campaign');
+      assert.ok(water.every(band => band.length > 0), 'background fish appear through every playable band');
       assert.ok(water.flat().some(fish => fish.center < .35) && water.flat().some(fish => fish.center > .65),
         'background fish use both sides of the lake');
       assert.ok(water.flat().every(fish => fish.decorative && fish.left >= 0 && fish.right <= viewport.width),

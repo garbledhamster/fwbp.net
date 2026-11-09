@@ -12,6 +12,7 @@ await withBrowser(async browser => {
       const { loadProfile } = await import('./game/profile.mjs?v=16');
       const profile = await loadProfile();
       profile.coins = 100;
+      profile.awards['fixture:0'] = 100;
       await new Promise((resolve, reject) => {
         const request = indexedDB.open('fwbp-campaign', 1);
         request.onsuccess = () => {

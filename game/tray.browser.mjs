@@ -50,7 +50,7 @@ async function scrollStep(page, direction, mobile) {
 }
 
 async function checkTray(browser, mobile) {
-  const { page, tray, launch, action, button, status, press, tick, findFish, chooseMode, errors, reelToHole } =
+  const { page, tray, launch, action, button, status, press, tick, findFish, chooseMode, errors, reelToHole, closeSavedCatch } =
     await practicePage(browser, { mobile, campaignLiveButtons: true });
   await press(launch);
   const picker = page.getByRole('dialog', { name: 'Choose an outing' });
@@ -105,6 +105,7 @@ async function checkTray(browser, mobile) {
   await reelToHole();
   await press(action);
   await tray.getByText(/Yellow perch.*points/i).waitFor();
+  await closeSavedCatch();
   if (!mobile) {
     assert.equal(await action.evaluate(el => el === document.activeElement && el.matches(':focus-visible')), true);
     await page.keyboard.press('Escape');
