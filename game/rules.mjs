@@ -8,6 +8,13 @@ const milleLacs = [
   { id: 'muskie', pull: 2.8, size: [24, 58, 50, 58.25], name: 'Muskie', rarity: 'Rare', points: 75, lure: 'spoon', art: ['fish', 'muskie', '0 0 245 72'], weight: 1 },
 ];
 export const lakes = { 'mille-lacs': { name: 'Mille Lacs', fish: milleLacs } };
+export function catchQuality(speciesId, length) {
+  const species = milleLacs.find(fish => fish.id === speciesId);
+  if (!species) return 'Bronze';
+  const [min, , trophy] = species.size;
+  // The midpoint to trophy is tuned independently for each species' size range.
+  return length >= trophy ? 'Gold' : length >= (min + trophy) / 2 ? 'Silver' : 'Bronze';
+}
 export const skills = { quick: 'Quick Bite', control: 'Line Control', lift: 'Lift' };
 export const practiceSkills = {
   control: '350 ms more to set the hook',
@@ -62,9 +69,11 @@ export function reelWindow(levels) {
 function hookWindow(run, fish) {
   if (!run.campaign) return reelWindow(run.skills);
   const { hook, line, lineControlRank = 0 } = run.campaign;
-  const window = reelWindow({ ...run.skills, control: lineControlRank });
+  const window = reelWindow({ ...run.skills, control: lineControlRank, quick: run.campaign.lureWorkRank ?? 0 });
   if (hook && hook.lure === fish?.lure) window.until += hook.windowMs;
   if (line && line.lure === fish?.lure) window.until += line.windowMs;
+  const bait = run.campaign.baits?.find(item => item.lure === fish?.lure);
+  if (bait) window.until += bait.windowMs;
   return window;
 }
 export const runLifetime = 20 * 60 * 1000;
@@ -202,7 +211,7 @@ export function start(now, random = Math.random, lake = 'mille-lacs', { practice
     ...(practice && { practice: true, landed: 0 }),
     ...(usesLineFight && { snap: null, wrongLures: 0, reaction: null }),
     ...(campaign && {
-      campaign: { ...campaign, area, line: campaign.line && { ...campaign.line }, hook: campaign.hook && { ...campaign.hook }, lineStrength: campaign.lineStrength ?? starterLineStrength },
+      campaign: { ...campaign, area, line: campaign.line && { ...campaign.line }, hook: campaign.hook && { ...campaign.hook }, baits: campaign.baits?.map(item => ({ ...item })), lineStrength: campaign.lineStrength ?? starterLineStrength },
     }),
   };
   if (campaign?.hole) {
@@ -266,7 +275,7 @@ export function apply(run, input, now, { campaignElapsedMs = run.campaign?.elaps
       run.cue = 'Yeah, reel it! Wait for the marker to reach the gold band.';
     } else if (run.campaign || run.practice) {
       run.wrongLures++;
-      if (run.wrongLures >= (target.rarity === 'Rare' ? 2 : 3)) {
+      if (run.wrongLures >= (target.rarity === 'Rare' ? 2 : 3) + (run.campaign?.lureWorkRank ?? 0)) {
         miss(run, 'spooked');
         run.cue = run.stage === 'done' ? 'That fish spooked. Outing complete.' : 'That fish spooked and swam off.';
       } else {
