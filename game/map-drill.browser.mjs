@@ -68,6 +68,12 @@ await withBrowser(async (browser) => {
 
     await press(cell('C1'), 'Enter');
     assert.match(await map.locator('[data-map-permit]').textContent(), /Deep Reef permit.*Required/);
+    assert.equal(await map.locator('[data-map-access-label]').textContent(), 'Locked');
+    assert.equal(await cell('C1').locator('.fishing-map-lock-mark').isVisible(), true);
+    assert.equal(await cell('A3').getAttribute('data-spot-access'), 'unlocked');
+    await map.getByRole('radio', { name: 'Temperature' }).check();
+    assert.equal(await cell('C1').locator('.fishing-map-lock-mark').isVisible(), true);
+    assert.match(await map.locator('[data-map-info]').textContent(), /C1 · Locked · .*°F/);
     await press(open, 'Enter');
     await press(page.locator('[data-permit-shop]'), 'Enter');
     const shop = page.locator('.fishing-shop');
@@ -82,6 +88,9 @@ await withBrowser(async (browser) => {
     await map.waitFor();
     assert.equal(await cell('C1').getAttribute('aria-pressed'), 'true');
     assert.match(await map.locator('[data-map-permit]').textContent(), /Deep Reef permit.*Owned/);
+    assert.equal(await map.locator('[data-map-access-label]').textContent(), 'Unlocked');
+    assert.equal(await cell('C1').getAttribute('data-spot-access'), 'unlocked');
+    assert.equal(await cell('C1').locator('.fishing-map-lock-mark').isVisible(), false);
     assert.equal(await open.isDisabled(), true, 'buying a permit leaves the daily allowance fixed');
 
     await press(cell('A3'), 'Enter');

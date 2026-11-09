@@ -5,6 +5,7 @@ export const firstShoreHole = mapCells.find((cell) => cell.area === 'starter-sho
 const map = document.createElement('dialog');
 map.className = 'fishing-picker fishing-map';
 map.setAttribute('aria-labelledby', 'lake-map-title');
+const lockMark = '<span class="fishing-map-lock-mark" aria-hidden="true"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3.5" y="7" width="9" height="7" rx="1"/><path d="M5.5 7V4.5a2.5 2.5 0 0 1 5 0V7"/></svg></span>';
 map.innerHTML = `<div class="fishing-map-scroll">
   <header class="fishing-map-heading">
     <h2 id="lake-map-title">Campaign · Mille Lacs</h2>
@@ -30,13 +31,17 @@ map.innerHTML = `<div class="fishing-map-scroll">
         <li><span data-temperature="38" aria-hidden="true"></span>38 °F</li>
       </ul>
     </div>
+    <ul class="fishing-map-markers fishing-map-access-key" aria-label="Spot access legend">
+      <li><span class="fishing-map-unlocked-mark" aria-hidden="true"></span>Unlocked</li>
+      <li>${lockMark}Locked · permit needed</li>
+    </ul>
     <p data-map-info></p>
   </div>
   <div class="fishing-map-layout"><div class="fishing-map-water" role="group" aria-label="Mille Lacs water cells">
     <img src="./assets/maps/mille-lacs.svg" alt="Mille Lacs shoreline and depth contours, north at the top" width="500" height="500">
-    <div class="fishing-map-cells">${mapCells.map((cell) => `<button type="button" data-map-cell="${cell.id}" style="left:${cell.x / 5}%;top:${cell.y / 5}%">${cell.id}</button>`).join('')}</div></div>
+    <div class="fishing-map-cells">${mapCells.map((cell) => `<button type="button" data-map-cell="${cell.id}" style="left:${cell.x / 5}%;top:${cell.y / 5}%">${cell.id}${lockMark}</button>`).join('')}</div></div>
     <section class="fishing-map-inspector" aria-labelledby="map-hole-title"><h3 id="map-hole-title"></h3>
-      <p data-map-permit></p><p data-map-fish></p>
+      <p data-map-permit><strong data-map-access-label></strong> <span data-map-permit-name></span></p><p data-map-fish></p>
       <p data-map-history hidden>Past catch here. See Your Lake for your catch history.</p><p data-map-budget></p>
       <ul class="fishing-map-markers" aria-label="Map markers">
         <li><span class="fishing-map-open-mark" aria-hidden="true"></span>Open hole today</li>
@@ -97,6 +102,7 @@ function drawMap() {
   const { allowance, opened, rosters } = context.day;
   const remaining = allowance - opened.length;
   const accessible = context.hasAccess(cell.area);
+  const access = accessible ? 'Unlocked' : 'Locked';
   const alreadyOpen = opened.includes(cell.id);
   const roster = alreadyOpen ? rosters?.[cell.id] : undefined;
   const quiet = roster?.length === 0;
@@ -114,6 +120,7 @@ function drawMap() {
       `${c.id}, ${c.habitat}, ${c.depthFt} ft${temperature ? `, ${c.temperatureF} °F modeled near the bottom` : ''}, ${owned ? 'permit owned' : 'permit required'}${open ? ', hole open' : ''}${pastCatch ? ', past catch' : ''}`,
     );
     button.setAttribute('aria-pressed', String(c.id === selected));
+    button.dataset.spotAccess = owned ? 'unlocked' : 'locked';
     const depthBand = c.depthFt <= 15 ? 'shallow' : c.depthFt <= 25 ? 'middle' : 'deep';
     button.dataset.depth = temperature ? 'off' : depthBand;
     button.dataset.temperature = temperature ? String(c.temperatureF) : 'off';
@@ -124,9 +131,12 @@ function drawMap() {
   map.querySelector('[data-temperature-legend]').hidden = !temperature;
   map.querySelector('#map-hole-title').textContent = `${cell.id} · ${cell.habitat}`;
   map.querySelector('[data-map-info]').textContent = temperature
-    ? `${cell.id} · ${cell.temperatureF} °F near-bottom estimate · ${cell.depthFt} ft deep`
-    : `${cell.id} · ${cell.depthFt} ft deep`;
-  map.querySelector('[data-map-permit]').textContent =
+    ? `${cell.id} · ${access} · ${cell.temperatureF} °F near-bottom estimate · ${cell.depthFt} ft deep`
+    : `${cell.id} · ${access} · ${cell.depthFt} ft deep`;
+  const accessLabel = map.querySelector('[data-map-access-label]');
+  accessLabel.dataset.spotAccess = accessible ? 'unlocked' : 'locked';
+  accessLabel.textContent = access;
+  map.querySelector('[data-map-permit-name]').textContent =
     `${cell.area === 'starter-shore' ? 'Starter Shore' : 'Deep Reef'} permit · ${accessible ? 'Owned' : 'Required'}`;
   const present = new Set(roster?.map((fish) => fish.speciesId));
   const familiar = collectibleSpecies.filter(({ id }) => present.has(id) && recognized.has(id)).map(({ name }) => name);

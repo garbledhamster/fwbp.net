@@ -942,6 +942,16 @@ html:has(body[data-fishing-paused]) { overflow: hidden; }
 }
 .fishing-map [data-map-legend] ul { margin-block: 0 8px; }
 .fishing-map [data-map-legend] ul[hidden] { display: none; }
+.fishing-map-tools .fishing-map-access-key { margin: 0 0 8px; }
+.fishing-map-lock-mark, .fishing-map-unlocked-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 17px;
+  border-radius: 3px;
+}
+.fishing-map-lock-mark { background: #0c1c26; color: #fff2ce; border: 1px solid #eadcbd; }
+.fishing-map-unlocked-mark { background: var(--map-depth-middle); border: 2px solid #bff4c9; }
 .fishing-map [data-map-info] {
   margin: 0 0 8px;
   color: #b4edf2;
@@ -987,6 +997,18 @@ html:has(body[data-fishing-paused]) { overflow: hidden; }
   line-height: 1;
 }
 .fishing-map-cells button[data-hole-open] { padding-bottom: 13px; }
+.fishing-map-cells button[data-spot-access="unlocked"] { border: 2px solid #bff4c9; }
+.fishing-map-cells button[data-spot-access="locked"] { padding-bottom: 19px; }
+.fishing-map-cells .fishing-map-lock-mark {
+  display: none;
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.fishing-map-cells button[data-spot-access="locked"] .fishing-map-lock-mark { display: grid; }
+.fishing-map-cells button[data-spot-access="locked"][data-hole-open]::after { display: none; }
 .fishing-map .fishing-map-cells button:enabled:hover {
   background: var(--map-shade);
   box-shadow: inset 0 0 0 2px #fff4d4;
@@ -1022,6 +1044,15 @@ html:has(body[data-fishing-paused]) { overflow: hidden; }
 .fishing-map-cells button[aria-pressed="true"] { outline: 3px solid #78f5ff; outline-offset: 2px; z-index: 1; }
 .fishing-map button:focus-visible { outline: 3px solid #fff5a3; outline-offset: 4px; }
 .fishing-map-inspector { padding: 16px; background: #10212b; border: 1px solid #7fabb7; border-radius: 8px; }
+.fishing-map-inspector [data-map-access-label] {
+  display: inline-block;
+  margin-inline-end: 4px;
+  padding: 2px 6px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  color: #fff2ce;
+}
+.fishing-map-inspector [data-map-access-label][data-spot-access="unlocked"] { color: #bff4c9; }
 .fishing-map-inspector [data-map-fish] { color: #b4edf2; font-weight: 700; }
 .fishing-map-inspector [data-map-history] { color: var(--map-catch); }
 .fishing-map-actions {
@@ -1066,7 +1097,7 @@ html:has(body[data-fishing-paused]) { overflow: hidden; }
  .fishing-map-heading h2 { font-size: 1.45rem; }
  .fishing-map-tools { align-items: center; margin-block: 2px 4px; }
  .fishing-map-overlays legend { position: absolute; clip-path: inset(50%); width: 1px; height: 1px; overflow: hidden; }
- .fishing-map :is([data-map-legend] ul, [data-map-info]) { margin: 0; }
+ .fishing-map :is([data-map-legend] ul, .fishing-map-access-key, [data-map-info]) { margin: 0; }
  .fishing-auger-scene { height: 100px; }
  .fishing-auger-scene img, .fishing-auger-scene svg { height: 100px; }
 }
