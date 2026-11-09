@@ -45,6 +45,14 @@ export const practiceLevelXp = practiceLevelCatches * practiceCatchXp;
 export function reelWindow(levels) {
   return { from: 550 - levels.quick * 125, until: 2100 + levels.control * 350 };
 }
+
+function hookWindow(run, fish) {
+  if (!run.campaign) return reelWindow(run.skills);
+  const { hook, lineControlRank = 0 } = run.campaign;
+  const window = reelWindow({ ...run.skills, control: lineControlRank });
+  if (hook && hook.lure === fish?.lure) window.until += hook.windowMs;
+  return window;
+}
 export const runLifetime = 20 * 60 * 1000;
 const fightStepMs = 40;
 const surgeCycleMs = 2400;
@@ -140,7 +148,10 @@ export function start(now, random = Math.random, lake = 'mille-lacs', { practice
     stage: 'seek', biteAt: 0, catch: null, cue: 'Fish in view. Pick a lure and jig.',
     version: 0, submitted: false,
     ...(practice && { practice: true, landed: 0 }),
-    ...(campaign && { campaign: { ...campaign, lineStrength: campaign.lineStrength ?? 8 }, snap: null }),
+    ...(campaign && {
+      campaign: { ...campaign, hook: campaign.hook && { ...campaign.hook }, lineStrength: campaign.lineStrength ?? 8 },
+      snap: null,
+    }),
   };
   chooseCampaignSpecies(run, campaign?.elapsedMs);
   run.seekUntil = seekDeadline(run, now);
@@ -153,7 +164,7 @@ export function publicRun(run) {
   const xp = (run.landed ?? (run.index + Number(run.stage === 'landed'))) * practiceCatchXp;
   return {
     fish: target ? { id: target.id, art: target.art, depth: encounter.depth ?? searchDepths[run.index], x: encounter.x, y: encounter.y, gilded: encounter.colorRoll >= .97 } : null,
-    lake: lakes[run.lake].name, skills: run.skills, skillPoints: run.skillPoints, fight: run.fight, window: reelWindow(run.skills),
+    lake: lakes[run.lake].name, skills: run.skills, skillPoints: run.skillPoints, fight: run.fight, window: hookWindow(run, target),
     index: run.index, count: run.encounters.length, score: run.score, stage: run.stage,
     version: run.version, discoveries: run.discoveries, catch: run.catch, cue: run.cue,
     seekUntil: run.stage === 'seek' ? run.seekUntil ?? null : null,
@@ -193,7 +204,7 @@ export function apply(run, input, now, { campaignElapsedMs = run.campaign?.elaps
     }
   } else if (input.action === 'reel' && run.stage === 'bite') {
     const elapsed = now - run.biteAt;
-    const { from, until } = reelWindow(run.skills);
+    const { from, until } = hookWindow(run, target);
     if (elapsed >= from && elapsed <= until) {
       const [min, max, trophy, record] = target.size;
       const length = record && encounter.sizeRoll >= .995

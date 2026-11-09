@@ -707,10 +707,13 @@ async function begin(selectedMode = mode) {
     if (mode === 'ranked') mode = 'practice';
     lure = 'jig';
     const lineStrength = shopItems.find(item => item.id === profile?.equipped.line)?.strength;
+    const equippedHook = shopItems.find(item => item.id === profile?.equipped.hook);
+    const hook = equippedHook?.windowMs ? { lure: equippedHook.lure, windowMs: equippedHook.windowMs } : undefined;
+    const lineControlRank = shopItems.find(item => item.id === 'line-control' && profile?.owned.includes(item.id))?.rank;
     const elapsedMs = profile?.elapsedMs ?? 0;
     run = start(Date.now(), undefined, undefined, {
       practice: mode === 'practice',
-      campaign: mode === 'campaign' ? { lineStrength, elapsedMs } : undefined,
+      campaign: mode === 'campaign' ? { lineStrength, hook, lineControlRank, elapsedMs } : undefined,
     });
     state = publicRun(run);
     if (mode === 'campaign') startCampaignClock(elapsedMs);
