@@ -105,8 +105,15 @@ function shop(profile, { type, id, revision }) {
   };
 }
 
+function saveClock(profile, elapsedMs) {
+  if (!Number.isSafeInteger(elapsedMs) || elapsedMs < 0) return { profile, status: 'invalid' };
+  if (elapsedMs <= profile.elapsedMs) return { profile, status: 'clock-current' };
+  return { profile: { ...profile, elapsedMs }, status: 'clock-saved' };
+}
+
 export function applyProfile(command) {
   return readProfile(profile => {
+    if (command?.type === 'clock') return saveClock(profile, command.elapsedMs);
     if (command?.type === 'award') return award(profile, command);
     if (command?.type === 'buy' || command?.type === 'equip') return shop(profile, command);
     return { profile, status: 'invalid' };

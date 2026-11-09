@@ -1,4 +1,4 @@
-import { advanceCampaignFight, apply, lures, practiceLevelXp, practiceSkills, publicRun, skills, start } from './rules.mjs?v=15';
+import { advanceCampaignFight, apply, campaignPhase, lures, practiceLevelXp, practiceSkills, publicRun, skills, start } from './rules.mjs?v=15';
 import { applyProfile, loadProfile, shopItems } from './profile.mjs?v=15';
 
 const endpoint = document.querySelector('meta[name="fishing-api"]')?.content;
@@ -43,6 +43,7 @@ tray.innerHTML = `
     <p class="fishing-status" role="status"></p>
     <div class="fishing-row fishing-encounter">
       <p class="fishing-wallet" data-wallet hidden></p>
+      <p data-phase aria-live="polite" hidden></p>
       <p class="fishing-practice-progress" hidden></p>
       <p class="fishing-countdown" role="timer" hidden></p>
     </div>
@@ -143,12 +144,14 @@ const skillRow = tray.querySelector('.fishing-skills');
 const practiceChoice = tray.querySelector('.fishing-practice-choice');
 const practiceProgress = tray.querySelector('.fishing-practice-progress');
 const wallet = tray.querySelector('[data-wallet]');
+const phaseLabel = tray.querySelector('[data-phase]');
 const countdown = tray.querySelector('.fishing-countdown');
 const practiceButtons = [...practiceChoice.querySelectorAll('button')];
 const slots = [...tray.querySelectorAll('[data-lure]')];
 let launch, previousScroll, run, state, token, target, busy, failed, biteAt, frame;
 let mode, rigFrame, fightFrame, jigAt = -Infinity;
 let profile, outingId, catchReward;
+let clock, clockWrite, suspendedClock;
 let shopBusy = false;
 let shopGeneration = 0;
 let countdownTimer, rankedSeekUntil, rankedServerSeekUntil, escapeTimer;
@@ -158,6 +161,55 @@ let lure = 'jig';
 let practiceError;
 let generation = 0;
 const scrollKeys = { ArrowUp: -1, ArrowDown: 1, PageUp: -1, PageDown: 1, Home: -1, End: 1 };
+
+const phaseNames = { day: 'Day', dusk: 'Dusk', night: 'Night' };
+
+function campaignElapsed() {
+  if (!clock) return profile?.elapsedMs ?? 0;
+  return Math.floor(performance.now() - clock.origin);
+}
+
+function showPhase(phase) {
+  if (phaseLabel.dataset.phase === phase) return;
+  phaseLabel.dataset.phase = phase;
+  phaseLabel.textContent = phaseNames[phase];
+  lake.dataset.fishingLight = phase;
+}
+
+function saveCampaignClock(elapsedMs) {
+  clockWrite = applyProfile({ type: 'clock', elapsedMs }).catch(() => undefined);
+  return clockWrite;
+}
+
+function tickCampaignClock() {
+  const current = clock;
+  const elapsedMs = campaignElapsed();
+  const phase = campaignPhase(elapsedMs);
+  if (phase === current.phase && elapsedMs - current.checkpoint < 5000) return;
+  current.phase = phase;
+  current.checkpoint = elapsedMs;
+  // Persist each phase before showing it so reloading resumes the light the angler saw.
+  void saveCampaignClock(elapsedMs).then(() => {
+    if (clock === current && current.phase === phase) showPhase(phase);
+  });
+}
+
+function startCampaignClock(elapsedMs) {
+  const phase = campaignPhase(elapsedMs);
+  clock = {
+    origin: performance.now() - elapsedMs, phase, checkpoint: elapsedMs,
+    timer: setInterval(tickCampaignClock, 250),
+  };
+  showPhase(phase);
+}
+
+function stopCampaignClock() {
+  if (!clock) return clockWrite;
+  const elapsedMs = campaignElapsed();
+  clearInterval(clock.timer);
+  clock = undefined;
+  return saveCampaignClock(elapsedMs);
+}
 
 const coins = amount => `${amount} ${amount === 1 ? 'coin' : 'coins'}`;
 const shopLabels = { line: 'Fishing line', hook: 'Hooks', training: 'Training', license: 'Licenses' };
@@ -203,6 +255,7 @@ async function openShop() {
   shop.showModal();
   shop.scrollTop = 0;
   try {
+    await clockWrite;
     const loaded = await loadProfile();
     if (current !== shopGeneration || !shop.open) return;
     profile = loaded;
@@ -539,6 +592,8 @@ function render() {
   }
   if ((state?.stage !== 'seek' || failed) && (!practiceBite || practiceError)) setStatus(cue);
   wallet.hidden = !campaign || !profile;
+  phaseLabel.hidden = !campaign || !state || !profile;
+  if (campaign && state?.stage === 'done') stopCampaignClock();
   if (campaign && profile) wallet.textContent = coins(profile.coins);
   practiceProgress.hidden = !state?.practice || failed;
   if (state?.practice) {
@@ -604,6 +659,7 @@ function render() {
 }
 
 async function begin(selectedMode = mode) {
+  const clockSaved = stopCampaignClock();
   const fromAction = document.activeElement === action;
   dismissCelebration();
   clearBite();
@@ -626,6 +682,7 @@ async function begin(selectedMode = mode) {
   let serverNow;
   if (mode === 'campaign') {
     try {
+      await clockSaved;
       const loaded = await loadProfile();
       if (current !== generation) return;
       profile = loaded;
@@ -650,11 +707,13 @@ async function begin(selectedMode = mode) {
     if (mode === 'ranked') mode = 'practice';
     lure = 'jig';
     const lineStrength = shopItems.find(item => item.id === profile?.equipped.line)?.strength;
+    const elapsedMs = profile?.elapsedMs ?? 0;
     run = start(Date.now(), undefined, undefined, {
       practice: mode === 'practice',
-      campaign: mode === 'campaign' ? { lineStrength } : undefined,
+      campaign: mode === 'campaign' ? { lineStrength, elapsedMs } : undefined,
     });
     state = publicRun(run);
+    if (mode === 'campaign') startCampaignClock(elapsedMs);
   }
   busy = false;
   placeFish();
@@ -680,6 +739,9 @@ function startSelected(selectedMode) {
 }
 
 function leave() {
+  stopCampaignClock();
+  delete lake.dataset.fishingLight;
+  phaseLabel.dataset.phase = '';
   dismissCelebration();
   generation++;
   clearBite();
@@ -701,6 +763,15 @@ picker.addEventListener('click', event => {
   if (choice) startSelected(choice.dataset.mode);
 });
 exit.addEventListener('click', leave);
+window.addEventListener('pagehide', () => {
+  if (!clock) return;
+  suspendedClock = campaignElapsed();
+  stopCampaignClock();
+});
+window.addEventListener('pageshow', event => {
+  if (event.persisted && suspendedClock !== undefined) startCampaignClock(suspendedClock);
+  suspendedClock = undefined;
+});
 document.addEventListener('keydown', event => {
   if (tray.hidden) return;
   if (event.key === 'Escape') return leave();
@@ -760,7 +831,7 @@ async function perform(move, input = {}) {
   try {
     const result = token
       ? await api(move, { ...input, version: state.version })
-      : { state: apply(run, { action: move, ...input }, appliedAt) };
+      : { state: apply(run, { action: move, ...input }, appliedAt, { campaignElapsedMs: campaignElapsed() }) };
     if (current !== generation) return;
     ({ state, serverNow } = result);
     practiceError = undefined;

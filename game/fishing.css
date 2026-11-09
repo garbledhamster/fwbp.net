@@ -388,3 +388,22 @@ body.fishing:has(.fishing-tray[data-mode="campaign"]) .fishing-target:is(.is-bit
   .fishing-tray[data-mode="campaign"] :is([data-lure], .fishing-action, [data-loosen]) { padding-inline: 0; }
   .fishing-tray[data-mode="campaign"] [data-exit] { font-size: .8rem; }
 }
+
+.lake[data-fishing-light="dusk"] {
+  background-image:
+    radial-gradient(ellipse 94% 760px at 62% 0%, #c2a56b66, transparent 83%),
+    radial-gradient(ellipse 76% 980px at 18% 37%, #7b735c42, transparent 81%),
+    linear-gradient(167deg, #4f5943, #324b42 32%, #203c3b 66%, #172d33);
+}
+.lake[data-fishing-light="night"] {
+  background-image:
+    radial-gradient(ellipse 76% 720px at 62% 0%, #80aeb949, transparent 85%),
+    radial-gradient(ellipse 70% 1030px at 15% 40%, #36636b49, transparent 84%),
+    linear-gradient(168deg, #2c4b53, #1b3946 35%, #182e3b 69%, #132530);
+}
+.fishing-encounter [data-phase] {
+  color: #fff1cf;
+  font-size: .8rem;
+  font-weight: 700;
+  text-shadow: 0 1px 5px #0c201b, 0 1px 5px #0c201b;
+}

@@ -15,6 +15,29 @@ export const practiceSkills = {
 };
 const searchDepths = [1, 3, 2, 5, 4, 0];
 const seekWindows = { Common: 30000, Uncommon: 25000, Rare: 20000 };
+const phaseWeights = {
+  dusk: { perch: 2, 'rock-bass': 2, walleye: 8, pike: 2, smallmouth: 2, muskie: 1 },
+  night: { perch: 1, 'rock-bass': 1, walleye: 9, pike: 2, smallmouth: 1, muskie: 2 },
+};
+
+export function campaignPhase(elapsedMs = 0) {
+  const timeOfDay = elapsedMs % 105000;
+  if (timeOfDay < 30000) return 'day';
+  if (timeOfDay < 60000) return 'dusk';
+  return 'night';
+}
+
+function encounterPool(lake, phase) {
+  return lakes[lake].fish.flatMap((fish, index) =>
+    Array(phaseWeights[phase]?.[fish.id] ?? fish.weight).fill(index));
+}
+
+function chooseCampaignSpecies(run, elapsedMs) {
+  if (!run.campaign) return;
+  const encounter = run.encounters[run.index];
+  const pool = encounterPool(run.lake, campaignPhase(elapsedMs));
+  encounter.species = pool[Math.floor(encounter.speciesRoll * pool.length)];
+}
 const practiceLevelCatches = 2;
 const practiceCatchXp = 10;
 export const practiceLevelXp = practiceLevelCatches * practiceCatchXp;
@@ -100,22 +123,26 @@ function seekDeadline(run, now) {
 }
 
 export function start(now, random = Math.random, lake = 'mille-lacs', { practice = false, campaign } = {}) {
-  const pool = lakes[lake].fish.flatMap((entry, index) => Array(entry.weight).fill(index));
+  const pool = encounterPool(lake, 'day');
   const run = {
     lake, skills: { quick: 0, control: 0, lift: 0 }, skillPoints: 0, fight: null,
-    encounters: searchDepths.map(depth => ({
-      depth,
-      species: pool[Math.floor(random() * pool.length)],
-      x: 17 + Math.round(random() * 66),
-      y: 28 + Math.round(random() * 38),
-      sizeRoll: random(), colorRoll: random(),
-    })),
+    encounters: searchDepths.map(depth => {
+      const speciesRoll = random();
+      return {
+        depth,
+        ...(campaign ? { speciesRoll } : { species: pool[Math.floor(speciesRoll * pool.length)] }),
+        x: 17 + Math.round(random() * 66),
+        y: 28 + Math.round(random() * 38),
+        sizeRoll: random(), colorRoll: random(),
+      };
+    }),
     expires: now + runLifetime, last: now - 300, index: 0, score: 0, discoveries: [],
     stage: 'seek', biteAt: 0, catch: null, cue: 'Fish in view. Pick a lure and jig.',
     version: 0, submitted: false,
     ...(practice && { practice: true, landed: 0 }),
     ...(campaign && { campaign: { ...campaign, lineStrength: campaign.lineStrength ?? 8 }, snap: null }),
   };
+  chooseCampaignSpecies(run, campaign?.elapsedMs);
   run.seekUntil = seekDeadline(run, now);
   return run;
 }
@@ -138,7 +165,7 @@ export function publicRun(run) {
   };
 }
 
-export function apply(run, input, now) {
+export function apply(run, input, now, { campaignElapsedMs = run.campaign?.elapsedMs } = {}) {
   if (!input || Object.keys(input).some(key => !['action', 'lure', 'skill'].includes(key))) throw Error('Invalid action.');
   if (now >= run.expires) throw Error('This outing expired.');
   const jig = input.action === 'jig' && run.stage === 'seek' && Object.hasOwn(lures, input.lure);
@@ -227,6 +254,7 @@ export function apply(run, input, now) {
     run.catch = null;
     if (run.campaign) run.snap = null;
     run.stage = run.index === run.encounters.length ? 'done' : 'seek';
+    if (run.stage === 'seek') chooseCampaignSpecies(run, campaignElapsedMs);
     run.seekUntil = run.stage === 'seek' ? seekDeadline(run, now) : null;
     run.cue = run.stage === 'done' ? 'Outing complete.' : 'Fish in view. Pick a lure and jig.';
   } else {
