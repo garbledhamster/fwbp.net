@@ -67,7 +67,7 @@ async function checkTray(browser, mobile) {
   assert.match(await tray.locator('[data-score]').textContent(), /Mille Lacs.*Campaign/);
   assert.equal(await action.isEnabled(), true, 'Campaign can jig without selecting a fish first');
   assert.equal(await tray.getByRole('timer').isVisible(), false, 'looking for fish does not start the attempt');
-  assert.match(await status.textContent(), /scroll.*find the fish|jig near a fish/i);
+  assert.match(await status.textContent(), /click or tap the jig/i);
 
   const initial = await assertAttached(page);
   await scrollStep(page, 1, mobile);
