@@ -1,6 +1,6 @@
 export const shopItems = [
-  { id: 'starter-line', category: 'line', name: 'Starter line', cost: 0, effect: 'Breaks above 8 lb.', strength: 8 },
-  { id: 'stronger-line', category: 'line', name: 'Stronger line', cost: 10, effect: 'Breaks above 12 lb.', strength: 12 },
+  { id: 'starter-line', category: 'line', name: 'Starter line', cost: 0, effect: '8 lb breaking strength.', strength: 8 },
+  { id: 'stronger-line', category: 'line', name: 'Stronger line', cost: 10, effect: '12 lb breaking strength.', strength: 12 },
   { id: 'starter-hook', category: 'hook', name: 'Starter hook', cost: 0, effect: 'Works with Jig, Spoon, and Minnow.' },
   { id: 'starter-license', category: 'license', name: 'Starter license', cost: 0, effect: 'Opens the starter water on Mille Lacs.' },
 ];
