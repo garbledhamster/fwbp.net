@@ -13,7 +13,10 @@ const picker = document.createElement('dialog');
 picker.className = 'fishing-picker';
 picker.setAttribute('aria-labelledby', 'fishing-picker-title');
 picker.innerHTML = `
-  <h2 id="fishing-picker-title">Choose an outing</h2>
+  <div class="fishing-dialog-intro">
+    <h2 id="fishing-picker-title">Choose an outing</h2>
+    <img class="fishing-dialog-art" src="./assets/fishing/mille-lacs-dawn.webp" alt="" width="1104" height="460" loading="lazy">
+  </div>
   <div class="fishing-picker-options">
     <button type="button" data-mode="campaign" data-area="${starterArea}" aria-describedby="campaign-description">Campaign</button>
     <p id="campaign-description">Fish ${campaignAreas[starterArea].name} on Mille Lacs with your own tackle.</p>
@@ -31,9 +34,18 @@ const shop = document.createElement('dialog');
 shop.className = 'fishing-picker fishing-shop';
 shop.setAttribute('aria-labelledby', 'fishing-shop-title');
 shop.innerHTML = `
-  <div class="fishing-shop-heading">
-    <h2 id="fishing-shop-title" tabindex="-1" autofocus>Tackle shop</h2>
-    <strong data-shop-balance></strong>
+  <div class="fishing-dialog-intro">
+    <div class="fishing-shop-heading">
+      <div class="fishing-shopkeeper">
+        <img src="./assets/fishing/marnie.webp" alt="" width="256" height="256" loading="lazy">
+        <div>
+          <h2 id="fishing-shop-title" tabindex="-1" autofocus>Tackle shop</h2>
+          <p><strong>Marnie</strong> · Shopkeeper</p>
+        </div>
+      </div>
+      <strong data-shop-balance></strong>
+    </div>
+    <img class="fishing-dialog-art" src="./assets/fishing/tackle-shop.webp" alt="" width="1104" height="460" loading="lazy">
   </div>
   <p data-shop-message role="status"></p>
   <div data-shop-items></div>
