@@ -29,10 +29,14 @@ The first v16 snapshot, `4342183b0a9bb742ce99cbe8b96f233c91bd0223`, passed all 3
 
 Game Studio playtest: an unseeded 320×568 touch session with the normal clock found a fish in two swipes, followed the bite and fight cues, landed a Walleye, and showed its 25 coins in the shop. A separate 320×720 to 720×320 rotation during a Muskie fight kept the line attached but put the fish behind the tray. Commit `e3a7299` keeps the hooked fish above a shorter landscape tray when the phone turns. The tray starts at 162 px instead of 126 px in the 320 px high viewport, the line stays within one pixel of the hook, and the load does not change on rotation. Fight rules, equipment and saves are unchanged.
 
-The tested release candidate is `e3a7299f78529d021e714997cd0f8e501e0eb787`. The local v16 archive uses the production script’s file list and includes `fishing.css`, `fishing.mjs`, `rules.mjs` and `profile.mjs`. Verified:
+The rotation candidate was `e3a7299f78529d021e714997cd0f8e501e0eb787`. The local v16 archive uses the production script’s file list and includes `fishing.css`, `fishing.mjs`, `rules.mjs` and `profile.mjs`. Verified:
 
 - `node --test game/*.test.mjs`: 31 passed, zero failures.
 - All 14 `game/*.browser.mjs` scripts with `FISHING_QA_URL=http://127.0.0.1:9899/v16/` and installed Chromium passed. This includes the dusk replay, landscape rotation, legacy Practice, mocked Ranked and saves across tabs.
 - JavaScript syntax, publish script syntax, and `git diff --check` passed. The preview ZIP matches the tested archive. All ten images render in the browser proof.
+
+Joe asked for every Campaign fish to come back to the ice hole before landing. Candidate `3d15039341fb2695044091451fda20c477056215` makes spawn depth set the distance to reel and species and individual size set the pull strength. In the matched test, the same perch takes three reels from Starter Shore and five from Deep Reef. The camera follows the ascent and offers Pull up at the hole. Points and coins follow the lift.
+
+This candidate passed 34 rules tests and all 14 browser scripts against the rebuilt local v16 archive. The desktop and 320 px touch checks verified the hook reached the visible ice hole before lifting. The dusk comparison still measured 9.7 lb on both lines. The preview ZIP matches the archive, and all twelve screenshots render in the browser proof.
 
 Production is v15 (`3e6205a`). There has been no campaign deployment, push to main, or Firebase change. The candidate is ready for Joe’s review.
