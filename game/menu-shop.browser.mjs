@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { practicePage, withBrowser } from './browser-qa.mjs';
 
-// Catches accidental purchasing/equipping during carousel browsing, wrong
+// Catches accidental purchasing/equipping during grid browsing, wrong
 // targeted-shop returns, and profile gear changing a fight already in progress.
 await withBrowser(async browser => {
   for (const viewport of [{ width: 1200, height: 720 }, { width: 320, height: 720 }, { width: 720, height: 320 }]) {
@@ -30,55 +30,15 @@ await withBrowser(async browser => {
       await openShop({ itemId: 'finesse-hook', onClose: () => { document.body.dataset.shopReturned = 'yes'; } });
     });
     const shop = page.getByRole('dialog', { name: 'Tackle shop', exact: true });
-    const carousel = shop.getByRole('group', { name: 'Hook carousel' });
-    assert.equal(await shop.locator('[data-item="finesse-hook"]').isVisible(), true, 'target hook is selected');
     const before = await saved();
-    await carousel.focus();
-    await page.keyboard.press('Home');
-    await page.keyboard.press('ArrowRight');
-    await press(carousel.getByRole('button', { name: 'Previous hook', exact: true }));
-    const visible = carousel.locator('[data-item]:visible');
-    await press(visible.getByRole('button', { name: /Details/ }));
-    const details = page.locator('.fishing-item-details');
-    assert.equal(await details.isVisible(), true);
-    await page.keyboard.press('Escape');
-    assert.equal(await shop.isVisible(), true, 'Details returns to shop');
-    if (viewport.width === 320) {
-      const touch = await page.context().newCDPSession(page);
-      const send = (type, x, y) => touch.send('Input.dispatchTouchEvent', {
-        type, touchPoints: type === 'touchEnd' ? [] : [{ x, y }],
-      });
-      try {
-        await carousel.scrollIntoViewIfNeeded();
-        const box = await carousel.boundingBox();
-        const name = await visible.locator('strong').boundingBox();
-        const y = name.y + name.height / 2;
-        const left = Math.round(box.x + 18);
-        const right = Math.round(box.x + box.width - 18);
-        await send('touchStart', right, y);
-        for (let x = right - 25; x > left; x -= 25) await send('touchMove', x, y);
-        await send('touchMove', left, y);
-        await send('touchEnd');
-        assert.match(await carousel.locator('[data-hook-position]').textContent(), /Hook 2 of/);
-        const card = carousel.locator('[data-item]:visible strong');
-        const target = await card.boundingBox();
-        const x = Math.round(target.x + Math.min(25, target.width / 2));
-        const top = Math.round(target.y + target.height / 2);
-        await send('touchStart', x, top);
-        await tick(501);
-        assert.equal(await details.isVisible(), true, 'long press opens Details');
-        await send('touchEnd');
-        await page.keyboard.press('Escape');
-        await card.dispatchEvent('pointerdown', { pointerType: 'touch', clientX: x, clientY: top, bubbles: true });
-        await card.dispatchEvent('pointermove', { pointerType: 'touch', clientX: x, clientY: top + 20, bubbles: true });
-        await tick(501);
-        await card.dispatchEvent('pointerup', { pointerType: 'touch', clientX: x, clientY: top + 20, bubbles: true });
-        assert.equal(await details.isVisible(), false, 'moving a long press preserves scrolling instead of opening Details');
-      } finally {
-        await touch.detach();
-      }
-    }
-    assert.deepEqual(await saved(), before, 'browsing and Details do not alter coins, ownership or equipment');
+    assert.equal(await shop.locator('[data-item="finesse-hook"]').isVisible(), true, 'target hook is selected');
+    if (viewport.width === 320) await press(shop.locator('[data-shop-grid-back]'));
+    await press(shop.locator('[data-shop-select="starter-hook"]'));
+    assert.match(await shop.locator('[data-shop-inspector]').textContent(), /Standard hooks/);
+    if (viewport.width === 320) await press(shop.locator('[data-shop-grid-back]'));
+    await press(shop.locator('[data-shop-select="finesse-hook"]'));
+    assert.match(await shop.locator('[data-shop-inspector]').textContent(), /200 ms/);
+    assert.deepEqual(await saved(), before, 'browsing does not alter coins, ownership or equipment');
     await press(shop.getByRole('button', { name: 'Back', exact: true }));
     await page.waitForFunction(() => document.body.dataset.shopReturned === 'yes');
     assert.equal(await page.locator('body').getAttribute('data-shop-returned'), 'yes');
@@ -93,6 +53,7 @@ await withBrowser(async browser => {
     await press(tray.locator('[data-exit]'));
     const pause = page.getByRole('dialog', { name: 'Paused', exact: true });
     await press(pause.getByRole('button', { name: 'Tackle shop', exact: true }));
+    await press(shop.locator('[data-shop-select="stronger-line"]'));
     await shop.locator('[data-item="stronger-line"]').waitFor();
     const frozenLoad = await tray.locator('meter').evaluate(el => el.value);
     await tick(60000);
@@ -123,7 +84,7 @@ await withBrowser(async browser => {
     await page.keyboard.press('Escape');
     assert.equal(await shop.isVisible(), true, 'Escape also preserves the pending save');
     await page.evaluate(() => window.finishShopSave());
-    await stronger.getByText('Equipped', { exact: true }).waitFor();
+    await stronger.getByText('Equipped for next outing', { exact: true }).waitFor();
     await page.waitForFunction(() => !document.querySelector('[data-shop-back]').disabled);
     assert.equal((await saved()).equipped.line, 'stronger-line');
     assert.equal(await tray.locator('meter').evaluate(el => el.max), max, 'current outing keeps its equipment snapshot');
@@ -140,5 +101,5 @@ await withBrowser(async browser => {
     assert.deepEqual(errors, []);
     await page.close();
   }
-  console.log('PASS: targeted shop, explicit purchases, hook browsing, Details, and next-outing loadout');
+  console.log('PASS: targeted shop, explicit purchases, grid browsing, pending-save hold, and next-outing loadout');
 });
