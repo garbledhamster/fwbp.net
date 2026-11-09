@@ -10,8 +10,10 @@ async function campaign(browser, { mobile = false } = {}) {
   const wait = ms => Promise.all([tick(ms), page.waitForTimeout(ms)]);
   const marker = page.locator('[data-line-gesture-marker]');
   const load = () => tray.locator('meter').evaluate(meter => meter.value);
-  const depth = () => page.locator('.fishing-line-path').evaluate(path =>
-    path.getPointAtLength(path.getTotalLength()).y - path.getPointAtLength(0).y);
+  const depth = () => page.locator('.fishing-line-path').evaluate(path => {
+    const rig = document.querySelector('.fishing-line-rig');
+    return rig.transform.baseVal.getItem(0).matrix.f - path.getPointAtLength(0).y;
+  });
   const waterPoint = async () => ({ x: 30, y: Math.max(75, (await tray.boundingBox()).y * .5) });
   const markerPoint = async () => {
     const { x, y, width, height } = await marker.boundingBox();
@@ -79,6 +81,25 @@ async function controlledReel(browser, input, mobile = false) {
     assert.ok(movement > 0, 'the first reel moves the fish');
     assert.deepEqual(qa.errors, []);
     return movement;
+  } finally {
+    await qa.page.close();
+  }
+}
+
+async function controlledPayout(browser, delta) {
+  const qa = await campaign(browser);
+  try {
+    await qa.page.evaluate(() => { Math.random = () => .98; });
+    await qa.enter('Campaign');
+    await qa.hook('Spoon', 'muskie');
+    await qa.tick(120);
+    const line = qa.page.locator('.fishing-line');
+    assert.equal(await line.getAttribute('data-line-pull'), 'surge', 'the fish tugs without any player input');
+    await qa.tick(680);
+    const before = await qa.load();
+    await qa.gesture(delta);
+    assert.equal(await line.getAttribute('data-line-pull'), 'loosen', 'payout visibly bows the line');
+    return before - await qa.load();
   } finally {
     await qa.page.close();
   }
@@ -169,5 +190,9 @@ await withBrowser(async browser => {
   assert.ok(quick > notch * 1.2, `a faster deliberate reel moves the same fish farther: ${quick} vs ${notch}`);
   assert.ok(Math.abs(extreme - quick) < .001, 'an extreme delta does not add power past the capped gesture');
   console.log(`PASS: normalized gesture distance, quiet wheel tail and effort cap ${JSON.stringify({ notch, lineNotch, oneLineNotch, trackpad, swipe, quick, extreme })}`);
+  const regularPayout = await controlledPayout(browser, 100);
+  const hardPayout = await controlledPayout(browser, 250);
+  assert.ok(hardPayout > regularPayout + 1, 'a stronger downward wheel stroke eases more load');
+  console.log(`PASS: fish surge and effort-based payout ${JSON.stringify({ regularPayout, hardPayout })}`);
   for (const mobile of [false, true]) await compareFights(browser, mobile);
 });

@@ -1,6 +1,6 @@
 import { openCampaignMap, mapCells, firstShoreHole, confirmEndAttempt } from './campaign-map.mjs?v=campaign-smooth-swim';
 import { createSuspensionClock } from './suspension.mjs';
-import { catchQuality, moveToHole, stepCampaignFish, abandonHoleFish, advanceLineFight, apply, campaignAreas, campaignDepthBand, campaignPhase, lakes, lures, practiceLevelXp, practiceSkills, publicRun, skills, start, starterArea } from './rules.mjs?v=campaign-smooth-swim';
+import { catchQuality, moveToHole, stepCampaignFish, abandonHoleFish, advanceLineFight, apply, campaignAreas, campaignDepthBand, campaignPhase, lakes, lineEffort, lures, practiceLevelXp, practiceSkills, publicRun, skills, start, starterArea } from './rules.mjs?v=campaign-line-feedback';
 import { areaPermit, hasAreaAccess, campaignGoal, campaignProgress, campaignTraining, campaignTechniques, techniqueState, shopAvailability, applyProfile, campaignMilestone, loadProfile, shopItems } from './profile.mjs?v=campaign-smooth-swim';
 import { lureTip } from './species-catalog.mjs';
 import { openYourLake } from './collection.mjs?v=campaign-smooth-swim';
@@ -316,7 +316,7 @@ let retractTimer, retractFrame, retractAt;
 let lastTouchY, lineTouch, wheelBurst, lurePress;
 let depthFrame, depthGoal, depthPosition, depthAt;
 let cameraLag = 0, cameraPanAt;
-let reelMotion;
+let reelMotion, lineKick;
 let profile, outingId, catchReward, catchSaveFailed, settledCatch;
 const catchActions = tray.querySelector('.fishing-catch-actions');
 const catchLake = tray.querySelector('[data-catch-lake]');
@@ -1081,11 +1081,48 @@ function paintLineCue({ kind, progress, reduced }) {
   biteFlash.setAttribute('r', kind === 'hook' ? 6 : 4.8);
 }
 
+function kickLine(kind, effort) {
+  if (reducedMotion()) return;
+  const now = outingTime.now();
+  const strength = lineEffort(effort);
+  if (lineKick?.kind === kind && now - lineKick.at < 100) {
+    lineKick.strength = Math.max(lineKick.strength, strength);
+    return;
+  }
+  lineKick = { kind, strength, at: now };
+}
+
+function lineShape(x0, y0, x, y, slack, fight) {
+  const controlX = x0 + slack;
+  const controlY = y0 + (y - y0) * .72;
+  line.toggleAttribute('data-line-tight', mode === 'campaign' && fight?.tight === true);
+  const age = lineKick ? outingTime.now() - lineKick.at : 240;
+  if (age >= 240 || reducedMotion() || !['seek', 'fight'].includes(state.stage)) {
+    lineKick = undefined;
+    delete line.dataset.linePull;
+    return `M${x0} ${y0} Q${controlX} ${controlY} ${x} ${y}`;
+  }
+  const { kind, strength } = lineKick;
+  line.dataset.linePull = kind;
+  const bend = { reel: -32, loosen: 55, surge: -46 }[kind] * strength * (1 - age / 240) ** 2;
+  // Split the line near the hook so the flick stays visible at any depth.
+  const t = Math.max(.5, 1 - 115 / Math.max(115, y - y0));
+  const ax = x0 + (controlX - x0) * t;
+  const ay = y0 + (controlY - y0) * t;
+  const bx = controlX + (x - controlX) * t;
+  const by = controlY + (y - controlY) * t;
+  const joinX = ax + (bx - ax) * t;
+  const joinY = ay + (by - ay) * t;
+  return `M${x0} ${y0} Q${ax} ${ay} ${joinX} ${joinY} Q${bx + bend} ${by} ${x} ${y}`;
+}
+
 function drawFishingLine(eye, slack = 0, fight, search, water = lake.getBoundingClientRect(), cue = {}) {
   const visible = !tray.hidden && usesLinePhysics() && state && !failed && !state.snap
     && !['landed', 'done'].includes(state.stage);
   line.toggleAttribute('hidden', !visible);
   if (!visible) {
+    lineKick = undefined;
+    delete line.dataset.linePull;
     paintLineCue({});
     return clearLineGestureMarker();
   }
@@ -1103,7 +1140,7 @@ function drawFishingLine(eye, slack = 0, fight, search, water = lake.getBounding
     lake.style.setProperty('--camera-y', `${center.y + lead - campaignViewport.offsetTop - y}px`);
     water = lake.getBoundingClientRect();
   }
-  linePath.setAttribute('d', `M${x0} ${y0} Q${x0 + slack} ${y0 + (y - y0) * .72} ${x} ${y}`);
+  linePath.setAttribute('d', lineShape(x0, y0, x, y, slack, fight));
   lineRig.setAttribute('transform', `translate(${x} ${y})`);
   const [lureX, lureY] = lureEyes[lure];
   const carriedBait = mode === 'campaign' && run?.campaign?.baits?.find(item => item.lure === lure);
@@ -1161,7 +1198,8 @@ function positionFishingLine(search, water = lake.getBoundingClientRect()) {
     eye = { x: positioned.left + positioned.width * mouthX, y: positioned.top + positioned.height * mouthY };
     if (fight && !fight.pullUp) {
       const loadRatio = Math.min(1, fight.tension / fight.lineStrength);
-      curve = Math.min(54, fight.slack * 7 + (1 - loadRatio) * 14);
+      const slackScale = mode === 'campaign' ? 16 : 7;
+      curve = Math.min(54, fight.slack * slackScale + (1 - loadRatio) * 14);
     }
   }
   drawFishingLine(eye, curve, fight || undefined, search, water, cue);
@@ -1198,6 +1236,7 @@ function renderLineLoad() {
 
 function animateLineFight() {
   if (tray.hidden || outingTime.suspended || !usesLinePhysics() || state?.stage !== 'fight') return;
+  const previous = state.fight;
   const advanced = advanceLineFight(run, outingTime.dateNow());
   if (advanced) {
     state = publicRun(run);
@@ -1209,13 +1248,17 @@ function animateLineFight() {
       return;
     }
     const { fight } = state;
+    const takingUpSlack = previous.tension < 1.5 && fight.tension >= 1.5;
+    if (mode === 'campaign' && takingUpSlack && fight.y > previous.y && !lineKick) {
+      kickLine('surge', .7 + fight.pull / 4);
+    }
     renderLineLoad();
     setStatus(fightCue(fight));
     setAction(fight.pullUp ? 'lift' : 'reel', fight.pullUp ? 'Pull up' : 'Reel');
     action.classList.toggle('fishing-action-quiet', fight.tight);
     loosen.classList.toggle('fishing-recommended', fight.tight);
   }
-  if (advanced || reelMotion) positionFishingLine();
+  if (advanced || reelMotion || lineKick) positionFishingLine();
   fightFrame = outingTime.frame(animateLineFight);
 }
 
@@ -1303,7 +1346,7 @@ function stopDepthMotion() {
 
 function resetDepth() {
   stopDepthMotion();
-  depthPosition = reelMotion = undefined;
+  depthPosition = reelMotion = lineKick = undefined;
   cameraLag = 0;
   if (mode !== 'campaign') window.scrollTo({ top: 0, behavior: 'instant' });
 }
@@ -1334,8 +1377,10 @@ function nudgeDepth(delta) {
   const water = lake.getBoundingClientRect();
   const iceDepth = iceHole().y - water.top;
   const max = water.height - iceDepth - (campaignViewport.clientHeight - cameraCenter().y);
-  const top = (depthFrame ? depthGoal : depthPosition) + delta;
+  const previous = depthFrame ? depthGoal : depthPosition;
+  const top = previous + delta;
   depthGoal = Math.max(minimumHookDepth, Math.min(max, top));
+  if (Math.abs(depthGoal - previous) >= 1 && delta) kickLine(delta > 0 ? 'loosen' : 'reel', Math.abs(delta) / 65);
   if (depthFrame) return;
   if (Math.abs(depthGoal - depthPosition) < 1 && !cameraLag) return;
   depthAt = outingTime.now();
@@ -1835,7 +1880,7 @@ function leave() {
   lineTouch = wheelBurst = lurePress = undefined;
   stopDepthMotion();
   cameraLag = 0;
-  reelMotion = undefined;
+  reelMotion = lineKick = undefined;
   lake.style.removeProperty('--camera-x');
   lake.style.removeProperty('--camera-y');
   document.body.removeAttribute('data-campaign-camera');
@@ -1922,7 +1967,7 @@ function effortFromSpeed(distance, duration) {
 function workLine(phase, direction, effort) {
   if (phase !== lineGesturePhase()) return;
   if (direction > 0) {
-    if (hookedGesture(phase)) loosenLine();
+    if (hookedGesture(phase)) loosenLine(effort);
   } else {
     activatePrimary(phase === 'reel' ? effort : undefined);
   }
@@ -2125,6 +2170,9 @@ async function perform(move, input = {}, reelEffort) {
     if (current !== generation) return;
     ({ state, serverNow } = result);
     if (mode === 'campaign') {
+      if (prior.stage === 'fight' && state.stage === 'fight' && (move === 'reel' || move === 'loosen')) {
+        kickLine(move, reelEffort);
+      }
       if (move === 'reel' && state.fight && state.fight.remaining < prior.fight?.remaining && !reducedMotion()) {
         reelMotion = { from: prior.fight, at: sentAt };
       } else if (state.stage !== 'fight') reelMotion = undefined;
@@ -2183,10 +2231,10 @@ async function perform(move, input = {}, reelEffort) {
   if (focused === loosen) (loosen.disabled || loosen.hidden ? action : loosen).focus({ preventScroll: true });
 }
 
-function loosenLine() {
-  if (!gameBlocked() && !loosen.disabled && state?.stage === 'fight') void perform('loosen');
+function loosenLine(effort) {
+  if (!gameBlocked() && !loosen.disabled && state?.stage === 'fight') void perform('loosen', {}, effort);
 }
-loosen.addEventListener('click', loosenLine);
+loosen.addEventListener('click', () => loosenLine());
 
 function rememberAction() {
   jigActivation = state?.stage === 'seek';

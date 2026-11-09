@@ -195,7 +195,23 @@ test('Campaign reel effort raises the same fish faster up to a cap without skipp
   assert.equal(rules.apply(run, { action: 'lift' }, 2800).stage, 'landed');
 });
 
-test('Practice line fight ignores Campaign reel effort', () => {
+test('Campaign payout responds to effort while the fish can take up the new slack', () => {
+  const loosen = reelEffort => {
+    const run = hookedFish(.98, .4);
+    const fight = rules.apply(run, { action: 'loosen' }, 2320, { reelEffort }).fight;
+    return { run, fight };
+  };
+  const gentle = loosen(.75).fight;
+  const hard = loosen(1.5);
+  assert.ok(hard.fight.paidOut > gentle.paidOut + 1, 'a harder stroke lets out more line');
+  assert.ok(hard.fight.tension < gentle.tension, 'extra payout relieves more load');
+  assert.deepEqual(loosen(100).fight, hard.fight, 'payout is capped per stroke');
+  assert.deepEqual(loosen(Infinity).fight, loosen(1).fight);
+  rules.advanceLineFight(hard.run, 2800);
+  assert.ok(hard.run.fight.tension > hard.fight.tension, 'the fish pulls back as its surge uses the slack');
+});
+
+test('Practice line fight ignores Campaign stroke effort', () => {
   const reel = reelEffort => {
     const run = rules.start(1000, () => 0, undefined, { practice: true });
     rules.apply(run, { action: 'jig', lure: 'jig' }, 1300);
@@ -203,6 +219,13 @@ test('Practice line fight ignores Campaign reel effort', () => {
     return rules.apply(run, { action: 'reel' }, 2300, { reelEffort }).fight;
   };
   assert.deepEqual(reel(1000), reel(1));
+  const loosen = reelEffort => {
+    const run = rules.start(1000, () => 0, undefined, { practice: true });
+    rules.apply(run, { action: 'jig', lure: 'jig' }, 1300);
+    rules.apply(run, { action: 'reel' }, 2000);
+    return rules.apply(run, { action: 'loosen' }, 2300, { reelEffort }).fight;
+  };
+  assert.deepEqual(loosen(1000), loosen(1));
 });
 
 test('a fresh Campaign encounter accepts Jig after the previous fish was lifted', () => {

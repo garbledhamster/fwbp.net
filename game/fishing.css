@@ -336,6 +336,10 @@ body.fishing .dive-ceiling { transform: none !important; }
   stroke-width: 1.5;
 }
 .fishing-line[data-line-cue="hook"] .fishing-line-path { stroke-width: 2.3; }
+.fishing-line:is([data-line-tight], [data-line-pull="reel"], [data-line-pull="surge"]) .fishing-line-path {
+  stroke: #ffda91;
+  stroke-width: 2.3;
+}
 .fishing-line-rig use { fill: none; stroke: #ffedbd; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .fishing-line-eye { fill: #f2ba58; stroke: #6a552c; stroke-width: .75; }
 .fishing-line-callout path { fill: none; stroke: #ffedbd; stroke-width: 1.4; }

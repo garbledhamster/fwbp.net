@@ -145,25 +145,28 @@ export function advanceLineFight(run, now) {
   return changed;
 }
 
+export function lineEffort(effort) {
+  return Number.isFinite(effort) ? Math.min(1.5, Math.max(.75, effort)) : 1;
+}
+
 function moveLineFight(run, action, target, reelEffort) {
   const fight = run.fight;
+  const stroke = reelLength * (run.campaign ? lineEffort(reelEffort) : 1);
   if (action === 'loosen') {
     const room = Math.max(0, fight.distance + reelLength - fight.paidOut);
-    fight.paidOut += Math.min(room, reelLength);
+    fight.paidOut += Math.min(room, stroke);
   } else if (action === 'lift') {
     if (!fight.pullUp) throw Error('Reel the fish to the ice hole first.');
     if (fight.tight) throw Error('Loosen the line before pulling up.');
     land(run, target);
     return;
   } else if (run.campaign) {
-    const effort = Number.isFinite(reelEffort) ? Math.min(1.5, Math.max(.75, reelEffort)) : 1;
-    const takeUp = reelLength * effort;
-    fight.paidOut = Math.max(0, fight.paidOut - takeUp);
+    fight.paidOut = Math.max(0, fight.paidOut - stroke);
     if (!fight.tight) {
       // Winding line under resistance raises the fish less, leaving more load on the line.
       const fishDrag = Math.max(0, fight.pull - .6) * .12;
       const lineDrag = Math.max(0, (fight.tension - restingLoad) / (tightLoad - restingLoad)) * .34;
-      const travel = takeUp * (1 - fishDrag) * (1 - lineDrag);
+      const travel = stroke * (1 - fishDrag) * (1 - lineDrag);
       fight.remaining = Math.max(0, fight.remaining - travel);
     }
   } else {

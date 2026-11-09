@@ -8,7 +8,8 @@ await withBrowser(async browser => {
     const path = document.querySelector('.fishing-line-path');
     const viewport = document.querySelector('.fishing-route');
     const start = path.getPointAtLength(0);
-    const end = path.getPointAtLength(path.getTotalLength());
+    const length = path.getTotalLength();
+    const end = path.getPointAtLength(length);
     const matrix = path.getScreenCTM();
     const hook = end.matrixTransform(matrix);
     const hole = start.matrixTransform(matrix);
@@ -16,6 +17,7 @@ await withBrowser(async browser => {
       page: scrollY, nativeDepth: viewport.scrollTop,
       width: viewport.clientWidth, tray: document.querySelector('.fishing-tray').getBoundingClientRect().top,
       x: hook.x, y: hook.y, holeY: hole.y, line: end.y - start.y,
+      bend: path.getPointAtLength(Math.max(0, length - 45)).x - end.x,
     };
   });
   const initial = await measure();
@@ -31,6 +33,8 @@ await withBrowser(async browser => {
     'the webpage and the game viewport both stay at zero native scroll');
   assert.ok(frames.every(frame => Math.abs(frame.x - frame.width / 2) < 2),
     'the camera stays centered horizontally');
+  const maxBend = Math.max(...frames.map(frame => frame.bend));
+  assert.ok(maxBend > 8, 'lowering the hook puts a visible flick into the line');
   const lead = frames.map(frame => frame.y - frame.tray / 2);
   const maxLead = Math.max(...lead);
   assert.ok(maxLead > 16 && maxLead < 42, `the hook leads the pan by a little: ${maxLead}px`);
@@ -44,15 +48,21 @@ await withBrowser(async browser => {
   await tick(850);
   const settled = await measure();
   assert.ok(Math.abs(settled.y - settled.tray / 2) < 2, 'the camera settles back on the hook');
+  assert.ok(Math.abs(settled.bend) < 1, 'the loose line settles after the stroke');
 
   await page.evaluate(() => { document.querySelector('.fishing-route').scrollTop = 80; });
   assert.equal((await measure()).nativeDepth, 0, 'the playfield cannot be scrolled programmatically');
+  await page.mouse.wheel(0, -260);
+  await page.waitForTimeout(45);
+  await tick(32);
+  assert.ok((await measure()).bend < -4, 'raising the hook flicks the line the other way');
+  await tick(900);
   await page.keyboard.press('Home');
   await tick(1100);
   const surface = await measure();
   assert.ok(surface.line < 15 && Math.abs(surface.y - surface.tray / 2) < 2,
     'the line draws up into the hole with the hook still centered');
-  console.log(JSON.stringify({ travel, maxLead, maxLineStep: Math.max(...steps.map(Math.abs)), surfaceLine: surface.line }));
+  console.log(JSON.stringify({ travel, maxLead, maxBend, maxLineStep: Math.max(...steps.map(Math.abs)), surfaceLine: surface.line }));
   assert.deepEqual(errors, []);
   await leave();
   assert.equal(await page.locator('body').getAttribute('data-campaign-camera'), null);
