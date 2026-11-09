@@ -32,9 +32,9 @@ await withBrowser(async browser => {
     assert.deepEqual(starter.studiedSpecies, []);
     const buy = revision => ({ type: 'buy', id: lineId, revision });
     const equip = (id, revision) => ({ type: 'equip', id, revision });
-    const unaffordable = await profileCommand(first, buy(starter.revision));
-    assert.equal(unaffordable.status, 'unaffordable');
-    assert.deepEqual(unaffordable.profile, starter);
+    const locked = await profileCommand(first, buy(starter.revision));
+    assert.equal(locked.status, 'locked');
+    assert.deepEqual(locked.profile, starter);
     const unowned = await profileCommand(first, equip(lineId, starter.revision));
     assert.equal(unowned.status, 'not-owned');
     assert.deepEqual(unowned.profile, starter);
@@ -52,6 +52,9 @@ await withBrowser(async browser => {
     assert.equal(simultaneousAwards.find(result => result.status === 'awarded').earned, 10);
     const funded = await profileCommand(second);
     assert.equal(funded.coins, 10);
+    const unaffordable = await profileCommand(first, { type: 'buy', id: 'finesse-hook', revision: funded.revision });
+    assert.equal(unaffordable.status, 'unaffordable');
+    assert.deepEqual(unaffordable.profile, funded);
 
     const simultaneousPurchases = await Promise.all([
       profileCommand(first, buy(funded.revision)), profileCommand(second, buy(funded.revision)),

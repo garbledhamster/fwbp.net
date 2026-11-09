@@ -14,9 +14,11 @@ async function capture(page, name) {
 async function inDialogViewport(dialog, target) {
   const frame = await dialog.boundingBox();
   const bounds = await target.boundingBox();
+  // Chromium rounds a scroll container's maximum scroll offset to whole pixels.
+  const edgeTolerance = .5;
   return Boolean(frame && bounds && bounds.width > 0 && bounds.height > 0 &&
-    bounds.x >= frame.x && bounds.x + bounds.width <= frame.x + frame.width &&
-    bounds.y >= frame.y && bounds.y + bounds.height <= frame.y + frame.height);
+    bounds.x >= frame.x - edgeTolerance && bounds.x + bounds.width <= frame.x + frame.width + edgeTolerance &&
+    bounds.y >= frame.y - edgeTolerance && bounds.y + bounds.height <= frame.y + frame.height + edgeTolerance);
 }
 
 async function checkArt(dialog, file) {
@@ -32,8 +34,10 @@ async function checkArt(dialog, file) {
 
 await withBrowser(async browser => {
   for (const size of ['desktop', 'phone', 'landscape']) {
-    const { page, launch, press, errors } = await practicePage(browser, { mobile: size !== 'desktop' });
-    if (size === 'landscape') await page.setViewportSize({ width: 720, height: 320 });
+    const { page, launch, press, selectTackle, closeDialog, errors } = await practicePage(browser, {
+      mobile: size !== 'desktop',
+      viewport: size === 'landscape' ? { width: 720, height: 320 } : undefined,
+    });
 
     await press(launch, 'Enter');
     const picker = page.getByRole('dialog', { name: 'Choose an outing' });
@@ -47,38 +51,40 @@ await withBrowser(async browser => {
 
     await press(openShop);
     const shop = page.getByRole('dialog', { name: 'Tackle shop' });
-    const buy = shop.getByRole('button', { name: 'Buy Stronger line' });
-    await buy.waitFor();
-    await checkArt(shop, 'tackle-shop.webp');
-    await checkArt(shop, 'marnie.webp');
-    if (size !== 'landscape') {
-      assert.ok(await inDialogViewport(shop, buy), 'the first Buy control stays visible with the shop art');
+    const lineTile = shop.locator('[data-shop-select="stronger-line"]');
+    await lineTile.waitFor();
+    if (size === 'landscape') {
+      assert.ok(await shop.locator('img[src$="/tackle-shop.webp"]').isHidden(), 'short landscape gives the shop controls more room');
+      assert.ok(await shop.locator('img[src$="/marnie.webp"]').isHidden(), 'short landscape uses a compact shop header');
+    } else {
+      await checkArt(shop, 'tackle-shop.webp');
+      await checkArt(shop, 'marnie.webp');
+      assert.ok(await shop.getByText('Marnie', { exact: true }).isVisible(), 'the shop names its keeper');
+      assert.ok(await inDialogViewport(shop, lineTile), 'the first upgrade stays visible when the shop opens');
     }
-    const categories = shop.getByRole('navigation', { name: 'Shop categories' });
-    for (const name of ['Fishing line', 'Hooks', 'Training', 'Licenses']) {
-      const category = categories.getByRole('button', { name, exact: true });
-      assert.ok(await inDialogViewport(shop, category), `${name} category stays visible with the shop art`);
-      const bounds = await category.boundingBox();
-      assert.ok(bounds.width >= 44 && bounds.height >= 44, `${name} has a usable touch target`);
-    }
-    assert.ok(await shop.getByText(/Marnie/).isVisible(), 'the shop names its keeper');
     await capture(page, `${size}-tackle-shop`);
 
-    // The short landscape view prioritizes art and category access. Use each
-    // real category control and verify its destination, rather than requiring
-    // the art, navigation, Details and multiple item rows to fit at once.
-    for (const name of ['Hooks', 'Training', 'Licenses', 'Fishing line']) {
-      await press(categories.getByRole('button', { name, exact: true }));
+    const categories = shop.getByRole('navigation', { name: 'Shop categories' });
+    for (const name of ['Bait', 'Hooks', 'Training', 'Licenses', 'Fishing line']) {
+      const category = categories.getByRole('button', { name, exact: true });
+      await category.scrollIntoViewIfNeeded();
+      assert.ok(await inDialogViewport(categories, category), `${name} category can be brought fully into view`);
+      const bounds = await category.boundingBox();
+      assert.ok(bounds.width >= 44 && bounds.height >= 44, `${name} has a usable touch target`);
+
+      await press(category);
       const heading = shop.getByRole('heading', { name, exact: true });
       assert.ok(await inDialogViewport(shop, heading), `${name} category reaches its heading`);
       assert.equal(await heading.evaluate(el => el === document.activeElement), true, `${name} category receives focus`);
     }
-    await buy.scrollIntoViewIfNeeded();
+    const line = await selectTackle('stronger-line');
+    const buy = line.getByRole('button', { name: 'Buy Stronger line', exact: true });
     assert.ok(await inDialogViewport(shop, buy), 'the first Buy control is reachable inside the shop');
+    assert.equal(await buy.isDisabled(), true, 'Stronger line is visible before Level 2 and cannot be bought yet');
     assert.ok(await shop.evaluate(el => el.scrollWidth <= el.clientWidth), 'shop has no horizontal overflow');
     await capture(page, `${size}-shop-purchase`);
 
-    await press(shop.getByRole('button', { name: 'Back to outings' }));
+    await closeDialog(shop, shop.getByRole('button', { name: 'Back to outings' }));
     await picker.waitFor();
     assert.ok(await openShop.evaluate(el => document.activeElement === el), 'return focus to the shop entry');
     assert.deepEqual(errors, []);

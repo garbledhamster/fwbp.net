@@ -18,9 +18,10 @@ const snapshot = (page) =>
     );
 async function seedWallet(page) {
   await page.evaluate(async () => {
-    const { loadProfile } = await import('./game/profile.mjs?v=connected-rpg');
+    const { loadProfile } = await import('./game/profile.mjs');
     const saved = await loadProfile();
     saved.coins = 100;
+    saved.awards['earlier-outing:0'] = 10;
     saved.owned.push('starter-license');
     await new Promise((resolve, reject) => {
       const request = indexedDB.open('fwbp-campaign', 1);
@@ -67,10 +68,13 @@ await withBrowser(async (browser) => {
     await press(page.locator(`[data-map-cell="${reef.id}"]`), 'Enter');
     await press(page.locator('[data-permit-shop]'), 'Enter');
     const shop = page.locator('.fishing-shop');
-    await press(shop.getByRole('button', { name: 'Buy Deep Reef permit', exact: true }), 'Enter');
-    await shop.locator('[data-item="deep-reef-license"]').getByText('Owned', { exact: true }).waitFor();
-    await press(shop.getByRole('button', { name: 'Buy Stronger line', exact: true }), 'Enter');
-    await press(shop.getByRole('button', { name: 'Equip Stronger line', exact: true }), 'Enter');
+    const permit = await qa.selectTackle('deep-reef-license');
+    await press(permit.getByRole('button', { name: 'Buy Deep Reef permit', exact: true }), 'Enter');
+    await permit.getByText('Owned', { exact: true }).waitFor();
+    const line = await qa.selectTackle('stronger-line');
+    await press(line.getByRole('button', { name: 'Buy Stronger line', exact: true }), 'Enter');
+    await press(line.getByRole('button', { name: 'Equip Stronger line', exact: true }), 'Enter');
+    await line.getByText('Equipped for next outing', { exact: true }).waitFor();
     await qa.closeDialog(shop, shop.locator('[data-shop-back]'));
     assert.equal(await page.locator(`[data-map-cell="${reef.id}"]`).getAttribute('aria-pressed'), 'true');
     await press(page.locator('[data-map-drill]'), 'Enter');

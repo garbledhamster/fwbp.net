@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import { practicePage, withBrowser } from './browser-qa.mjs';
+import lakeMap from './lake-map-data.mjs';
+
+const reefId = lakeMap.cells.find(cell => cell.area === 'deep-reef').id;
 
 // Real IndexedDB writes establish old/current persisted records at the public save boundary.
 async function storeProfile(page, saved) {
@@ -19,7 +22,7 @@ async function storeProfile(page, saved) {
 
 function command(page, input) {
   return page.evaluate(async input => {
-    const module = await import('./game/profile.mjs?v=16');
+    const module = await import('./game/profile.mjs');
     return input ? module.applyProfile(input) : module.loadProfile();
   }, input);
 }
@@ -32,7 +35,7 @@ const legacy = {
 };
 
 await withBrowser(async browser => {
-  const { leave, page, launch, tray, press, button, errors } = await practicePage(browser);
+  const { leave, page, launch, tray, press, enter, errors } = await practicePage(browser);
   const fresh = await command(page);
   assert.equal(fresh.coins, 0);
   assert.deepEqual(fresh.equipped, { line: 'starter-line', hook: 'starter-hook' });
@@ -65,20 +68,24 @@ await withBrowser(async browser => {
   }
   const again = await command(page);
   assert.deepEqual(again, migrated, 'repeated reads do not change the migrated record');
+  await enter('Deep Reef');
+  assert.match(await tray.locator('[data-water]').textContent(), new RegExp(reefId));
+  await leave();
+
+  // An area can become unavailable between rendering the picker and opening its map.
   await press(launch, 'Enter');
   const picker = page.getByRole('dialog', { name: 'Choose an outing' });
   const reef = picker.getByRole('button', { name: 'Deep Reef', exact: true });
-  await press(reef);
-  await tray.locator('[data-wallet]').waitFor();
-  assert.match(await tray.locator('[data-score]').textContent(), /Deep Reef/);
-  await leave();
-
-  // An area can become unavailable between rendering the picker and activation.
-  await press(launch, 'Enter');
   await picker.waitFor();
+  await picker.locator('#reef-description').filter({ hasText: 'Look for fish around a deeper reef' }).waitFor();
   const saved = await command(page);
   await storeProfile(page, { ...saved, revision: saved.revision + 1, owned: saved.owned.filter(id => id !== 'deep-reef-license') });
   await press(reef);
+  const map = page.getByRole('dialog', { name: 'Campaign · Mille Lacs' });
+  const cell = map.locator(`[data-map-cell="${reefId}"]`);
+  await map.waitFor();
+  assert.equal(await cell.getAttribute('aria-pressed'), 'true');
+  await press(map.getByRole('button', { name: 'Check permit', exact: true }));
   const guide = page.getByRole('dialog', { name: 'Deep Reef permit', exact: true });
   await guide.waitFor();
   await guide.locator('[data-permit-message]').filter({ hasText: /^Deep Reef needs the Deep Reef permit.*25 coins.*40 coins/ }).waitFor();
@@ -86,7 +93,8 @@ await withBrowser(async browser => {
   assert.match(await guide.textContent(), /Deep Reef needs the Deep Reef permit/);
   assert.equal(await tray.isHidden(), true, 'fresh ownership controls access even when the picker showed prior eligibility');
   await press(guide.getByRole('button', { name: 'Back to areas' }));
-  assert.equal(await reef.evaluate(el => el === document.activeElement), true);
+  await map.waitFor();
+  assert.equal(await cell.evaluate(el => el === document.activeElement), true);
   assert.deepEqual(errors, []);
   await page.close();
   console.log('PASS: new/legacy permits, atomic once-only milestone and stale area access');
