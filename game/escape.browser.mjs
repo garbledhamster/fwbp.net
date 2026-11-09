@@ -40,7 +40,8 @@ async function checkOuting(browser, mobile) {
   assert.equal(await target.count(), 0, 'resizing must not restore an expired fish');
   assert.match(await status.textContent(), /fish swam away/i);
 
-  for (const seconds of [30, 25, 20, 30, 30]) {
+  // The seeded second encounter draws a walleye at dusk.
+  for (const seconds of [25, 25, 20, 30, 30]) {
     await press(action); // Next fish after each miss.
     await expectSeconds(seconds);
     await advance(seconds * 1000);

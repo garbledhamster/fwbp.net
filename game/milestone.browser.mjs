@@ -3,7 +3,7 @@ import { practicePage, withBrowser } from './browser-qa.mjs';
 
 async function checkMilestone(browser, choice) {
   const mobile = choice === 'Lift';
-  const { enter, page, tray, action, button, status, errors, press, tick, findFish } =
+  const { enter, page, tray, action, button, status, errors, press, tick, findFish, reelToHole } =
     await practicePage(browser, { mobile });
   const celebration = page.locator('.fishing-celebration');
   const levelOne = tray.getByText(/0\s*\/\s*20 XP to Level 2/);
@@ -13,6 +13,8 @@ async function checkMilestone(browser, choice) {
   const landCommon = async () => {
     await press(action);
     await tick(600);
+    await press(action);
+    await reelToHole();
     await press(action);
   };
 
@@ -37,7 +39,7 @@ async function checkMilestone(browser, choice) {
   assert.equal(await levelTwo.isVisible(), true);
   assert.equal(await celebration.getByText('Level 2', { exact: true }).isVisible(), true);
   assert.equal(await control.getByText(/350 ms/).isVisible(), true);
-  assert.equal(await lift.getByText(/one fewer pull/i).isVisible(), true);
+  assert.equal(await lift.getByText(/extra line.*first clear pull/i).isVisible(), true);
   if (mobile) {
     assert.equal(await celebration.evaluate(el => getComputedStyle(el).animationName), 'none');
     assert.equal(await celebration.locator('img').isVisible(), true);
@@ -79,16 +81,10 @@ async function checkMilestone(browser, choice) {
   }
   assert.match(await status.textContent(), /yeah, reel it!/i);
   await press(action);
-  assert.match(await status.textContent(), /tight line.*loosen/i);
+  assert.match(await status.textContent(), /line clear.*reel/i);
   assert.equal(await levelTwo.isVisible(), true, 'hooking a fighter earns no XP yet');
-  const pullCount = choice === 'Lift' ? 1 : 2;
-  for (let i = 0; i < pullCount; i++) {
-    await tick(260);
-    await press(button('Loosen'));
-    assert.match(await action.textContent(), i === pullCount - 1 ? /Pull up/ : /Reel/);
-    await tick(260);
-    await press(action);
-  }
+  assert.equal(await reelToHole(), choice === 'Lift' ? 3 : 4, 'Lift saves a clear reel on this walleye');
+  await press(action);
   assert.match(await status.textContent(), /Walleye.*\+25 points/);
   assert.equal(await tray.getByText(/Level 2 · 30 XP/).isVisible(), true);
   assert.match(await tray.locator('[data-score]').textContent(), /50 pts/);

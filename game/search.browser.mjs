@@ -12,9 +12,9 @@ async function search(action, step) {
 }
 
 async function checkDesktop(browser) {
-  const { chooseMode, page, tray, action, launch, status, press, tick, errors } = await practicePage(browser);
+  const { chooseMode, page, tray, action, launch, status, press, tick, errors, reelToHole } = await practicePage(browser);
   const fish = page.locator('.fishing-target');
-  const bobber = page.locator('.fishing-bobber');
+  const line = page.locator('.fishing-line');
   await launch.focus();
   await page.evaluate(() => window.scrollTo({ top: 120, behavior: 'instant' }));
   const saved = await scrollY(page);
@@ -24,7 +24,7 @@ async function checkDesktop(browser) {
   assert.equal(await scrollY(page), 0, 'start at the ice hole');
   assert.equal(await action.isDisabled(), true, 'the first fish requires a search');
   assert.match(await status.textContent(), /scroll.*find the fish/i);
-  assert.equal(await bobber.isHidden(), true, 'the line must not lead to a hidden fish');
+  assert.equal(await line.isVisible(), true, 'the lure follows the view while the fish is out of sight');
 
   await fish.evaluate((el, trayTop) => {
     const box = el.getBoundingClientRect();
@@ -47,7 +47,10 @@ async function checkDesktop(browser) {
     await press(action, 'Enter');
     await tick(600);
     await press(action, 'Enter');
+    await reelToHole();
+    await press(action, 'Enter');
     assert.match(await status.textContent(), /\+\d+ points/);
+    assert.equal(await scrollY(page), 0, 'reeling and landing return the view to the ice hole');
   };
   const next = async () => {
     const start = await scrollY(page);
@@ -55,24 +58,28 @@ async function checkDesktop(browser) {
     await tick(300);
     assert.equal(await scrollY(page), start, 'Next fish preserves the scroll position');
     assert.equal(await action.isDisabled(), true);
-    assert.equal(await bobber.isHidden(), true);
+    assert.equal(await line.isVisible(), true);
     assert.match(await status.textContent(), /scroll.*find the fish/i);
     return start;
   };
   await search(action, wheel);
-  assert.equal(await bobber.isVisible(), true);
+  assert.equal(await line.isVisible(), true);
   await land();
   const first = await next();
   await search(action, wheel);
   assert.ok(await scrollY(page) > first, 'find the second fish deeper in the lake');
   await land();
-  const second = await next();
+  await next();
+  for (let step = 0; step < 12 && (await fish.boundingBox()).y >= 0; step++) await wheel();
+  const below = await scrollY(page);
+  assert.ok((await fish.boundingBox()).y < 0, 'scroll past the third fish before searching upward');
+  assert.equal(await action.isDisabled(), true);
   await search(action, async () => {
     const start = await scrollY(page);
     await page.keyboard.press('PageUp');
     await page.waitForFunction(y => window.scrollY < y, start, { polling: 25 });
   });
-  assert.ok(await scrollY(page) < second, 'find the third fish by scrolling back up');
+  assert.ok(await scrollY(page) < below, 'find the third fish by scrolling back up');
   await page.keyboard.press('Escape');
   await page.waitForTimeout(400); // Let any native PageUp animation finish.
   assert.equal(await scrollY(page), saved, 'exit restores the site scroll position');
@@ -82,7 +89,7 @@ async function checkDesktop(browser) {
   const guide = page.getByRole('button', { name: 'Fishing with Bryan, fish guide' });
   await guide.click();
   const perch = page.getByRole('button', { name: 'Yellow perch' }).first();
-  await perch.click();
+  await press(perch, 'Enter');
   const card = page.getByRole('dialog');
   assert.equal(await card.getByRole('heading', { name: 'Yellow perch' }).isVisible(), true);
   assert.match(await card.textContent(), /\/ 23/);

@@ -60,10 +60,14 @@ await withBrowser(async browser => {
   await press(button('Exit fishing'));
   const beforePractice = await savedProfile();
   await enter('Practice');
-  assert.equal(await label.isHidden(), true);
-  await tick(120000);
+  await expectPhase('Day');
+  await tick(31000);
+  await expectPhase('Dusk');
+  assert.equal(await color(), dusk);
+  await tick(30000);
+  await expectPhase('Night');
   await press(button('Exit fishing'));
-  assert.equal((await savedProfile()).elapsedMs, beforePractice.elapsedMs);
+  assert.deepEqual(await savedProfile(), beforePractice, 'Practice does not write to the Campaign profile');
   assert.equal((await savedProfile()).revision, beforePractice.revision, 'clock saves do not change shop revisions');
   const afterStaleWrite = await page.evaluate(async elapsedMs => {
     const { applyProfile } = await import('./game/profile.mjs?v=16');
@@ -81,5 +85,5 @@ await withBrowser(async browser => {
   assert.equal((await savedProfile()).elapsedMs, atExpiry, 'an expired outing no longer advances the clock');
   assert.deepEqual(errors, []);
   await page.close();
-  console.log('PASS: Campaign lighting, active bite at dusk, and clock persistence');
+  console.log('PASS: Campaign and Practice lighting, active bite at dusk, and Campaign clock persistence');
 });

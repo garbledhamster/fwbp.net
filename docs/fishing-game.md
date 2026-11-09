@@ -14,7 +14,7 @@ Each outing has six encounters. Common fish give you 30 seconds, Uncommon fish 2
 
 GitHub Pages continues to serve the site. A dedicated Firebase project, `fwbp-fishing-game`, hosts the optional ranked API. The browser owns animation and input. A single HTTPS function owns ranked encounters, action order, server timing, catch values and submission. Firestore transactions serialize updates to a run and accept one public score per run. Direct database access is denied. The server accepts action and nickname fields and derives the points itself. Use random bearer tokens, fixed run limits, constrained names, start quotas, expiring records and bounded function instances. A script can still imitate valid play.
 
-Practice uses the same rules in memory. It is labeled before play and its scores stay out of the public board. A ranked connection failure offers a fresh practice outing. It never converts a practice result into a ranked entry.
+Practice uses the Campaign fishing rules in memory with Starter Shore tackle and a fresh clock. It is labeled before play and its scores stay out of the public board. A ranked connection failure offers a fresh practice outing. It never converts a practice result into a ranked entry.
 
 ## Engineering
 
@@ -47,13 +47,13 @@ The dedicated [Firebase project](https://console.firebase.google.com/project/fwb
 
 ### Level-up celebration
 
-In Practice, each landed fish earns 10 XP toward Level 2, separate from its score. The second catch reaches Level 2 and brings up Bryan’s portrait, ribbon, and fish silhouettes. With reduced motion, the portrait and ribbon stay still. The tray announces the milestone and keeps the choice visible after the celebration fades. Choose one rank of **Line Control** for 350 ms more to set the hook, or **Lift** for one fewer pull on a fish that fights, down to one. **Next fish** skips the choice for this outing. A new Practice outing starts at Level 1 with fresh XP and ranks. In Ranked, the celebration still appears on each catch.
+In Practice, each landed fish earns 10 XP toward Level 2, separate from its score. The second catch reaches Level 2 and brings up Bryan’s portrait, ribbon, and fish silhouettes. With reduced motion, the portrait and ribbon stay still. The tray announces the milestone and keeps the choice visible after the celebration fades. Choose one rank of **Line Control** for 350 ms more to set the hook, or **Lift** to reel in extra line on the first clear pull of each fight. **Next fish** skips the choice for this outing. A new Practice outing starts at Level 1 with fresh XP and ranks. In Ranked, the celebration still appears on each catch.
 
 ### Working the line
 
 The lure hangs from the ice hole on one continuous line. Jig bounces it vertically, and the fish comes to inspect it. The tackle tray and lure share one SVG icon sheet, with labels on the controls.
 
-The first reel uses the gold timing band. In Practice, Bryan tells you to wait at the bite and calls “Yeah, reel it!” when the window opens. A bite before the fish’s deadline gives you the full reel window. If the window closes, press **Reel** to resolve the attempt. You can jig again if the fish still has time left. Common fish usually land on the first reel. Stronger or trophy fish pull the line tight. **Loosen** to drop the tension, then **Reel** when the line clears. Use **Pull up** on the last turn. Reeling against a tight line raises tension and can break it. Tougher fish surge more often. The ranked server still decides accepted timing and points.
+The first reel uses the gold timing band. In Practice, Bryan tells you to wait at the bite and calls “Yeah, reel it!” when the window opens. A bite before the fish’s deadline gives you the full reel window. If the window closes, press **Reel** to resolve the attempt. You can jig again if the fish still has time left. In Campaign and Practice, **Loosen** when the line tightens, **Reel** when it clears, and **Pull up** when the fish reaches the ice hole. Reeling against a tight line raises tension and can break it. In Ranked, the server decides timing and points, and a standard common fish can land on the first reel.
 
 
 ### Campaign
@@ -64,7 +64,7 @@ Land fish to earn coins. To spend them, exit the outing and choose **Tackle shop
 
 Campaign cycles through 30 seconds of day, 30 seconds of dusk and 45 seconds of night during an outing. The light and phase label change together. The new odds apply when you move to the next fish; the current fish keeps its countdown. The clock pauses between outings.
 
-The browser saves the wallet, tackle, training, licenses, clock and credited catches together. An outing uses the equipment you chose when you started it. Practice keeps its own XP and skill choice for that outing. Ranked uses server timing, points and gear rules; campaign purchases never enter its requests.
+The browser saves the wallet, tackle, training, licenses, clock and credited catches together. An outing uses the equipment you chose when you started it. Practice uses the same tackle tray, fight and lighting cycle with the starter hook and 8 lb line. It starts in daylight and keeps its XP and skill choice for that outing. Ranked uses server timing, points and gear rules; campaign purchases never enter its requests.
 
 ### Run the game checks
 

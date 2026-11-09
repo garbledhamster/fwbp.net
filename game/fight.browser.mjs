@@ -18,7 +18,7 @@ async function fightGeometry(page) {
   });
 }
 
-async function checkFight(browser, mobile) {
+async function checkFight(browser, mobile, mode) {
   const { page, tray, action, button, status, press, enter, tick, findFish, errors } =
     await practicePage(browser, { mobile });
   // Seed the first encounter with a standard muskie.
@@ -31,13 +31,13 @@ async function checkFight(browser, mobile) {
   const loosen = button('Loosen');
   const evidence = process.env.FISHING_EVIDENCE_DIR;
   const capture = async name => {
-    if (!evidence || mobile) return;
+    if (!evidence || mobile || mode !== 'Campaign') return;
     await mkdir(evidence, { recursive: true });
     await page.screenshot({ path: join(evidence, `${name}.png`), animations: 'disabled' });
   };
 
   async function hook() {
-    await enter('Campaign');
+    await enter(mode);
     await findFish();
     await press(button('Spoon'));
     await press(action);
@@ -46,9 +46,11 @@ async function checkFight(browser, mobile) {
   }
 
   await hook();
+  const color = control => control.evaluate(el => getComputedStyle(el).backgroundColor);
+  const gold = await color(action);
+  assert.equal(await load.evaluate(meter => meter.max), 8);
   const initial = await fightGeometry(page);
   const initialLoad = await load.evaluate(meter => meter.value);
-  assert.equal(await load.evaluate(meter => meter.max), 8);
   assert.match(await status.textContent(), /line clear.*reel/i);
 
   await tick(800);
@@ -60,6 +62,8 @@ async function checkFight(browser, mobile) {
   assert.ok(surgeLoad > initialLoad);
   assert.match(await status.textContent(), /line tight.*loosen/i);
   assert.equal(await loosen.evaluate(el => el.classList.contains('fishing-recommended')), true);
+  assert.equal(await color(loosen), gold);
+  assert.notEqual(await color(action), gold);
   const reelSlot = await action.boundingBox();
   await capture('haul-start');
 
@@ -101,8 +105,10 @@ async function checkFight(browser, mobile) {
 }
 
 await withBrowser(async browser => {
-  for (const mobile of [false, true]) {
-    await checkFight(browser, mobile);
-    console.log(`PASS: Campaign surge, attached hook, landing and snap (${mobile ? '320 px reduced-motion touch' : 'desktop keyboard'})`);
+  for (const mode of ['Practice', 'Campaign']) {
+    for (const mobile of [false, true]) {
+      await checkFight(browser, mobile, mode);
+      console.log(`PASS: ${mode} surge, attached hook, landing and snap (${mobile ? '320 px reduced-motion touch' : 'desktop keyboard'})`);
+    }
   }
 });

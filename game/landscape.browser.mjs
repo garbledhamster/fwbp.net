@@ -19,7 +19,7 @@ async function fightView(page) {
   });
 }
 
-await withBrowser(async browser => {
+async function checkLandscape(browser, mode) {
   const { page, tray, action, button, status, launch, press, enter, tick, findFish, errors } =
     await practicePage(browser, { mobile: true });
   await page.evaluate(() => {
@@ -28,7 +28,7 @@ await withBrowser(async browser => {
     Math.random = () => rolls[draw++ % rolls.length];
   });
 
-  await enter('Campaign');
+  await enter(mode);
   await findFish();
   await press(button('Spoon'));
   await press(action);
@@ -59,7 +59,7 @@ await withBrowser(async browser => {
       'Reel and Loosen remain on-screen touch targets');
   }
 
-  if (process.env.FISHING_EVIDENCE_DIR) {
+  if (process.env.FISHING_EVIDENCE_DIR && mode === 'Campaign') {
     await mkdir(process.env.FISHING_EVIDENCE_DIR, { recursive: true });
     await page.screenshot({
       path: join(process.env.FISHING_EVIDENCE_DIR, 'landscape-after.png'),
@@ -87,5 +87,10 @@ await withBrowser(async browser => {
   assert.equal(await shop.isHidden(), true);
   assert.deepEqual(errors, []);
 
-  console.log(`PASS: Campaign fish, hook, controls, scroll, and shop at 720×320 ${JSON.stringify(landscape)}`);
+  await page.close();
+  console.log(`PASS: ${mode} fish, hook, controls, scroll, and shop at 720×320 ${JSON.stringify(landscape)}`);
+}
+
+await withBrowser(async browser => {
+  for (const mode of ['Campaign', 'Practice']) await checkLandscape(browser, mode);
 });

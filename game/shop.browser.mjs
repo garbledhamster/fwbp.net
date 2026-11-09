@@ -68,13 +68,13 @@ async function checkShop(browser, mobile) {
     assert.equal(await shop.evaluate(el => el.scrollTop), 0, 'the shop opens at the title and balance');
   }
 
-  async function startWith(species, lure) {
+  async function startWith(species, lure, mode = 'Campaign') {
     await page.evaluate(species => {
       const rolls = [species, .2, .5, .4, .1];
       let draw = 0;
       Math.random = () => rolls[draw++ % rolls.length];
     }, species);
-    await enter('Campaign');
+    await enter(mode);
     await search(page, tray, action, mobile);
     await press(tray.getByRole('group', { name: 'Lures' }).getByRole('button', { name: lure, exact: true }));
     await press(action);
@@ -151,8 +151,20 @@ async function checkShop(browser, mobile) {
   assert.match(await wallet.textContent(), /0 coins/);
   await capture('held');
   await press(button('Exit fishing'));
-  await enter('Practice');
+  const savedProfile = () => page.evaluate(async () => {
+    const { loadProfile } = await import('./game/profile.mjs?v=16');
+    return loadProfile();
+  });
+  const beforePractice = await savedProfile();
+  await startWith(.05, 'Jig', 'Practice');
+  assert.equal(await meter.evaluate(el => el.max), 8, 'Practice uses starter line even with 12 lb line equipped');
   assert.equal(await wallet.isHidden(), true, 'the campaign wallet stays outside Practice');
+  await reelToHole();
+  await press(action);
+  await textVisible(tray, /Yellow perch.*\+10 points/i);
+  await textVisible(tray, /10 \/ 20 XP/);
+  await press(button('Exit fishing'));
+  assert.deepEqual(await savedProfile(), beforePractice, 'a Practice catch does not change the Campaign profile');
   assert.deepEqual(errors, []);
   await page.close();
 }

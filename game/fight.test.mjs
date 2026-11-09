@@ -17,7 +17,7 @@ test('a hooked fish moves and loads the line before any further input', () => {
   const initial = rules.publicRun(run).fight;
   assert.equal(initial.lineStrength, 8);
   assert.equal(initial.tight, false);
-  rules.advanceCampaignFight(run, 2800);
+  rules.advanceLineFight(run, 2800);
   const surge = rules.publicRun(run).fight;
   assert.ok(surge.x > initial.x);
   assert.ok(surge.y > initial.y);
@@ -27,13 +27,13 @@ test('a hooked fish moves and loads the line before any further input', () => {
   assert.equal(run.score, 0);
 
   const frameByFrame = hookedMuskie();
-  for (let now = 2016; now <= 2800; now += 16) rules.advanceCampaignFight(frameByFrame, now);
+  for (let now = 2016; now <= 2800; now += 16) rules.advanceLineFight(frameByFrame, now);
   assert.deepEqual(rules.publicRun(frameByFrame).fight, surge);
 });
 
 test('loosening during a surge pays out line so the fish can be reeled and lifted', () => {
   const run = hookedMuskie();
-  rules.advanceCampaignFight(run, 2800);
+  rules.advanceLineFight(run, 2800);
   const surge = rules.publicRun(run).fight;
   const loose = rules.apply(run, { action: 'loosen' }, 2800).fight;
   assert.ok(loose.paidOut > surge.paidOut);
@@ -56,7 +56,7 @@ test('loosening during a surge pays out line so the fish can be reeled and lifte
 test('the same reel at peak surge breaks 8 lb line and holds on 12 lb line', () => {
   const starter = hookedMuskie(8);
   const stronger = hookedMuskie(12);
-  rules.advanceCampaignFight(stronger, 2800);
+  rules.advanceLineFight(stronger, 2800);
   const beforeReel = rules.publicRun(stronger).fight.tension;
   const snapped = rules.apply(starter, { action: 'reel' }, 2800);
   const held = rules.apply(stronger, { action: 'reel' }, 2800);
@@ -75,7 +75,7 @@ test('the same reel at peak surge breaks 8 lb line and holds on 12 lb line', () 
 test('a line left shortened can snap when a fish surges again without input', () => {
   const run = hookedMuskie();
   rules.apply(run, { action: 'reel' }, 2400);
-  rules.advanceCampaignFight(run, 2800);
+  rules.advanceLineFight(run, 2800);
   const state = rules.publicRun(run);
   assert.equal(state.stage, 'missed');
   assert.ok(state.snap.tension >= 8);
@@ -134,7 +134,7 @@ test('fish species and individual size change the load at the same depth', () =>
   const perch = hookedFish(.05, .4);
   const small = hookedFish(.98, .1);
   const large = hookedFish(.98, .9);
-  for (const run of [perch, small, large]) rules.advanceCampaignFight(run, 2800);
+  for (const run of [perch, small, large]) rules.advanceLineFight(run, 2800);
   assert.ok(perch.fight.tension < small.fight.tension);
   assert.ok(small.fight.tension < large.fight.tension);
 });
@@ -145,4 +145,22 @@ test('a fresh Campaign encounter accepts Jig after the previous fish was lifted'
   rules.apply(run, { action: 'lift' }, 3200);
   rules.apply(run, { action: 'next' }, 3201);
   assert.equal(rules.apply(run, { action: 'jig', lure: 'jig' }, 3202).stage, 'bite');
+});
+
+test('Practice hooks a perch with starter gear and awards XP only after it reaches the hole', () => {
+  const run = rules.start(1000, () => 0, 'mille-lacs', { practice: true });
+  rules.apply(run, { action: 'jig', lure: 'jig' }, 1300);
+  const hooked = rules.apply(run, { action: 'reel' }, 2000);
+  assert.equal(hooked.stage, 'fight');
+  assert.equal(hooked.fight.lineStrength, 8);
+  assert.equal(hooked.score, 0);
+  assert.equal(hooked.practice.xp, 0);
+  assert.throws(() => rules.apply(run, { action: 'lift' }, 2300), /ice hole/i);
+  for (const time of [2300, 2600, 2900]) rules.apply(run, { action: 'reel' }, time);
+  assert.equal(rules.publicRun(run).fight.pullUp, true);
+  assert.equal(rules.publicRun(run).practice.xp, 0);
+  const landed = rules.apply(run, { action: 'lift' }, 3200);
+  assert.equal(landed.stage, 'landed');
+  assert.equal(landed.score, 10);
+  assert.equal(landed.practice.xp, 10);
 });

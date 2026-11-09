@@ -89,6 +89,16 @@ test('pulling against a surge breaks the line without awarding a catch', () => {
   assert.equal(run.score, 0);
 });
 
+function landPracticePerch(run, hookAt) {
+  let state = apply(run, { action: 'reel' }, hookAt);
+  let now = hookAt;
+  for (let pull = 0; pull < 6 && state.stage === 'fight' && !state.fight.pullUp; pull++) {
+    state = apply(run, { action: 'reel' }, now += 300);
+  }
+  assert.equal(state.fight?.pullUp, true, 'the perch reached the ice hole');
+  return { state: apply(run, { action: 'lift' }, now + 300), at: now + 300 };
+}
+
 test('Practice earns one Level 2 choice from landed catches', () => {
   const run = start(1000, () => 0, 'mille-lacs', { practice: true });
   const move = (action, now, details = {}) => apply(run, { action, ...details }, now);
@@ -98,36 +108,36 @@ test('Practice earns one Level 2 choice from landed catches', () => {
   move('reel', 1500);
   assert.equal(publicRun(run).practice.xp, 0);
   move('jig', 1700, { lure: 'jig' });
-  const first = move('reel', 2300);
+  const { state: first, at: firstAt } = landPracticePerch(run, 2300);
   assert.deepEqual(first.practice, { xp: 10, level: 1 });
   assert.equal(first.skillPoints, 0);
-  assert.throws(() => move('reel', 2400), /unavailable/);
+  assert.throws(() => move('reel', firstAt + 1), /unavailable/);
   assert.equal(publicRun(run).practice.xp, 10);
-  move('next', 2500);
-  move('jig', 2600, { lure: 'jig' });
-  const second = move('reel', 3200);
+  move('next', firstAt + 100);
+  move('jig', firstAt + 200, { lure: 'jig' });
+  const { state: second, at: secondAt } = landPracticePerch(run, firstAt + 800);
   assert.deepEqual(second.practice, { xp: 20, level: 2 });
   assert.equal(second.skillPoints, 1);
-  assert.throws(() => move('upgrade', 3300, { skill: 'quick' }), /unavailable/);
-  move('upgrade', 3400, { skill: 'control' });
-  assert.throws(() => move('upgrade', 3500, { skill: 'lift' }), /unavailable/);
+  assert.throws(() => move('upgrade', secondAt + 100, { skill: 'quick' }), /unavailable/);
+  move('upgrade', secondAt + 200, { skill: 'control' });
+  assert.throws(() => move('upgrade', secondAt + 300, { skill: 'lift' }), /unavailable/);
   assert.deepEqual(publicRun(run).window, { from: 550, until: 2450 });
 });
 
 test('skipping Level 2 leaves later Practice catches without a choice', () => {
   const run = start(1000, () => 0, 'mille-lacs', { practice: true });
   for (let i = 0; i < 2; i++) {
-    const now = 1100 + i * 1000;
+    const now = 1100 + i * 4000;
     apply(run, { action: 'jig', lure: 'jig' }, now);
-    apply(run, { action: 'reel' }, now + 600);
-    apply(run, { action: 'next' }, now + 650);
+    const { at } = landPracticePerch(run, now + 600);
+    apply(run, { action: 'next' }, at + 50);
   }
   assert.equal(publicRun(run).skillPoints, 0);
-  apply(run, { action: 'jig', lure: 'jig' }, 3100);
-  const third = apply(run, { action: 'reel' }, 3700);
+  apply(run, { action: 'jig', lure: 'jig' }, 9100);
+  const { state: third, at } = landPracticePerch(run, 9700);
   assert.deepEqual(third.practice, { xp: 30, level: 2 });
   assert.deepEqual(third.skills, { quick: 0, control: 0, lift: 0 });
-  assert.throws(() => apply(run, { action: 'upgrade', skill: 'lift' }, 3800), /unavailable/);
+  assert.throws(() => apply(run, { action: 'upgrade', skill: 'lift' }, at + 100), /unavailable/);
 });
 
 test('fish get a seek window based on rarity', () => {
@@ -208,10 +218,10 @@ test('two landed fish still unlock Level 2 after a miss', () => {
   const run = start(1000, () => 0, 'mille-lacs', { practice: true });
   apply(run, { action: 'expire' }, 31000);
   let caught;
-  for (const now of [32000, 33000]) {
+  for (const now of [32000, 36000]) {
     apply(run, { action: 'next' }, now);
     apply(run, { action: 'jig', lure: 'jig' }, now + 50);
-    caught = apply(run, { action: 'reel' }, now + 600);
+    caught = landPracticePerch(run, now + 600).state;
   }
   assert.deepEqual(caught.practice, { xp: 20, level: 2 });
   assert.equal(caught.skillPoints, 1);

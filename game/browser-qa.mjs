@@ -80,15 +80,18 @@ export async function practicePage(browser, { mobile = false, configure } = {}) 
   }
 
   async function reelToHole() {
+    let reels = 0;
     for (let move = 0; move < 24; move++) {
       await page.clock.runFor(300);
       const label = await action.textContent();
-      if (label === 'Pull up') return;
-      assert.equal(label, 'Reel', 'the Campaign fish is still hooked');
+      if (label === 'Pull up') return reels;
+      assert.equal(label, 'Reel', 'the fish is still hooked');
       const cue = await tray.getByRole('status').textContent();
-      await press(/Line tight/i.test(cue) ? button('Loosen') : action);
+      const tight = /Line tight/i.test(cue);
+      if (!tight) reels++;
+      await press(tight ? button('Loosen') : action);
     }
-    assert.fail('the Campaign fish did not reach the ice hole');
+    assert.fail('the fish did not reach the ice hole');
   }
 
   return {
