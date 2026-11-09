@@ -1,9 +1,9 @@
-import { openCampaignMap, mapCells, firstShoreHole, confirmEndAttempt } from './campaign-map.mjs';
+import { openCampaignMap, mapCells, firstShoreHole, confirmEndAttempt } from './campaign-map.mjs?v=campaign-goals';
 import { createSuspensionClock } from './suspension.mjs';
-import { catchQuality, moveToHole, stepCampaignFish, abandonHoleFish, advanceLineFight, apply, campaignAreas, campaignDepthBand, campaignPhase, lakes, lures, practiceLevelXp, practiceSkills, publicRun, skills, start, starterArea } from './rules.mjs?v=mille-lacs-campaign';
-import { areaPermit, hasAreaAccess, campaignGoal, campaignProgress, campaignTraining, campaignTechniques, techniqueState, shopAvailability, applyProfile, campaignMilestone, loadProfile, shopItems } from './profile.mjs?v=mille-lacs-campaign';
+import { catchQuality, moveToHole, stepCampaignFish, abandonHoleFish, advanceLineFight, apply, campaignAreas, campaignDepthBand, campaignPhase, lakes, lures, practiceLevelXp, practiceSkills, publicRun, skills, start, starterArea } from './rules.mjs?v=campaign-goals';
+import { areaPermit, hasAreaAccess, campaignGoal, campaignProgress, campaignTraining, campaignTechniques, techniqueState, shopAvailability, applyProfile, campaignMilestone, loadProfile, shopItems } from './profile.mjs?v=campaign-goals';
 import { lureTip } from './species-catalog.mjs';
-import { openYourLake } from './collection.mjs?v=mille-lacs-campaign';
+import { openYourLake } from './collection.mjs?v=campaign-goals';
 import { renderSpeciesVideo } from './species-video.mjs';
 import { spriteHref } from './lake-sprites.mjs';
 
