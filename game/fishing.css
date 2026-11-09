@@ -3,6 +3,15 @@
 .game-entry { border: 1px solid #81936f; background: #213a2d; }
 .game-entry:hover { background: #36513a; }
 .fishing :is(.mast, .skip, .surface, .ice, .dive-content, .library, .field-notes, .merch, .lakebed-feature, .footer-rig, .footer-inner) { display: none; }
+html:has(body[data-campaign-camera]) { overflow: hidden; }
+.fishing[data-campaign-camera] .fishing-route {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: pinch-zoom;
+}
+.fishing[data-campaign-camera] .footer { display: none; }
 .fishing .dive { min-height: 76svh; }
 .fishing .lake > [data-below-hole] { display: none; }
 /* Leave room to scroll the deepest fish above the fixed tray. */
@@ -345,14 +354,13 @@ body.fishing:has(.fishing-tray[data-line-physics]) .fishing-target:is(.is-biting
   left: var(--x);
   top: var(--y);
   width: clamp(72px, 14vw, 195px);
-  transform: translate(calc(-100% * var(--mouth-x)), calc(-100% * var(--mouth-y)));
+  transform: translate(calc(-50% + 100% * (.5 - var(--mouth-x)) * var(--facing, 1)), calc(-100% * var(--mouth-y)));
   pointer-events: none;
 }
-.fishing-swimmer svg { display: block; width: 100%; filter: drop-shadow(0 3px 5px #061d24); }
-.fishing-swimmer[data-facing-right] {
-  transform: translate(calc(-100% * (1 - var(--mouth-x))), calc(-100% * var(--mouth-y)));
+.fishing-swimmer svg {
+  display: block; width: 100%; scale: var(--facing, 1) 1;
+  filter: drop-shadow(0 3px 5px #061d24);
 }
-.fishing-swimmer[data-facing-right] svg { scale: -1 1; }
 body.fishing:has(.fishing-tray[data-mode="campaign"]) .fishing-target[data-candidate]::before { content: none; }
 
 .fishing-tray[data-line-physics] {

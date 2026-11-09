@@ -70,7 +70,10 @@ async function checkFight(browser, mobile, mode) {
   const reelSlot = await action.boundingBox();
   await capture('haul-start');
 
-  await page.evaluate(() => scrollBy(0, 36));
+  await page.evaluate(() => {
+    if (document.body.hasAttribute('data-campaign-camera')) document.querySelector('.fishing-route').scrollTop += 36;
+    else scrollBy(0, 36);
+  });
   await tick(32);
   const scrolled = await fightGeometry(page);
   assert.ok(scrolled.y < surge.y - 20 && scrolled.gap < 1, 'scroll changes the view without moving the hook off the mouth');

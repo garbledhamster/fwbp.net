@@ -248,7 +248,7 @@ export function publicRun(run) {
     ...(run.holes && {
       hole: run.campaign.hole, committed: run.committed,
       candidates: run.holes[run.campaign.holeId].candidates.map((fish, slot) => ({
-        ...lakes[run.lake].fish[fish.species], slot, depth: fish.depth, x: fish.x, y: fish.y,
+        ...lakes[run.lake].fish[fish.species], key: fish.key, slot, depth: fish.depth, x: fish.x, y: fish.y,
       })),
     }),
     ...((run.campaign || run.practice) && {
@@ -426,13 +426,15 @@ function prepareHoleFish(run, elapsedMs = 0) {
   const hole = run.campaign.hole;
   const saved = run.holes[hole.id];
   if (!saved.candidates.length) {
+    saved.swimming = undefined;
     const pool = encounterPool(run.lake, campaignPhase(elapsedMs), hole.area, hole);
     const salt = (hole.area === starterArea ? saved.generation * 17 : hole.id.charCodeAt(0) * 7 + Number(hole.id[1]) * 11 + saved.generation * 17) / 101;
     saved.candidates = Array.from({ length: 3 }, (_, slot) => {
       const seed = run.holeSeed[(slot + saved.generation) % run.holeSeed.length];
       const roll = (seed.speciesRoll + salt + slot / 3) % 1;
       const maxBand = campaignDepthBand(hole.depthFt);
-      return { ...seed, species: pool[Math.floor(roll * pool.length)],
+      return { ...seed, species: pool[Math.floor(roll * pool.length)], lane: slot,
+        key: `${hole.id}:${saved.generation}:${slot}`,
         depth: Math.max(0, maxBand - (slot % 3)), x: [27, 50, 73][slot], y: 35 + slot * 10 };
     });
     const goal = campaignGoals.find(goal => goal.holeId === hole.id);
@@ -442,7 +444,7 @@ function prepareHoleFish(run, elapsedMs = 0) {
     }
     saved.generation++;
   }
-  run.swimming = run.waterJig = undefined;
+  run.waterJig = undefined;
 }
 
 function consumeHoleFish(run) {
@@ -455,17 +457,19 @@ function consumeHoleFish(run) {
 // is its mouth, so contact uses the same position as the visible lure eye.
 export function stepCampaignFish(run, now, { width, bands, lure, eye, reducedMotion = false }) {
   const saved = run.holes[run.campaign.holeId];
-  const swimming = run.swimming ??= { since: now, last: now, fish: [] };
-  const elapsed = Math.min(64, Math.max(0, now - swimming.last));
-  const t = (now - swimming.since) / 1000;
+  const swimming = saved.swimming ??= { time: 0 };
+  const elapsed = Math.min(64, Math.max(0, now - (swimming.last ?? now)));
+  swimming.time += elapsed / 1000;
+  const t = swimming.time;
   swimming.last = now;
   const jig = run.waterJig;
   const newJig = jig && !jig.eye;
   if (newJig) jig.eye = { ...eye };
   const seeking = run.stage === 'seek' && now < run.expires && !seekExpired(run, now);
-  // Keep the same lanes reachable and approach time comparable on wider water.
+  // Let the jig reach the far end of the wider patrol. Keep chase time
+  // comparable across desktop widths.
   const horizontalScale = Math.max(1, width / 1200);
-  const reach = Math.min(420 * horizontalScale, width * .37);
+  const reach = width * .55;
   let first;
   const fish = saved.candidates.flatMap((candidate, slot) => {
     if (slot === saved.active && run.stage !== 'seek') return [];
@@ -474,7 +478,8 @@ export function stepCampaignFish(run, now, { width, bands, lure, eye, reducedMot
     const centerX = width * candidate.x / 100;
     const centerY = band.top + band.height * candidate.y / 100;
     const verticalReach = Math.max(64, Math.min(98, band.height * .18));
-    const fish = swimming.fish[slot] ??= { x: centerX, y: centerY, right: slot !== 2 };
+    const lane = candidate.lane;
+    const fish = candidate.motion ??= { x: centerX, y: centerY, right: lane !== 2, turn: lane === 2 ? 0 : 1 };
     const dx = eye.x - fish.x;
     const dy = eye.y - fish.y;
     if (newJig && seeking && lure === jig.lure && Math.abs(dx) <= reach && Math.abs(dy) <= verticalReach) {
@@ -493,22 +498,30 @@ export function stepCampaignFish(run, now, { width, bands, lure, eye, reducedMot
     const away = !approaching && now < fish.away?.until ? fish.away : undefined;
     const amplitude = reducedMotion ? .40 : 1;
     const path = {
-      x: centerX + width * .115 * amplitude * Math.sin(t * (1.02 + slot * .09) * (slot === 2 ? -1 : 1)),
-      y: centerY + Math.min(42, band.height * .085) * amplitude * Math.sin(t * (1.57 + slot * .13)),
+      x: centerX + width * .18 * amplitude * Math.sin(t * (.82 + lane * .07) * (lane === 2 ? -1 : 1)),
+      y: centerY + Math.min(42, band.height * .085) * amplitude * Math.sin(t * (1.32 + lane * .13)),
     };
     const next = approaching ? eye : away ?? path;
     const distance = Math.hypot((next.x - fish.x) / horizontalScale, next.y - fish.y);
     const speed = approaching ? Math.max(.17, Math.min(.32, width * .00032))
       : away ? .13 : Math.max(.085, width * .00021);
-    const amount = distance ? Math.min(1, speed * elapsed / distance) : 1;
+    // Ease between cruising, chasing and backing away. Cap the step at the
+    // destination so the fish cannot overshoot the lure.
+    fish.speed ??= speed;
+    fish.speed += (speed - fish.speed) * (1 - Math.exp(-elapsed / 105));
+    const amount = distance ? Math.min(1, fish.speed * elapsed / distance) : 1;
     const oldX = fish.x;
     fish.x += (next.x - fish.x) * amount;
     fish.y += (next.y - fish.y) * amount;
-    if (Math.abs(fish.x - oldX) > .01) fish.right = fish.x > oldX;
-    if (approaching && amount === 1 && (!first || distance < first.distance)) {
+    if (Math.abs(fish.x - oldX) > .1) fish.right = fish.x > oldX;
+    const turnTarget = Number(fish.right);
+    const turnStep = elapsed / 360;
+    fish.turn = Math.max(fish.turn - turnStep, Math.min(fish.turn + turnStep, turnTarget));
+    if (approaching && amount === 1 && fish.turn === turnTarget && (!first || distance < first.distance)) {
       first = { slot, candidate, band, distance };
     }
-    return [{ slot, x: fish.x, y: fish.y, right: fish.right, mood: approaching ? 'approach' : away ? 'away' : null,
+    return [{ slot, x: fish.x, y: fish.y, right: fish.right, facing: Math.cos(fish.turn * Math.PI),
+      mood: approaching ? 'approach' : away ? 'away' : null,
       near: Math.abs(eye.x - fish.x) <= reach && Math.abs(eye.y - fish.y) <= verticalReach,
     }];
   });
@@ -516,7 +529,8 @@ export function stepCampaignFish(run, now, { width, bands, lure, eye, reducedMot
     saved.active = first.slot;
     const depth = bands.findIndex(band => band.height && eye.y >= band.top && eye.y <= band.top + band.height);
     const band = bands[depth] ?? first.band;
-    run.encounters[run.index] = { ...first.candidate, depth: depth < 0 ? first.candidate.depth : depth,
+    const { motion, ...encounter } = first.candidate;
+    run.encounters[run.index] = { ...encounter, depth: depth < 0 ? first.candidate.depth : depth,
       y: Math.min(100, Math.max(0, (eye.y - band.top) / band.height * 100)) };
     if (!run.committed) {
       run.committed = true;
@@ -538,6 +552,7 @@ export function moveToHole(run, hole, now, elapsedMs = 0) {
   run.campaign.area = hole.area;
   run.holes[holeId] ??= { candidates: [], generation: 0 };
   prepareHoleFish(run, elapsedMs);
+  if (run.holes[holeId].swimming) run.holes[holeId].swimming.last = now;
   run.seekUntil = null;
   run.version++;
   return publicRun(run);

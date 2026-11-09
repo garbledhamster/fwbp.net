@@ -162,10 +162,10 @@ export async function practicePage(browser, { mobile = false, viewport, configur
           }));
           const nearest = positions.sort((a, b) => Math.abs(a.x - lure.x) - Math.abs(b.x - lure.x))[0];
           const depthGap = nearest.y - lure.y;
-          if (Math.abs(depthGap) > 6) scrollBy({ top: depthGap, behavior: 'instant' });
+          if (Math.abs(depthGap) > 6) document.querySelector('.fishing-route').scrollTop += depthGap;
           return { depthGap, horizontalGap: Math.abs(nearest.x - lure.x), width: lake.width, species: nearest.species };
         });
-        if (Math.abs(alignment.depthGap) <= 12 && alignment.horizontalGap <= Math.min(400, alignment.width * .35)) {
+        if (Math.abs(alignment.depthGap) <= 12 && alignment.horizontalGap <= alignment.width * .54) {
           return alignment.species;
         }
         await page.clock.runFor(16);

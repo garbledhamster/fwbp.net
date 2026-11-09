@@ -21,7 +21,7 @@ await withBrowser(async browser => {
           const rig = document.querySelector('.fishing-line-rig');
           const lure = new DOMPoint(0, 0).matrixTransform(rig.getScreenCTM());
           const gap = lake.top + parseFloat(fish.style.getPropertyValue('--y')) - lure.y;
-          if (Math.abs(gap) > 8) scrollBy({ top: gap, behavior: 'instant' });
+          if (Math.abs(gap) > 8) document.querySelector('.fishing-route').scrollTop += gap;
           return {
             depth: gap,
             horizontal: Math.abs(lake.left + parseFloat(fish.style.getPropertyValue('--x')) - lure.x),

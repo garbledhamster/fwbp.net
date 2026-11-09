@@ -27,7 +27,7 @@ async function assertAttached(page) {
 }
 
 async function scrollStep(page, direction, mobile) {
-  const start = await page.evaluate(() => scrollY);
+  const start = await page.locator('.fishing-route').evaluate(el => el.scrollTop);
   if (mobile) {
     const touch = await page.context().newCDPSession(page);
     const send = (type, y) => touch.send('Input.dispatchTouchEvent', {
@@ -45,8 +45,9 @@ async function scrollStep(page, direction, mobile) {
   } else {
     await page.keyboard.press('ArrowUp');
   }
-  await page.waitForFunction(([y, dir]) => (scrollY - y) * dir > 0, [start, direction], { polling: 25 });
-  await page.clock.runFor(40);
+  await page.clock.runFor(650);
+  const current = await page.locator('.fishing-route').evaluate(el => el.scrollTop);
+  assert.ok((current - start) * direction > 0, 'depth changes within the game viewport');
 }
 
 async function checkTray(browser, mobile) {
