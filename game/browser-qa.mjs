@@ -78,19 +78,22 @@ export async function practicePage(browser, { mobile = false, viewport, configur
   async function chooseMode(name = 'Practice') {
     const picker = page.getByRole('dialog', { name: 'Choose an outing' });
     await press(picker.getByRole('button', { name, exact: true }), 'Enter');
-    if (name === 'Campaign') {
+    if (name === 'Campaign' || name === 'Deep Reef') {
+      const map = page.locator('.fishing-map');
       const permit = page.locator('.fishing-permit');
-      await page.waitForFunction(() => document.querySelector('.fishing-permit[open]') ||
-        !document.querySelector('.fishing-tray').hidden);
+      await map.waitFor();
+      await press(map.locator('[data-map-drill]'), 'Enter');
+      await page.waitForFunction(() => document.querySelector('.fishing-permit[open], .fishing-drill[open]'));
       if (await permit.isVisible()) {
         await press(permit.getByRole('button', { name: 'Get this permit' }), 'Enter');
         const shop = page.getByRole('dialog', { name: 'Tackle shop' });
         await press(shop.locator('[data-item="starter-license"]').getByRole('button', { name: /^(?:Buy|Claim) Starter Shore permit$/ }), 'Enter');
         await shop.locator('[data-item="starter-license"]').getByText('Owned', { exact: true }).waitFor();
         await closeDialog(shop, shop.locator('[data-shop-back]'));
-        await picker.waitFor();
-        await press(picker.getByRole('button', { name, exact: true }), 'Enter');
+        await map.waitFor();
+        await press(map.locator('[data-map-drill]'), 'Enter');
       }
+      await press(page.locator('[data-drill-skip]'), 'Enter');
       await tray.locator('[data-wallet]').waitFor();
     }
     // Both local modes read the saved profile before the outing is ready.

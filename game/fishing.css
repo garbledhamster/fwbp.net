@@ -741,3 +741,53 @@ html:has(body[data-fishing-paused]) { overflow: hidden; }
   background: none;
   pointer-events: none;
 }
+/* Campaign map uses packaged shoreline, contours and cell coordinates. */
+.fishing-map { width: min(940px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow-y: auto; }
+.fishing-map h2, .fishing-map h3 { margin-block: 0 10px; }
+.fishing-map-layout { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(180px, 1fr); gap: 18px; }
+.fishing-map-water { position: relative; aspect-ratio: 1; min-width: 0; }
+.fishing-map-water > img { display: block; width: 100%; height: 100%; border-radius: 8px; }
+.fishing-map-cells { position: absolute; inset: 0; }
+.fishing-map-cells button { position: absolute; transform: translate(-50%, -50%); min-width: 44px; min-height: 44px; padding: 5px; border: 1px solid #b2d4d5; color: #fff4d4; background: #236879dd; font-weight: 800; }
+.fishing-map-cells button[data-depth="shallow"] { background: #387e87e8; }
+.fishing-map-cells button[data-depth="middle"] { background: #1e526ce8; }
+.fishing-map-cells button[data-depth="deep"] { background: #152e4de8; }
+.fishing-map-cells button[data-temperature="38"] { border-color: #dab0ff; }
+.fishing-map-cells button[data-temperature="37"] { border-color: #bbbdff; }
+.fishing-map-cells button[data-locked]::after { content: '•'; color: #ffd37e; }
+.fishing-map-cells button[aria-pressed="true"] { outline: 3px solid #78f5ff; outline-offset: 2px; z-index: 1; }
+.fishing-map button:focus-visible, .fishing-candidate:focus-visible { outline: 3px solid #fff5a3; outline-offset: 4px; }
+.fishing-map-inspector { padding: 16px; background: #10212b; border: 1px solid #7fabb7; border-radius: 8px; }
+.fishing-map-overlays, .fishing-map-actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-block: 12px; }
+.fishing-map-actions { position: sticky; bottom: -1px; background: #142631; padding-block: 12px; z-index: 2; }
+.fishing-map-actions button, .fishing-drill button { min-height: 44px; }
+[data-map-drill], [data-drill-turn] { background: #f2bd63; color: #1d2025; font-weight: 800; }
+.fishing-map-note, .fishing-map small { font-size: .8rem; line-height: 1.5; }
+.fishing-map-overlays label { min-height: 44px; display: flex; align-items: center; gap: 8px; }
+.fishing-auger-scene { display: flex; align-items: end; justify-content: center; height: 210px; background: url('../assets/fishing/mille-lacs-dawn.webp') center/cover; border-radius: 8px; }
+.fishing-auger-scene img { width: 150px; height: 180px; object-fit: contain; }
+.fishing-auger-scene svg { width: 130px; height: 180px; transform: rotate(var(--auger-turn, 0deg)); transition: transform .12s; }
+.fishing-drill progress { width: 100%; height: 24px; margin-top: 18px; accent-color: #78dce9; }
+.fishing-candidate { position: absolute; left: var(--x); top: var(--y); transform: translate(-50%,-50%); z-index: 15; width: clamp(100px, 17vw, 180px); min-height: 64px; padding: 6px; color: #fff4d4; background: #092b3caa; border: 1px solid #78dce9; border-radius: 12px; cursor: pointer; }
+.fishing-candidate svg { width: 100%; height: 55px; }
+.fishing-candidate span { display: block; font-size: 12px; }
+body.fishing:has(.fishing-tray[data-mode="campaign"]) .fishing-target::after { content: 'Selected target'; position: absolute; top: 100%; left: 0; right: 0; color: #fff4d4; background: #092b3ccc; font: 700 12px/1.5 sans-serif; text-align: center; }
+body:not(.fishing) .fishing-candidate { display: none; }
+@media (max-width: 600px) {
+ .fishing-map { padding: 14px; }
+ .fishing-map-layout { display: flex; flex-direction: column; gap: 10px; }
+ .fishing-map-inspector { padding: 10px; }
+ .fishing-map-inspector p { margin-block: 6px; }
+ .fishing-map-cells button { min-width: 44px; min-height: 44px; }
+}
+@media (max-height: 420px) and (orientation: landscape) {
+ .fishing-map-layout { grid-template-columns: 240px 1fr; }
+ .fishing-map { padding: 12px; }
+ .fishing-auger-scene { height: 100px; }
+ .fishing-auger-scene img, .fishing-auger-scene svg { height: 100px; }
+}
+@media (prefers-reduced-motion: reduce) { .fishing-auger-scene svg { transition: none; transform: none; } }
+body[data-reduced] .fishing-auger-scene svg { transition: none; transform: none; }
+/* Keep a programmatically focused cell clear of the sticky return actions. */
+.fishing-map { scroll-padding-block: 20px 100px; }
+.fishing-map-cells button { scroll-margin-block: 20px 100px; }

@@ -1,5 +1,6 @@
+import { openCampaignMap, mapCells, firstShoreHole, confirmEndAttempt } from './campaign-map.mjs';
 import { createSuspensionClock } from './suspension.mjs';
-import { advanceLineFight, apply, campaignAreas, campaignPhase, lakes, lures, practiceLevelXp, practiceSkills, publicRun, skills, start, starterArea } from './rules.mjs?v=connected-rpg';
+import { moveToHole, selectHoleFish, abandonHoleFish, advanceLineFight, apply, campaignAreas, campaignPhase, lakes, lures, practiceLevelXp, practiceSkills, publicRun, skills, start, starterArea } from './rules.mjs?v=connected-rpg';
 import { applyProfile, campaignMilestone, loadProfile, shopItems } from './profile.mjs?v=connected-rpg';
 import { lureTip } from './species-catalog.mjs';
 import { openYourLake } from './collection.mjs';
@@ -307,6 +308,9 @@ document.addEventListener('fishing:profile-changed', event => {
 });
 let campaignArea = starterArea;
 let permitArea = starterArea;
+let permitReturn;
+let selectedHole = firstShoreHole;
+let mapRelease;
 let permitGeneration = 0;
 let campaignMilestoneNotice = false;
 let pickerGeneration = 0;
@@ -503,7 +507,8 @@ async function showPermit(area) {
 function returnToAreas() {
   permitGeneration++;
   permitDialog.close();
-  showOutingPicker(permitArea);
+  if (permitReturn) { const back = permitReturn; permitReturn = undefined; void back(); }
+  else showOutingPicker(permitArea);
 }
 
 permitDialog.addEventListener('cancel', event => {
@@ -516,12 +521,12 @@ permitShop.addEventListener('click', () => {
   const permit = areaPermit(area);
   permitGeneration++;
   permitDialog.close();
-  void openShop({ itemId: permit.id, onClose: () => showOutingPicker(area) });
+  void openShop({ itemId: permit.id, onClose: () => { if (permitReturn) { const back = permitReturn; permitReturn = undefined; void back(); } else showOutingPicker(area); } });
 });
 permitStarter.addEventListener('click', () => {
   permitGeneration++;
   permitDialog.close();
-  showOutingPicker(starterArea);
+  if (permitReturn) { selectedHole = firstShoreHole; const back = permitReturn; permitReturn = undefined; void back(); } else showOutingPicker(starterArea);
 });
 
 function shopItem(item, inventory = false) {
@@ -1232,6 +1237,7 @@ function moveFishAway() {
 }
 
 function placeFish() {
+  removeCandidates();
   removeTarget();
   positionLine();
   if (!state.fish) return;
@@ -1247,6 +1253,7 @@ function placeFish() {
   target.addEventListener('animationend', updateSearch);
   target.addEventListener('transitionend', updateSearch);
   scenes[state.fish.depth ?? state.index].append(target);
+  renderCandidates();
 }
 
 function outingVideo(speciesId, container) {
@@ -1293,7 +1300,10 @@ function render() {
   const campaign = mode === 'campaign';
   const linePhysics = usesLinePhysics();
   const modeName = { campaign: 'Campaign', practice: 'Practice', ranked: 'Ranked' }[mode];
-  const areaName = state?.area ? ` · ${state.area}` : '';
+  const areaName = state?.hole ? ` · ${state.hole.id} · ${state.hole.depthFt} ft · ${state.hole.habitat}` : state?.area ? ` · ${state.area}` : '';
+  mapButton.hidden = !campaign;
+  mapButton.disabled = busy || !state || !['seek', 'bite', 'fight'].includes(state.stage);
+  renderCandidates();
   tray.dataset.mode = mode;
   tray.toggleAttribute('data-line-physics', linePhysics);
   waterName.textContent = state ? `${state.lake}${areaName}` : 'Fishing beneath the ice';
@@ -1477,7 +1487,7 @@ async function begin(selectedMode = mode, selectedArea = campaignArea) {
     const elapsedMs = mode === 'campaign' ? profile?.elapsedMs ?? 0 : 0;
     run = start(outingTime.dateNow(), undefined, undefined, {
       practice: mode === 'practice',
-      campaign: mode === 'campaign' ? { area: campaignArea, lineStrength, line, hook, lineControlRank, elapsedMs } : undefined,
+      campaign: mode === 'campaign' ? { hole: mapCells.find(cell => cell.id === selectedHole), area: campaignArea, lineStrength, line, hook, lineControlRank, elapsedMs } : undefined,
     });
     state = publicRun(run);
     startOutingClock(elapsedMs);
@@ -1497,13 +1507,18 @@ function enter(event) {
   showOutingPicker();
 }
 
-async function startSelected(selectedMode, selectedArea) {
+async function startSelected(selectedMode, selectedArea, fromMap = false) {
+  if (selectedMode === 'campaign' && !fromMap) {
+    selectedHole = mapCells.find(cell => cell.area === selectedArea)?.id ?? firstShoreHole;
+    picker.close();
+    return showLakeMap(false);
+  }
   if (selectedMode === 'campaign') {
     if (!areaPermit(selectedArea)) return;
     const current = ++pickerGeneration;
     try {
       const saved = await loadProfile();
-      if (current !== pickerGeneration || !picker.open) return;
+      if (current !== pickerGeneration || (!picker.open && !fromMap)) return;
       if (!hasAreaAccess(saved, selectedArea)) return showPermit(selectedArea);
     } catch {
       if (current === pickerGeneration && picker.open) await showPermit(selectedArea);
@@ -1536,6 +1551,8 @@ function leave() {
   resetRetraction();
   outingTime.cancel(fightFrame);
   removeTarget();
+  removeCandidates();
+  mapRelease?.(); mapRelease = undefined;
   tray.hidden = bobber.hidden = true;
   line.setAttribute('hidden', '');
   clearLineGestureMarker();
@@ -1860,7 +1877,10 @@ function activatePrimary(reelEffort) {
   const startedBeforeMiss = jigActivation || fightActivation;
   jigActivation = fightActivation = false;
   if (startedBeforeMiss && ['missed', 'done'].includes(state.stage)) return;
-  if (failed || state.stage === 'done') return begin(failed ? 'practice' : mode);
+  if (failed || state.stage === 'done') {
+    if (!failed && mode === 'campaign') { leave(); return showLakeMap(false); }
+    return begin(failed ? 'practice' : mode);
+  }
   if (usesLinePhysics() && state.stage === 'landed' && catchSaveFailed) return retryCatchCoins();
   if (state.stage === 'seek' && !fishInView()) return updateSearch();
   const fightMove = usesLinePhysics() && !state.fight?.pullUp ? 'reel' : 'lift';
@@ -1895,3 +1915,73 @@ form.addEventListener('submit', async event => {
     submit.disabled = false;
   }
 });
+
+
+const mapButton = document.createElement('button');
+mapButton.type = 'button';
+mapButton.dataset.openMap = '';
+mapButton.textContent = 'Move hole';
+mapButton.hidden = true;
+exit.after(mapButton);
+mapButton.addEventListener('click', () => {
+  if (gameBlocked() || mapButton.disabled) return;
+  endAttemptIfNeeded(() => void showLakeMap(true));
+});
+function releaseMap() { mapRelease?.(); mapRelease = undefined; }
+async function showLakeMap(active = !tray.hidden && mode === 'campaign') {
+  mapRelease ??= acquireSuspension();
+  try { profile = await loadProfile(); }
+  catch { releaseMap(); setStatus('Couldn’t read your permits. Please try again.'); return; }
+  openCampaignMap({ selected: selectedHole, hasAccess: area => hasAreaAccess(profile, area),
+    opened: active ? Object.keys(run.holes) : [], budget: active ? state.count - state.index : undefined,
+    onSelect: id => { selectedHole = id; },
+    onPermit: cell => { permitReturn = () => showLakeMap(active); void showPermit(cell.area); },
+    onBack: () => { releaseMap(); if (!active) showOutingPicker(); else mapButton.focus(); },
+    onOpen: cell => {
+      selectedHole = cell.id;
+      releaseMap();
+      if (!active) void startSelected('campaign', cell.area, true);
+      else {
+        state = moveToHole(run, cell, outingTime.dateNow(), outingElapsed());
+        campaignArea = cell.area;
+        clearBite(); stopCountdown(); placeFish(); render(); syncCountdown();
+        window.scrollTo({ top: 0, behavior: 'instant' }); mapButton.focus();
+      }
+    },
+  });
+}
+function endAttemptIfNeeded(next) {
+  if (!run?.committed) return next();
+  const release = acquireSuspension();
+  confirmEndAttempt(state.stage === 'fight', () => {
+    release();
+    clearBite(); outingTime.cancel(fightFrame); stopCountdown();
+    state = abandonHoleFish(run, outingTime.dateNow(), outingElapsed());
+    placeFish(); render(); syncCountdown();
+    if (state.stage !== 'done') next(); else action.focus();
+  }, () => { release(); mapButton.focus(); });
+}
+function removeCandidates() { lake.querySelectorAll('.fishing-candidate').forEach(el => el.remove()); }
+function renderCandidates() {
+  removeCandidates();
+  if (mode !== 'campaign' || !state?.candidates || !['seek','bite','fight'].includes(state.stage)) return;
+  for (const fish of state.candidates) {
+    if (fish.selected) continue;
+    const button = document.createElement('button');
+    button.type = 'button'; button.className = 'fishing-candidate'; button.dataset.candidate = fish.slot;
+    button.style.setProperty('--x', `${fish.x}%`); button.style.setProperty('--y', `${fish.y}%`);
+    button.setAttribute('aria-label', `Choose ${fish.name}`);
+    button.innerHTML = `${fishSvg(fish.art)}<span>${fish.name}</span>`;
+    button.addEventListener('click', () => {
+      if (gameBlocked()) return;
+      const previousSlot = state.candidates.find(candidate => candidate.selected).slot;
+      const wasCommitted = run.committed;
+      endAttemptIfNeeded(() => {
+        const slot = wasCommitted && previousSlot < fish.slot ? fish.slot - 1 : fish.slot;
+        state = selectHoleFish(run, slot); placeFish(); render(); syncCountdown();
+        target?.scrollIntoView({ block: 'center', behavior: 'instant' }); action.focus({ preventScroll: true });
+      });
+    });
+    scenes[fish.depth].append(button);
+  }
+}
