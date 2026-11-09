@@ -791,3 +791,4 @@ body[data-reduced] .fishing-auger-scene svg { transition: none; transform: none;
 /* Keep a programmatically focused cell clear of the sticky return actions. */
 .fishing-map { scroll-padding-block: 20px 100px; }
 .fishing-map-cells button { scroll-margin-block: 20px 100px; }
+.fishing-map [data-map-drill], .fishing-drill [data-drill-turn] { background: #f2bd63; color: #1d2025; border-color: #f2bd63; }
