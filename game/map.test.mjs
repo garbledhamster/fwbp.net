@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import data from './lake-map-data.mjs';
 import { start, apply, publicRun, moveToHole, selectHoleFish, abandonHoleFish, lakes } from './rules.mjs';
 const shore = data.cells.find((c) => c.area === 'starter-shore');
@@ -7,9 +8,12 @@ const reef = data.cells.find((c) => c.depthFt >= 30);
 const setup = (hole = shore) =>
   start(1000, () => 0.2, undefined, { campaign: { hole, area: hole.area, lineStrength: 12 } });
 test('map cells and bathymetry stay in the shared coordinate system', () => {
-  assert.equal(data.lakeId, '48000200');
-  assert.ok(data.contours.length);
-  assert.ok(data.shore.startsWith('M'));
+  const art = readFileSync(new URL('../assets/maps/mille-lacs.svg', import.meta.url), 'utf8');
+  const attribution = readFileSync(new URL('../assets/maps/README.md', import.meta.url), 'utf8');
+  assert.match(attribution, /Lake ID \*\*48000200\*\*/);
+  assert.match(art, /viewBox="0 0 500 500"/);
+  assert.match(art, /<clipPath id="water"><path d="M/);
+  assert.match(art, /<g clip-path="url\(#water\)"[^>]*><path d="M/);
   for (const c of data.cells) {
     assert.ok(c.x > 0 && c.x < 500 && c.y > 0 && c.y < 500);
     assert.ok(c.depthFt > 0);
