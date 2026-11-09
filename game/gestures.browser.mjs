@@ -266,7 +266,7 @@ async function checkKeyboard(browser) {
 }
 
 async function checkExpiredRetry(browser) {
-  const { page, action, enter, findFish, waitForBite, tick } = await practicePage(browser);
+  const { page, action, enter, findFish, waitForBite, tick, press } = await practicePage(browser);
   await page.evaluate(() => { Math.random = () => .98; });
   await enter('Campaign');
   await page.keyboard.press('2');
@@ -289,6 +289,8 @@ async function checkExpiredRetry(browser) {
   const previous = await others.first().getAttribute('style');
   await tick(64);
   assert.notEqual(await others.first().getAttribute('style'), previous, 'the other fish keep swimming');
+  await press(action);
+  assert.equal(await released.count(), 1, 'a fish that escaped remains in the day’s roster');
   await page.close();
 }
 
@@ -300,5 +302,5 @@ await withBrowser(async browser => {
   await checkKeyboard(browser);
   console.log('PASS: Campaign keyboard depth, bait response, jig and hook');
   await checkExpiredRetry(browser);
-  console.log('PASS: Campaign retry expiry removes only the released fish');
+  console.log('PASS: Campaign retry expiry releases only the committed fish');
 });

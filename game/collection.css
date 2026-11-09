@@ -22,6 +22,9 @@
 .collection-dialog dt { font-weight: bold; margin-top: 12px; }
 .collection-dialog dd { margin: 3px 0; }
 .collection-dialog a { display: inline-flex; align-items: center; min-height: 44px; color: #354f3a; font-weight: bold; }
+.collection-catch-spots { margin-block: 8px 12px; }
+.collection-catch-spots h3 { margin: 0; font-size: 1rem; }
+.collection-catch-spots ul { display: flex; flex-wrap: wrap; gap: 2px 1.5em; margin: 3px 0 0; padding-inline-start: 1.2em; }
 .collection-study { border-top: 1px solid #b8a678; padding-top: 8px; margin-top: 8px; }
 .collection-study svg { display: inline-block; width: 26px; height: 26px; vertical-align: middle; margin-right: 6px; }
 .collection-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 18px; }

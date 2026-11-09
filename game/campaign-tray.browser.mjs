@@ -22,6 +22,7 @@ async function checkOuting(browser, mobile) {
   const pause = page.locator('.fishing-pause');
   const resultButton = name => tray.getByRole('button', { name, exact: true });
   const reward = page.locator('.fishing-catch-popup');
+  const map = page.locator('.fishing-map');
   const nextFish = reward.locator('[data-reward-next]');
   const viewCatch = reward.getByRole('button', { name: 'View in Your Lake', exact: true });
   const advanceInput = () => Promise.all([tick(300), page.waitForTimeout(180)]);
@@ -80,6 +81,12 @@ async function checkOuting(browser, mobile) {
   }
 
   try {
+    await page.evaluate(() => {
+      // Use small fish so this replay exercises saves and the hole transition.
+      const rolls = [.05, .05, .4].flatMap(species => [species, .2, .5, .1, .1]);
+      let draw = 0;
+      Math.random = () => rolls[draw++ % rolls.length];
+    });
     await enter('Campaign');
     const openedDay = await savedDay();
     assert.equal(openedDay?.opened.length, 1, 'the outing starts with one saved hole');
@@ -135,7 +142,8 @@ async function checkOuting(browser, mobile) {
 
       for (let strokeCount = 0; strokeCount < 30; strokeCount++) {
         await advanceInput();
-        await down.filter({ hasText: /Loosen/ }).waitFor();
+        assert.equal(await down.isVisible(), true,
+          `catch ${attempt}, stroke ${strokeCount}: ${await tray.getByRole('status').textContent()}`);
         if (await up.isVisible() && /Pull up/.test(await up.innerText())) break;
         await stroke(await up.isVisible() ? -1 : 1);
       }
@@ -165,7 +173,7 @@ async function checkOuting(browser, mobile) {
         await press(save, 'Enter');
       }
       await nextFish.waitFor();
-      assert.equal(await nextFish.textContent(), attempt === 6 ? 'Finish outing' : 'Next fish');
+      assert.equal(await nextFish.textContent(), attempt === 6 ? 'Finish outing' : attempt === 3 ? 'Move hole' : 'Next fish');
       const savedKeys = await saves();
       assert.equal(savedKeys.length, attempt, 'each landed fish saves once');
       assert.equal(new Set(savedKeys).size, attempt, 'each landed fish has its own catch key');
@@ -182,6 +190,15 @@ async function checkOuting(browser, mobile) {
           'Your Lake returns to the same catch');
       }
       await closeDialog(reward, nextFish);
+      if (attempt === 3) {
+        await map.waitFor();
+        assert.equal(await map.locator('[data-map-drill]').isDisabled(), true, 'the fished-out hole stays quiet');
+        await press(map.locator('[data-map-cell="E4"]'), 'Enter');
+        await press(map.locator('[data-map-drill]'), 'Enter');
+        await press(page.locator('[data-drill-skip]'), 'Enter');
+        await map.waitFor({ state: 'hidden' });
+        await tray.locator('[data-water]').filter({ hasText: 'E4' }).waitFor();
+      }
       await advanceInput();
     }
     await tray.getByRole('status').filter({ hasText: 'Outing complete.' }).waitFor();
@@ -194,7 +211,6 @@ async function checkOuting(browser, mobile) {
     assert.equal(remainingDay, undefined, 'Finish outing clears the saved day before Fish again');
     await press(resultButton('Fish again'), 'Enter');
     await tray.waitFor({ state: 'hidden' });
-    const map = page.locator('.fishing-map');
     await map.waitFor();
     await press(map.locator('[data-map-back]'), 'Enter');
     const picker = page.getByRole('dialog', { name: 'Choose an outing' });

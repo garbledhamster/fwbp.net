@@ -1,9 +1,9 @@
-import { openCampaignMap, mapCells, firstShoreHole, confirmEndAttempt } from './campaign-map.mjs?v=campaign-smooth-swim';
+import { openCampaignMap, mapCells, firstShoreHole, confirmEndAttempt } from './campaign-map.mjs?v=campaign-map-discovery';
 import { createSuspensionClock } from './suspension.mjs';
-import { catchQuality, moveToHole, stepCampaignFish, abandonHoleFish, advanceLineFight, apply, campaignAreas, campaignDepthBand, campaignPhase, lakes, lineEffort, lures, practiceLevelXp, practiceSkills, publicRun, skills, start, starterArea } from './rules.mjs?v=campaign-line-feedback';
-import { areaPermit, hasAreaAccess, campaignGoal, campaignProgress, campaignTraining, campaignTechniques, techniqueState, shopAvailability, applyProfile, campaignMilestone, loadProfile, shopItems } from './profile.mjs?v=campaign-smooth-swim';
+import { catchQuality, moveToHole, stepCampaignFish, abandonHoleFish, advanceLineFight, apply, campaignAreas, campaignDepthBand, campaignPhase, lakes, lineEffort, lures, practiceLevelXp, practiceSkills, publicRun, skills, start, starterArea } from './rules.mjs?v=campaign-map-discovery';
+import { areaPermit, hasAreaAccess, campaignGoal, campaignProgress, campaignTraining, campaignTechniques, techniqueState, shopAvailability, applyProfile, campaignMilestone, loadProfile, shopItems } from './profile.mjs?v=campaign-map-discovery';
 import { lureTip } from './species-catalog.mjs';
-import { openYourLake } from './collection.mjs?v=campaign-smooth-swim';
+import { openYourLake } from './collection.mjs?v=campaign-map-discovery';
 import { renderSpeciesVideo } from './species-video.mjs';
 import { spriteHref } from './lake-sprites.mjs';
 
@@ -180,6 +180,7 @@ tray.innerHTML = `
       <p class="fishing-practice-progress" hidden></p>
       <p class="fishing-countdown" role="timer" hidden></p>
     </div>
+    <p data-hole-report aria-live="polite" hidden></p>
     <div class="fishing-timing" aria-hidden="true" hidden><i></i></div>
     <div class="fishing-rack">
       <div class="fishing-pressure" hidden>
@@ -306,6 +307,7 @@ const waterName = tray.querySelector('[data-water]');
 const scoreProgress = tray.querySelector('.fishing-score-progress');
 const runProgress = tray.querySelector('[data-run-progress]');
 const goalLabel = tray.querySelector('[data-fishing-goal]');
+const holeReport = tray.querySelector('[data-hole-report]');
 const phaseLabel = tray.querySelector('[data-phase]');
 const countdown = tray.querySelector('.fishing-countdown');
 const practiceButtons = [...practiceChoice.querySelectorAll('button')];
@@ -1000,7 +1002,7 @@ const hookedGesture = phase => phase === 'reel' || phase === 'lift';
 
 function lineGesturePhase() {
   if (mode !== 'campaign' || tray.hidden || outingTime.suspended || dialogOpen() || failed) return;
-  if (state?.stage === 'seek' && (state.hole || fishInView())) return 'jig';
+  if (state?.stage === 'seek' && (state.hole ? !quietHole() : fishInView())) return 'jig';
   if (state?.stage === 'bite') return 'hook';
   if (state?.stage === 'fight') return state.fight?.pullUp ? 'lift' : 'reel';
 }
@@ -1628,10 +1630,31 @@ function bryanGoalClue(goal) {
   return goal ? `Bryan’s goal. ${goal.clue}` : 'Bryan’s goals complete.';
 }
 
+function quietHole() {
+  return Boolean(state?.hole && state.candidates.length === 0);
+}
+
+function lastFishAtHole() {
+  return Boolean(state?.hole && state.candidates.length === 1 && state.index + 1 < state.count);
+}
+
+function renderHoleReport() {
+  const roster = state?.hole && profile?.day?.rosters?.[state.hole.id];
+  holeReport.hidden = !roster || state.stage !== 'seek';
+  if (holeReport.hidden) return;
+  const recognized = lakes['mille-lacs'].fish.filter(fish =>
+    profile.caughtSpecies.includes(fish.id) && roster.some(entry => entry.speciesId === fish.id));
+  const text = !roster.length ? 'This hole is quiet for today.'
+    : recognized.length ? `Recognized here · ${recognized.map(fish => fish.name).join(', ')}`
+      : 'No familiar fish spotted here yet.';
+  if (holeReport.textContent !== text) holeReport.textContent = text;
+}
+
 function render() {
   renderStudiedCue();
   renderCatchActions();
   renderSavedCatch();
+  renderHoleReport();
   const campaign = mode === 'campaign';
   const baitOnly = campaign && !restoreCampaignLiveButtons;
   const linePhysics = usesLinePhysics();
@@ -1699,8 +1722,8 @@ function render() {
     if (practiceProgress.textContent !== progress) practiceProgress.textContent = progress;
   }
   const [actionIcon, label] = failed ? ['next', 'Practice'] : ({
-    seek: ['jig', state?.reaction === 'slipped-hook' ? 'Try again' : 'Jig'], bite: ['reel', 'Reel'], fight: pullUp ? ['lift', 'Pull up'] : ['reel', 'Reel'],
-    landed: linePhysics && catchSaveFailed ? ['next', 'Save catch'] : ['next', 'Next fish'],
+    seek: quietHole() ? ['next', 'Move hole'] : ['jig', state?.reaction === 'slipped-hook' ? 'Try again' : 'Jig'], bite: ['reel', 'Reel'], fight: pullUp ? ['lift', 'Pull up'] : ['reel', 'Reel'],
+    landed: linePhysics && catchSaveFailed ? ['next', 'Save catch'] : ['next', lastFishAtHole() ? 'Move hole' : 'Next fish'],
     missed: ['next', 'Next fish'], done: ['next', 'Fish again'],
   }[state?.stage] ?? ['next', 'Wait']);
   setAction(actionIcon, label);
@@ -1823,7 +1846,7 @@ async function begin(selectedMode = mode, hole, savedProfile) {
     const elapsedMs = mode === 'campaign' ? profile?.elapsedMs ?? 0 : 0;
     run = start(outingTime.dateNow(), undefined, undefined, {
       practice: mode === 'practice',
-      campaign: mode === 'campaign' ? { hole, area: hole.area, lineStrength, line, hook, lineControlRank, lureWorkRank, baits, elapsedMs } : undefined,
+      campaign: mode === 'campaign' ? { hole, roster: profile.day.rosters[hole.id], area: hole.area, lineStrength, line, hook, lineControlRank, lureWorkRank, baits, elapsedMs } : undefined,
     });
     state = publicRun(run);
     startOutingClock(elapsedMs);
@@ -2112,9 +2135,18 @@ async function saveCatchCoins(current) {
   const speciesId = state.fish?.id;
   catchReward = undefined;
   try {
-    const result = await applyProfile({ type: 'award', key, outcome: state.stage, catch: state.catch, speciesId, mode });
-    if (!['awarded', 'duplicate-award'].includes(result.status)) throw new Error('Catch save rejected.');
+    const location = mode === 'campaign' && state.hole
+      ? { dayId: campaignDayId, cellId: state.hole.id, fishKey: state.activeFishKey } : {};
+    const result = await applyProfile({ type: 'award', key, outcome: state.stage, catch: state.catch, speciesId, mode, ...location });
     if (current !== generation) return;
+    if (['stale-day', 'hole-fish-gone'].includes(result.status)) {
+      leave();
+      showOutingPicker(undefined, result.status === 'stale-day'
+        ? 'This fishing day ended in another tab. Open the Campaign map to start again.'
+        : 'That fish was saved in another tab. Open the Campaign map to see the remaining fish.');
+      return;
+    }
+    if (!['awarded', 'duplicate-award'].includes(result.status)) throw new Error('Catch save rejected.');
     profile = result.profile;
     if (result.milestoneReached) campaignMilestoneNotice = true;
     catchReward = mode === 'campaign' ? result.earned ?? profile.awards[key] : undefined;
@@ -2218,6 +2250,7 @@ async function perform(move, input = {}, reelEffort) {
   busy = false;
   render();
   syncCountdown(serverNow);
+  if (move === 'next' && state.stage === 'seek' && quietHole()) return showLakeMap(true);
   const reeledIn = move === 'reel' && state.fight && state.fight.remaining < prior.fight?.remaining;
   if (mode !== 'campaign' && usesLinePhysics() && target && prior.fight && (reeledIn || state.stage === 'landed')) {
     if (state.stage === 'landed' || state.fight?.pullUp) {
@@ -2262,6 +2295,7 @@ async function activatePrimary(reelEffort) {
     return begin(failed ? 'practice' : mode);
   }
   if (usesLinePhysics() && state.stage === 'landed' && catchSaveFailed) return retryCatchCoins();
+  if (state.stage === 'seek' && quietHole()) return showLakeMap(true);
   if (state.stage === 'seek' && !state.hole && !fishInView()) return updateSearch();
   const fightMove = usesLinePhysics() && !state.fight?.pullUp ? 'reel' : 'lift';
   const move = { seek: 'jig', bite: 'reel', fight: fightMove, landed: 'next', missed: 'next' }[state.stage];
@@ -2354,12 +2388,15 @@ async function showLakeMap(active, dayId = active ? campaignDayId : undefined, p
       ?? mapCells.find(cell => cell.area === preferredArea)?.id ?? firstShoreHole;
   }
   openCampaignMap({ selected: selectedHole, hasAccess: area => hasAreaAccess(profile, area),
+    get recognizedSpecies() { return profile.caughtSpecies; },
+    get pastCatchSpots() { return Object.values(profile.catchLocations ?? {}).map(record => record.cellId); },
     day, goalClue: bryanGoalClue(campaignGoal(profile)), budget: active ? state.count - state.index : undefined,
     onSelect: id => { selectedHole = id; },
     onPermit: cell => { permitReturn = () => showLakeMap(active, day.id); void showPermit(cell.area); },
     onBack: () => { releaseMap(); if (!active) showOutingPicker(preferredArea); else mapButton.focus(); },
     save: async command => {
-      const result = await (command.type === 'end-day' ? endSavedDay(command.dayId) : applyProfile(command));
+      const result = await (command.type === 'end-day' ? endSavedDay(command.dayId)
+        : applyProfile({ ...command, elapsedMs: active ? outingElapsed() : profile.elapsedMs }));
       profile = result.profile;
       return result;
     },
@@ -2374,7 +2411,7 @@ async function showLakeMap(active, dayId = active ? campaignDayId : undefined, p
       releaseMap();
       if (!active) void startSelected('campaign', cell, profile);
       else {
-        state = moveToHole(run, cell, outingTime.dateNow(), outingElapsed());
+        state = moveToHole(run, cell, outingTime.dateNow(), outingElapsed(), profile.day.rosters[cell.id]);
         resetDepth();
         clearBite(); stopCountdown(); placeFish(); render(); syncCountdown();
         mapButton.focus({ preventScroll: true });
@@ -2388,7 +2425,7 @@ function endAttemptIfNeeded(next) {
   confirmEndAttempt(state.stage === 'fight', () => {
     release();
     clearBite(); outingTime.cancel(fightFrame); stopCountdown();
-    state = abandonHoleFish(run, outingTime.dateNow(), outingElapsed());
+    state = abandonHoleFish(run, outingTime.dateNow());
     placeFish(); render(); syncCountdown();
     if (state.stage !== 'done') next(); else action.focus();
   }, () => { release(); mapButton.focus(); });
@@ -2430,6 +2467,7 @@ function startCampaignSwimmers() {
 }
 
 function renderCampaignSearch() {
+  if (quietHole()) return setStatus('This hole is quiet for today. Try another spot.');
   const fish = swimPositions?.fish ?? [];
   const message = fish.some(swimmer => swimmer.mood === 'approach') ? 'It’s coming to the jig.'
     : fish.some(swimmer => swimmer.mood === 'away') ? 'It backed off. Try a different lure.'
@@ -2554,7 +2592,7 @@ function renderSavedCatch() {
   catchPopup.innerHTML = `<header><p>Catch saved</p><h2 id="fishing-reward-title">${fish.name}</h2></header><div data-reward-body><p data-reward-goal></p><div class="fishing-reward-art ${fish.gilded ? 'gilded' : ''}">${fishSvg(state.fish.art)}<span aria-hidden="true" class="fishing-reward-sparks">✦ ✧ ✦</span></div>
     <p class="fishing-reward-quality">${quality} · ${fish.length} inches</p><p>${fish.rarity} species${fish.grade === 'Record' ? ' · Record' : ''}${fish.gilded ? ' · Gilded' : ''}</p>
     <p>+${coins(catchReward)} · +${settledCatch.xp} XP · Level ${settledCatch.level}</p><p>${settledCatch.level === 2 ? 'Marnie: Your next gear and bait are available in the shop.' : settledCatch.level === 10 ? 'Marnie: Pro gear and live bait are available in the shop.' : 'Your catch is safe in Your Lake.'}</p>
-    <div data-reward-video></div></div><footer><button type="button" data-reward-lake>View in Your Lake</button><button type="button" data-reward-next>${state.index + 1 === state.count ? 'Finish outing' : 'Next fish'}</button><button type="button" data-reward-close>Back to catch</button></footer>`;
+    <div data-reward-video></div></div><footer><button type="button" data-reward-lake>View in Your Lake</button><button type="button" data-reward-next>${state.index + 1 === state.count ? 'Finish outing' : lastFishAtHole() ? 'Move hole' : 'Next fish'}</button><button type="button" data-reward-close>Back to catch</button></footer>`;
   const goal = campaignGoal(profile);
   const completed = goal && profile.goalCatches?.includes(settledCatch.key);
   catchPopup.querySelector('[data-reward-goal]').textContent = `${completed ? 'Goal complete. ' : ''}${bryanGoalClue(goal)}`;

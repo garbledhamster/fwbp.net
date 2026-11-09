@@ -32,9 +32,9 @@ export const campaignAreas = {
   },
 };
 export const campaignGoals = [
-  { speciesId: 'perch', holeId: 'A3', clue: 'Look for yellow perch near the weeds on Starter Shore. Try a jig at A3.' },
-  { speciesId: 'pike', holeId: 'E4', clue: 'Look for northern pike along the shallower weed edge. Try a spoon at E4 on Starter Shore.' },
-  { speciesId: 'walleye', holeId: 'B1', area: 'deep-reef', clue: 'Look for walleye along the reef edge. Try a minnow at B1 in Deep Reef.' },
+  { speciesId: 'perch', habitat: 'Weed edge', clue: 'Look for yellow perch along weed edges in 10–15 ft. Try a jig near the weeds on Starter Shore.' },
+  { speciesId: 'pike', habitat: 'Weed edge', clue: 'Look for northern pike along weed edges in 10–15 ft. Try a spoon where pike can hide in the weeds.' },
+  { speciesId: 'walleye', habitat: 'Reef edge', area: 'deep-reef', clue: 'Look for walleye along reef edges around 25 ft. Try a minnow in Deep Reef, especially toward dusk.' },
 ];
 const seekWindows = { Common: 30000, Uncommon: 25000, Rare: 20000 };
 const phaseWeights = {
@@ -184,6 +184,10 @@ function seekDeadline(run, now) {
   return now + seekWindows[lakes[run.lake].fish[species].rarity];
 }
 
+function rollEncounter(random) {
+  return { speciesRoll: random(), horizontalRoll: random(), verticalRoll: random(), sizeRoll: random(), colorRoll: random() };
+}
+
 export function start(now, random = Math.random, lake = 'mille-lacs', { practice = false, campaign } = {}) {
   const pool = encounterPool(lake, 'day');
   const area = Object.hasOwn(campaignAreas, campaign?.area) ? campaign.area : starterArea;
@@ -193,8 +197,7 @@ export function start(now, random = Math.random, lake = 'mille-lacs', { practice
   const run = {
     lake, skills: { quick: 0, control: 0, lift: 0 }, skillPoints: 0, fight: null,
     encounters: depths.map((depth, index) => {
-      const speciesRoll = random();
-      const horizontalRoll = random();
+      const { speciesRoll, horizontalRoll, verticalRoll, sizeRoll, colorRoll } = rollEncounter(random);
       let x = 17 + Math.round(horizontalRoll * 66);
       if (usesLineFight) {
         // Rotate through all three lanes from the first fish's random position.
@@ -209,8 +212,8 @@ export function start(now, random = Math.random, lake = 'mille-lacs', { practice
         depth,
         ...(usesLineFight ? { speciesRoll } : { species: pool[Math.floor(speciesRoll * pool.length)] }),
         x,
-        y: 28 + Math.round(random() * 38),
-        sizeRoll: random(), colorRoll: random(),
+        y: 28 + Math.round(verticalRoll * 38),
+        sizeRoll, colorRoll,
       };
     }),
     expires: now + runLifetime, last: now - 300, index: 0, score: 0, discoveries: [],
@@ -226,7 +229,7 @@ export function start(now, random = Math.random, lake = 'mille-lacs', { practice
     run.holes = {};
     run.holeSeed = structuredClone(run.encounters);
     run.committed = false;
-    moveToHole(run, campaign.hole, now, campaign.elapsedMs);
+    moveToHole(run, campaign.hole, now, campaign.elapsedMs, campaign.roster);
     return run;
   }
   chooseOutingSpecies(run, campaign?.elapsedMs);
@@ -250,6 +253,7 @@ export function publicRun(run) {
     ...(run.campaign && { area: campaignAreas[run.campaign.area].name }),
     ...(run.holes && {
       hole: run.campaign.hole, committed: run.committed,
+      activeFishKey: run.holes[run.campaign.holeId].candidates[run.holes[run.campaign.holeId].active]?.key,
       candidates: run.holes[run.campaign.holeId].candidates.map((fish, slot) => ({
         ...lakes[run.lake].fish[fish.species], key: fish.key, slot, depth: fish.depth, x: fish.x, y: fish.y,
       })),
@@ -266,6 +270,7 @@ export function apply(run, input, now, { campaignElapsedMs = run.campaign?.elaps
   if (!input || Object.keys(input).some(key => !['action', 'lure', 'skill'].includes(key))) throw Error('Invalid action.');
   if (now >= run.expires) throw Error('This outing expired.');
   const jig = input.action === 'jig' && run.stage === 'seek' && Object.hasOwn(lures, input.lure);
+  if (jig && run.holes && !run.holes[run.campaign.holeId].candidates.length) throw Error('This hole is quiet for today.');
   if (run.stage === 'seek' && seekExpired(run, now) && (jig || input.action === 'expire')) {
     miss(run);
     run.version++;
@@ -356,6 +361,7 @@ export function apply(run, input, now, { campaignElapsedMs = run.campaign?.elaps
     run.skillPoints--;
     if (!run.practice) run.cue = `${skills[input.skill]} improved.`;
   } else if (input.action === 'next' && ['landed', 'missed'].includes(run.stage)) {
+    const landed = run.stage === 'landed';
     if (run.practice) {
       run.landed ??= run.index + Number(run.stage === 'landed');
       run.skillPoints = 0;
@@ -370,9 +376,8 @@ export function apply(run, input, now, { campaignElapsedMs = run.campaign?.elaps
     }
     run.stage = run.index === run.encounters.length ? 'done' : 'seek';
     if (run.holes) {
-      consumeHoleFish(run);
+      releaseHoleFish(run, landed);
       run.committed = false;
-      if (run.stage === 'seek') prepareHoleFish(run, campaignElapsedMs);
     } else if (run.stage === 'seek') chooseOutingSpecies(run, campaignElapsedMs);
     run.seekUntil = run.stage === 'seek' && !run.holes ? seekDeadline(run, now) : null;
     run.cue = run.stage === 'done' ? 'Outing complete.' : 'Fish in view. Pick a lure and jig.';
@@ -425,35 +430,30 @@ export function campaignDepthBand(depthFt) {
   return Math.min(5, Math.max(1, Math.round(depthFt / 7) - 1));
 }
 
-function prepareHoleFish(run, elapsedMs = 0) {
-  const hole = run.campaign.hole;
-  const saved = run.holes[hole.id];
-  if (!saved.candidates.length) {
-    saved.swimming = undefined;
-    const pool = encounterPool(run.lake, campaignPhase(elapsedMs), hole.area, hole);
-    const salt = (hole.area === starterArea ? saved.generation * 17 : hole.id.charCodeAt(0) * 7 + Number(hole.id[1]) * 11 + saved.generation * 17) / 101;
-    saved.candidates = Array.from({ length: 3 }, (_, slot) => {
-      const seed = run.holeSeed[(slot + saved.generation) % run.holeSeed.length];
-      const roll = (seed.speciesRoll + salt + slot / 3) % 1;
-      const maxBand = campaignDepthBand(hole.depthFt);
-      return { ...seed, species: pool[Math.floor(roll * pool.length)], lane: slot,
-        key: `${hole.id}:${saved.generation}:${slot}`,
-        depth: Math.max(0, maxBand - (slot % 3)), x: [27, 50, 73][slot], y: 35 + slot * 10 };
-    });
-    const goal = campaignGoals.find(goal => goal.holeId === hole.id);
-    if (goal) {
-      const species = lakes[run.lake].fish.findIndex(fish => fish.id === goal.speciesId);
-      if (!saved.candidates.some(fish => fish.species === species)) saved.candidates.at(-1).species = species;
-    }
-    saved.generation++;
+function buildHoleRoster(lake, hole, elapsedMs, seeds, goalId) {
+  const pool = encounterPool(lake, campaignPhase(elapsedMs), hole.area, hole);
+  const salt = hole.area === starterArea ? 0 : (hole.id.charCodeAt(0) * 7 + Number(hole.id[1]) * 11) / 101;
+  const roster = seeds.slice(0, 3).map(({ speciesRoll, sizeRoll, colorRoll }, lane) => {
+    const roll = (speciesRoll + salt + lane / 3) % 1;
+    return { key: `${hole.id}:0:${lane}`, lane, sizeRoll, colorRoll, speciesId: lakes[lake].fish[pool[Math.floor(roll * pool.length)]].id };
+  });
+  const goal = campaignGoals.find(goal => goal.speciesId === goalId && (goal.area ?? starterArea) === hole.area && goal.habitat === hole.habitat);
+  if (goal && !roster.some(fish => fish.speciesId === goal.speciesId)) {
+    roster.at(-1).speciesId = goal.speciesId;
   }
-  run.waterJig = undefined;
+  return roster;
 }
 
-function consumeHoleFish(run) {
+export function createCampaignRoster(hole, elapsedMs, random = Math.random, goalId) {
+  const seeds = Array.from({ length: 3 }, () => rollEncounter(random));
+  return buildHoleRoster('mille-lacs', hole, elapsedMs, seeds, goalId);
+}
+
+function releaseHoleFish(run, landed = false) {
   const saved = run.holes[run.campaign.holeId];
-  if (saved.active !== undefined) saved.candidates.splice(saved.active, 1);
+  if (landed && saved.active !== undefined) saved.candidates.splice(saved.active, 1);
   saved.active = undefined;
+  run.waterJig = undefined;
 }
 
 // The renderer and line share lake-relative CSS pixels. Each swimmer's point
@@ -545,7 +545,7 @@ export function stepCampaignFish(run, now, { width, bands, lure, eye, reducedMot
   }
   return { fish, contact: Boolean(first), slot: first?.slot };
 }
-export function moveToHole(run, hole, now, elapsedMs = 0) {
+export function moveToHole(run, hole, now, elapsedMs = 0, roster) {
   if (!run.holes || !hole?.id || !Object.hasOwn(campaignAreas, hole.area) || !Number.isFinite(hole.depthFt)) throw Error('Choose a valid Campaign hole.');
   if (run.committed || !['seek'].includes(run.stage)) throw Error('End the current attempt before moving.');
   if (now >= run.expires) throw Error('This outing expired.');
@@ -553,23 +553,31 @@ export function moveToHole(run, hole, now, elapsedMs = 0) {
   run.campaign.holeId = holeId;
   run.campaign.hole = structuredClone(hole);
   run.campaign.area = hole.area;
-  run.holes[holeId] ??= { candidates: [], generation: 0 };
-  prepareHoleFish(run, elapsedMs);
-  if (run.holes[holeId].swimming) run.holes[holeId].swimming.last = now;
+  const saved = run.holes[holeId];
+  if (!saved) {
+    const fish = roster ?? buildHoleRoster(run.lake, hole, elapsedMs, run.holeSeed, run.campaign.goalId);
+    run.holes[holeId] = { candidates: fish.map(({ speciesId, lane, ...candidate }) => ({
+      ...candidate, lane, species: lakes[run.lake].fish.findIndex(entry => entry.id === speciesId),
+      depth: Math.max(0, campaignDepthBand(hole.depthFt) - lane), x: [27, 50, 73][lane], y: 35 + lane * 10,
+    })) };
+  } else {
+    if (roster) saved.candidates = saved.candidates.filter(fish => roster.some(entry => entry.key === fish.key));
+    if (saved.swimming) saved.swimming.last = now;
+  }
+  run.waterJig = undefined;
   run.seekUntil = null;
   run.version++;
   return publicRun(run);
 }
-export function abandonHoleFish(run, now, elapsedMs = 0) {
+export function abandonHoleFish(run, now) {
   if (!run.holes || !run.committed || !['seek', 'bite', 'fight'].includes(run.stage)) throw Error('No committed attempt to end.');
-  consumeHoleFish(run);
+  releaseHoleFish(run);
   run.index++;
   run.committed = false;
   run.stage = run.index === run.encounters.length ? 'done' : 'seek';
   run.fight = run.catch = run.seekUntil = run.snap = run.reaction = null;
   run.wrongLures = 0;
   run.last = now - moveIntervalMs;
-  if (run.stage === 'seek') prepareHoleFish(run, elapsedMs);
   run.cue = run.stage === 'done' ? 'Outing complete.' : 'Attempt ended. Jig near another fish.';
   run.version++;
   return publicRun(run);

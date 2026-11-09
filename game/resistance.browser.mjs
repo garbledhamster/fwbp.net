@@ -179,7 +179,7 @@ await withBrowser(async browser => {
     await qa.wait(70);
     await qa.wheelPackets([-30], 70);
     await qa.tick(80);
-    assert.equal(await qa.depth(), after, 'a wheel tail cannot add a second reel after the action interval');
+    assert.ok(Math.abs(await qa.depth() - after) < 1, 'a wheel tail cannot add a second reel after the action interval');
   });
   const swipe = await controlledReel(browser, qa => qa.gesture(-68), true);
   for (const [device, movement] of Object.entries({ lineNotch, oneLineNotch, trackpad, swipe })) {

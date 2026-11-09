@@ -1,5 +1,5 @@
 import { fishProfiles } from "../assets/fish-profiles.js";
-import { lakes, lures } from "./rules.mjs?v=campaign-smooth-swim";
+import { lakes, lures } from "./rules.mjs?v=campaign-map-discovery";
 
 export const speciesArt = {
   pike: ["lake-life", "pike", "0 0 230 72"],
