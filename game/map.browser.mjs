@@ -5,7 +5,40 @@ import map from './lake-map-data.mjs';
 const shore = map.cells.find(cell => cell.area === 'starter-shore');
 const reef = map.cells.find(cell => cell.depthFt >= 30);
 
+async function checkShortPortraitMap(browser) {
+  const { page, press, launch, closeDialog } = await practicePage(browser, {
+    mobile: true, viewport: { width: 320, height: 568 },
+  });
+  try {
+    const dialog = page.locator('.fishing-map');
+    await press(launch, 'Enter');
+    await press(page.getByRole('button', { name: 'Campaign', exact: true }), 'Enter');
+    await dialog.waitFor();
+    await press(dialog.locator('[data-map-drill]'), 'Enter');
+    await press(page.locator('[data-permit-shop]'), 'Enter');
+    const shop = page.locator('.fishing-shop');
+    const item = shop.locator('[data-item="starter-license"]');
+    await press(item.getByRole('button', { name: /^(Buy|Claim) Starter Shore permit$/ }), 'Enter');
+    await item.getByText('Owned', { exact: true }).waitFor();
+    await closeDialog(shop, shop.locator('[data-shop-back]'));
+    await dialog.waitFor();
+    const selected = dialog.locator(`[data-map-cell="${shore.id}"]`);
+    const position = await selected.evaluate(cell => {
+      const box = cell.getBoundingClientRect();
+      const footer = cell.closest('dialog').querySelector('.fishing-map-actions').getBoundingClientRect();
+      const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+      return { focused: cell === document.activeElement, hittable: cell.contains(hit), cellBottom: box.bottom, footerTop: footer.top };
+    });
+    assert.ok(position.focused && position.hittable && position.cellBottom <= position.footerTop,
+      `focused hole must be fully above the footer at 320×568: ${JSON.stringify(position)}`);
+    console.log('PASS 320×568: the selected hole is visible and reachable after claiming the permit');
+  } finally {
+    await page.close();
+  }
+}
+
 await withBrowser(async browser => {
+  await checkShortPortraitMap(browser);
   for (const viewport of [
     { width: 1200, height: 800 },
     { width: 320, height: 720 },

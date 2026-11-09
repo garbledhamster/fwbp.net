@@ -120,7 +120,7 @@ async function buyPermit(qa, id, area) {
   const { page, press, closeDialog } = qa;
   const permit = page.getByRole('dialog', { name: `${area} permit` });
   await permit.waitFor();
-  if (area === 'Deep Reef') assert.match(await permit.textContent(), /costs 25 coins/i);
+  if (area === 'Deep Reef') await permit.getByText(/costs 25 coins/i).waitFor();
   await press(permit.getByRole('button', { name: 'Get this permit' }), 'Enter');
   const shop = page.getByRole('dialog', { name: 'Tackle shop' });
   const item = shop.locator(`[data-item="${id}"]`);
