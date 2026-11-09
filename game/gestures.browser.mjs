@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { practicePage, withBrowser } from './browser-qa.mjs';
 
 const layouts = [
-  { name: 'desktop wheel', viewport: { width: 1200, height: 720 } },
+  { name: 'desktop click and wheel', viewport: { width: 1200, height: 720 } },
   { name: '320×720 touch', mobile: true, viewport: { width: 320, height: 720 } },
   { name: '720×320 touch', mobile: true, viewport: { width: 720, height: 320 } },
 ];
@@ -31,7 +31,7 @@ async function checkGestures(browser, layout) {
   const marker = page.locator('[data-line-gesture-marker]');
   const up = marker.locator('[data-line-gesture-up]');
   const down = marker.locator('[data-line-gesture-down]');
-  const wait = marker.locator('[data-line-gesture-wait]');
+  const lureAction = marker.locator('button');
   const markerPoint = async () => {
     // Fall back to the lure's coordinates so the pre-feature failure is a missed jig.
     const box = await marker.count() ? await marker.boundingBox() : undefined;
@@ -40,6 +40,10 @@ async function checkGestures(browser, layout) {
       const point = path.getPointAtLength(path.getTotalLength()).matrixTransform(path.getScreenCTM());
       return { x: point.x + 18, y: point.y };
     });
+  };
+  const tapLure = async () => {
+    const { x, y } = await markerPoint();
+    await (touch ? page.touchscreen.tap(x, y) : page.mouse.click(x, y));
   };
   const waterPoint = async () => ({ x: 30, y: Math.max(75, (await tray.boundingBox()).y * .57) });
   const fingers = (type, points) => touch.send('Input.dispatchTouchEvent', {
@@ -72,34 +76,43 @@ async function checkGestures(browser, layout) {
   assert.equal(await action.textContent(), 'Jig');
   await findFish({ species: 'muskie' });
   await marker.waitFor();
-  assert.equal(await marker.evaluate(el => el.tabIndex), -1, 'the marker adds no keyboard stop');
+  assert.equal(await marker.getByRole('button', { name: 'Jig lure' }).count(), 1,
+    'the lure has a click and tap target while searching');
+  assert.equal(await marker.evaluate(el => getComputedStyle(el).borderWidth), '0px', 'the lure has no box');
+  assert.equal(await up.isVisible(), false, 'there is no callout beside the lure');
+  assert.match(await status.textContent(), /click or tap the jig/i);
   if (!touch) {
     await button('Menu').focus();
     const visited = new Set();
+    let reachedLure = false;
     for (let step = 0; step < 10; step++) {
       await page.keyboard.press('Tab');
-      assert.equal(await marker.evaluate(el => el.contains(document.activeElement)), false, 'Tab skips the marker');
+      reachedLure ||= await lureAction.evaluate(el => el === document.activeElement);
       assert.equal(await action.evaluate(el => el === document.activeElement), false, 'Tab skips the live Jig action');
       const lure = await page.evaluate(() => document.activeElement.dataset.lure);
       if (lure) visited.add(lure);
     }
+    assert.ok(reachedLure, 'Tab reaches the jig');
     assert.deepEqual([...visited], ['jig', 'spoon', 'minnow'], 'Tab reaches every bait slot');
   }
   await press(button('Spoon'));
   await findFish({ species: 'muskie' });
   await marker.waitFor();
   assert.equal(await button('Spoon').getAttribute('aria-pressed'), 'true', 'the bait tap selects Spoon');
-  const preJigScroll = await scrollY();
   const fish = page.locator('.fishing-swimmer[data-species="muskie"]');
   const biteRipple = page.locator('.fishing-bite-ripple');
   const pause = page.getByRole('dialog', { name: 'Paused' });
-  await gesture(await markerPoint(), 0, -70);
-  assert.equal(await wait.isVisible(), false, 'the jig has to draw a fish in before gold starts');
-  assert.equal(await scrollY(), preJigScroll, 'jig does not browse depths');
-  assert.equal(await button('Spoon').getAttribute('aria-pressed'), 'true', 'a gesture does not change tackle on release');
-
-  await gesture(await markerPoint(), 0, touch ? -10 : -70);
-  assert.equal(await wait.isVisible(), false, 'follow-through cannot commit a bite');
+  const beforeScroll = await scrollY();
+  await gesture(await markerPoint(), 0, touch ? -45 : 60, { hold: true });
+  await settleInput();
+  assert.ok(await scrollY() > beforeScroll, 'a wheel or swipe over the lure still browses depth');
+  assert.notEqual(await fish.getAttribute('data-swim'), 'approach', 'scrolling does not jig');
+  await findFish({ species: 'muskie' });
+  const preJigScroll = await scrollY();
+  await tapLure();
+  assert.equal(await biteRipple.isVisible(), false, 'the fish has to reach the jig before gold starts');
+  assert.equal(await scrollY(), preJigScroll, 'jigging holds the current depth');
+  assert.equal(await button('Spoon').getAttribute('aria-pressed'), 'true', 'jigging keeps the bait selected');
   await tick(32);
   assert.equal(await fish.getAttribute('data-swim'), 'approach');
   await press(button('Menu'), 'Enter');
@@ -110,7 +123,10 @@ async function checkGestures(browser, layout) {
   await closeDialog(pause, pause.getByRole('button', { name: 'Resume fishing' }));
 
   await waitForBite();
-  assert.equal(await wait.isVisible(), true);
+  assert.equal(await lureAction.getAttribute('aria-disabled'), 'true', 'the lure waits for gold');
+  assert.match(await status.textContent(), /wait for gold/i);
+  await tapLure();
+  assert.equal(await lureAction.getAttribute('aria-disabled'), 'true', 'an early tap leaves the bite timer running');
   assert.equal(await biteRipple.isVisible(), true, 'contact shows the ripple at the lure');
   assert.equal(await page.locator('.fishing-swimmer').count(), 2, 'the other fish are still swimming');
   const timing = tray.locator('.fishing-timing');
@@ -132,8 +148,9 @@ async function checkGestures(browser, layout) {
     assert.match(await status.textContent(), /yeah, reel it/i, 'horizontal, small, down, pinch and cancelled input do not hook');
     await settleInput();
   }
-  await gesture(await markerPoint(), 0, -64);
-  assert.match(await status.textContent(), /reel it up toward the hole/i, 'a deliberate new upward gesture sets the hook');
+  assert.equal(await lureAction.getAttribute('aria-disabled'), 'false');
+  await tapLure();
+  assert.match(await status.textContent(), /reel it up toward the hole/i, 'a deliberate click or tap in gold sets the hook');
   assert.equal(await page.locator('.fishing-line').getAttribute('data-line-cue'), 'hook', 'the hook shows the stronger tug cue');
   assert.equal(await scrollY(), preJigScroll, 'hook does not browse depths');
 

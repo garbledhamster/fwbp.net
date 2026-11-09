@@ -1,9 +1,9 @@
-import { openCampaignMap, mapCells, firstShoreHole, confirmEndAttempt } from './campaign-map.mjs?v=campaign-playtest';
+import { openCampaignMap, mapCells, firstShoreHole, confirmEndAttempt } from './campaign-map.mjs?v=campaign-tap-jig';
 import { createSuspensionClock } from './suspension.mjs';
-import { catchQuality, moveToHole, stepCampaignFish, abandonHoleFish, advanceLineFight, apply, campaignAreas, campaignDepthBand, campaignPhase, lakes, lures, practiceLevelXp, practiceSkills, publicRun, skills, start, starterArea } from './rules.mjs?v=campaign-playtest';
-import { areaPermit, hasAreaAccess, campaignGoal, campaignProgress, campaignTraining, campaignTechniques, techniqueState, shopAvailability, applyProfile, campaignMilestone, loadProfile, shopItems } from './profile.mjs?v=campaign-playtest';
+import { catchQuality, moveToHole, stepCampaignFish, abandonHoleFish, advanceLineFight, apply, campaignAreas, campaignDepthBand, campaignPhase, lakes, lures, practiceLevelXp, practiceSkills, publicRun, skills, start, starterArea } from './rules.mjs?v=campaign-tap-jig';
+import { areaPermit, hasAreaAccess, campaignGoal, campaignProgress, campaignTraining, campaignTechniques, techniqueState, shopAvailability, applyProfile, campaignMilestone, loadProfile, shopItems } from './profile.mjs?v=campaign-tap-jig';
 import { lureTip } from './species-catalog.mjs';
-import { openYourLake } from './collection.mjs?v=campaign-playtest';
+import { openYourLake } from './collection.mjs?v=campaign-tap-jig';
 import { renderSpeciesVideo } from './species-video.mjs';
 import { spriteHref } from './lake-sprites.mjs';
 
@@ -146,7 +146,7 @@ pause.innerHTML = `
       <dt><kbd>Esc</kbd></dt><dd>Menu / Back / Resume</dd>
       <dt>Arrows / Page keys</dt><dd>Scroll the lake. In Gear, use arrow keys to browse focused item tiles.</dd>
     </dl>
-    <p data-campaign-gestures hidden>In Campaign, scroll or swipe up on the marker to jig or set the hook. Once hooked, scroll or swipe anywhere in the water. Go up to reel or pull up and down to loosen.</p>
+    <p data-campaign-gestures hidden>In Campaign, click or tap the jig to work the bait. When a fish bites, wait for gold, then click or tap the jig again to set the hook. Once hooked, scroll or swipe up anywhere in the water to reel or pull up. Go down to loosen.</p>
     <p>In Practice and Ranked, tap the labeled fishing buttons. Details shows each item’s effect. Campaign tackle changes apply to the next outing. Practice uses starter tackle and its own Level 2 skill choice. Ranked uses server timing and an Exit button.</p>
     <button type="button" data-action="back">Back to Pause</button>
   </section><div class="fishing-frame-footer"><button type="button" data-action="resume">Resume fishing</button></div>`;
@@ -238,11 +238,11 @@ const lineGestureMarker = document.createElement('div');
 lineGestureMarker.className = 'fishing-line-gesture';
 lineGestureMarker.setAttribute('data-line-gesture-marker', '');
 lineGestureMarker.hidden = true;
-lineGestureMarker.innerHTML = '<span data-line-gesture-up></span><span data-line-gesture-down hidden>↓ Loosen</span><span data-line-gesture-wait hidden>Wait for gold</span>';
+lineGestureMarker.innerHTML = '<button type="button" class="fishing-lure-action" hidden></button><span data-line-gesture-up hidden></span><span data-line-gesture-down hidden>↓ Loosen</span>';
 lake.append(lineGestureMarker);
+const lureAction = lineGestureMarker.querySelector('button');
 const lineGestureUp = lineGestureMarker.querySelector('[data-line-gesture-up]');
 const lineGestureDown = lineGestureMarker.querySelector('[data-line-gesture-down]');
-const lineGestureWait = lineGestureMarker.querySelector('[data-line-gesture-wait]');
 const celebration = document.createElement('div');
 celebration.className = 'fishing-celebration';
 celebration.hidden = true;
@@ -312,7 +312,7 @@ const slots = [...tray.querySelectorAll('[data-lure]')];
 let launch, previousScroll, run, state, token, target, busy, failed, biteAt, frame;
 let mode, rigFrame, fightFrame, jigAt = -Infinity;
 let retractTimer, retractFrame, retractAt;
-let lastTouchY, lineTouch, wheelBurst;
+let lastTouchY, lineTouch, wheelBurst, lurePress;
 let profile, outingId, catchReward, catchSaveFailed, settledCatch;
 const catchActions = tray.querySelector('.fishing-catch-actions');
 const catchLake = tray.querySelector('[data-catch-lake]');
@@ -353,7 +353,7 @@ export function acquireSuspension() {
   const first = !outingTime.suspended;
   const releaseTime = outingTime.acquire();
   if (first) {
-    lineTouch = undefined;
+    lineTouch = lurePress = undefined;
     clearLineGestureMarker();
     pausedAnimations = [...lake.getAnimations({ subtree: true }), ...celebration.getAnimations({ subtree: true })]
       .filter(animation => animation.playState === 'running');
@@ -979,7 +979,7 @@ function iceHole(hole = iceCeiling.getBoundingClientRect()) {
   return { x: hole.left + hole.width * .62, y: hole.top + hole.height * 20 / 110 };
 }
 
-const lineGestureLabels = { jig: '↑ Jig', hook: '↑ Set hook', reel: '↑ Reel', lift: '↑ Pull up' };
+const lineGestureLabels = { reel: '↑ Reel', lift: '↑ Pull up' };
 const hookedGesture = phase => phase === 'reel' || phase === 'lift';
 
 function lineGesturePhase() {
@@ -1001,11 +1001,14 @@ function positionLineGestureMarker(water, x, y) {
   const elapsed = phase === 'hook' ? outingTime.dateNow() - biteAt : 0;
   const waiting = phase === 'hook' && elapsed < state.window.from;
   const missedWindow = phase === 'hook' && elapsed > state.window.until;
-  const upLabel = missedWindow ? '↑ Try again' : lineGestureLabels[phase];
-  if (lineGestureUp.textContent !== upLabel) lineGestureUp.textContent = upLabel;
-  lineGestureUp.hidden = waiting || state.fight?.tight === true;
-  lineGestureWait.hidden = !waiting;
-  lineGestureDown.hidden = !hookedGesture(phase);
+  const fighting = hookedGesture(phase);
+  const label = phase === 'jig' ? 'Jig lure' : missedWindow ? 'Try again' : 'Set hook';
+  if (lureAction.getAttribute('aria-label') !== label) lureAction.setAttribute('aria-label', label);
+  if (lureAction.getAttribute('aria-disabled') !== String(waiting)) lureAction.setAttribute('aria-disabled', String(waiting));
+  lureAction.hidden = fighting;
+  if (fighting && lineGestureUp.textContent !== lineGestureLabels[phase]) lineGestureUp.textContent = lineGestureLabels[phase];
+  lineGestureUp.hidden = !fighting || state.fight?.tight === true;
+  lineGestureDown.hidden = !fighting;
   lineGestureMarker.hidden = false;
   const { offsetLeft = 0, offsetTop = 0, width = innerWidth } = window.visualViewport ?? {};
   const left = Math.max(water.left, offsetLeft);
@@ -1013,9 +1016,11 @@ function positionLineGestureMarker(water, x, y) {
   const top = Math.max(water.top, offsetTop);
   const bottom = Math.min(water.bottom, tray.getBoundingClientRect().top);
   // Keep the whole target reachable even when the rig is at the ice hole or the screen edge.
-  const guideOffset = hookedGesture(phase) ? -62 : 18;
-  const markerX = Math.max(left + 54, Math.min(water.left + x + guideOffset, right - 54));
-  const markerY = Math.max(top + 39, Math.min(water.top + y, bottom - 39));
+  const guideOffset = fighting ? -62 : 0;
+  const halfWidth = fighting ? 54 : 26;
+  const halfHeight = fighting ? 39 : 26;
+  const markerX = Math.max(left + halfWidth, Math.min(water.left + x + guideOffset, right - halfWidth));
+  const markerY = Math.max(top + halfHeight, Math.min(water.top + y, bottom - halfHeight));
   lineGestureMarker.style.left = `${markerX - water.left}px`;
   lineGestureMarker.style.top = `${markerY - water.top}px`;
 }
@@ -1349,7 +1354,10 @@ function updateSearch() {
 function showPracticeBite(elapsed) {
   const wait = elapsed < state.window.from;
   const passed = elapsed > state.window.until;
-  setStatus(wait ? 'That’s a bite! Wait for gold.' : passed ? 'Missed the window. Reel in and try again.' : 'Yeah, reel it!');
+  const campaign = mode === 'campaign';
+  setStatus(wait ? 'That’s a bite! Wait for gold.'
+    : passed ? (campaign ? 'Missed the window. Click or tap to try again.' : 'Missed the window. Reel in and try again.')
+      : campaign ? 'Yeah, reel it! Click or tap the jig.' : 'Yeah, reel it!');
   action.classList.toggle('fishing-action-quiet', wait);
 }
 
@@ -1643,7 +1651,7 @@ async function begin(selectedMode = mode, hole, savedProfile) {
   catchSaveFailed = false;
   lure = 'jig';
   const current = ++generation;
-  lineTouch = wheelBurst = undefined;
+  lineTouch = wheelBurst = lurePress = undefined;
   busy = true;
   failed = false;
   mode = selectedMode;
@@ -1737,7 +1745,7 @@ function leave() {
   tray.hidden = bobber.hidden = true;
   line.setAttribute('hidden', '');
   clearLineGestureMarker();
-  lineTouch = wheelBurst = undefined;
+  lineTouch = wheelBurst = lurePress = undefined;
   document.body.classList.remove('fishing');
   window.scrollTo({ top: previousScroll, behavior: 'instant' });
   launch.focus({ preventScroll: true });
@@ -1792,7 +1800,7 @@ document.addEventListener('keydown', event => {
     window.scrollBy({ top: step * scrollKeys[event.key], behavior: 'instant' });
     updateSearch();
   }
-  if (!token && event.repeat && ['Enter', ' '].includes(event.key) && tray.contains(event.target)) event.preventDefault();
+  if (!token && event.repeat && ['Enter', ' '].includes(event.key) && (tray.contains(event.target) || event.target === lureAction)) event.preventDefault();
 });
 window.addEventListener('scroll', () => {
   if (outingTime.suspended) return;
@@ -1806,8 +1814,8 @@ const swipeThreshold = 34;
 const lineControl = 'button, a, input, select, textarea, label, summary, dialog, [contenteditable], [role="button"], [role="link"], [data-line-gesture-ignore]';
 
 function gestureSurface(target, phase) {
-  return phase && !target.closest(lineControl)
-    && (hookedGesture(phase) ? lake.contains(target) : lineGestureMarker.contains(target));
+  if (phase === 'hook') return lineGestureMarker.contains(target);
+  return hookedGesture(phase) && lake.contains(target) && !target.closest(lineControl);
 }
 
 function effortFromSpeed(distance, duration) {
@@ -1864,7 +1872,7 @@ window.addEventListener('wheel', event => {
 
 window.addEventListener('touchstart', event => {
   // The second finger can start outside the lake or over the tray.
-  if (event.touches.length !== 1) lineTouch = undefined;
+  if (event.touches.length !== 1) lineTouch = lurePress = undefined;
 }, { capture: true, passive: true });
 lake.addEventListener('touchstart', event => {
   const phase = lineGesturePhase();
@@ -1903,7 +1911,7 @@ lake.addEventListener('touchend', event => {
   const effort = effortFromSpeed(Math.abs(y), Math.max(80, event.timeStamp - touch.started));
   workLine(touch.phase, Math.sign(y), effort);
 }, { passive: false });
-lake.addEventListener('touchcancel', () => { lineTouch = undefined; });
+lake.addEventListener('touchcancel', () => { lineTouch = lurePress = undefined; });
 
 window.addEventListener('wheel', event => {
   if (event.defaultPrevented || outingTime.suspended || dialogOpen()) return;
@@ -2091,6 +2099,23 @@ async function activatePrimary(reelEffort) {
   return perform(move, move === 'jig' ? { lure } : {}, reelEffort);
 }
 action.addEventListener('click', () => { void activatePrimary(); });
+lureAction.addEventListener('pointerdown', event => {
+  lurePress = event.isPrimary && event.button === 0
+    ? { phase: lineGesturePhase(), x: event.clientX, y: event.clientY } : undefined;
+});
+lureAction.addEventListener('pointermove', event => {
+  if (lurePress && Math.hypot(event.clientX - lurePress.x, event.clientY - lurePress.y) > 5) lurePress = undefined;
+});
+lureAction.addEventListener('pointercancel', () => { lurePress = undefined; });
+lureAction.addEventListener('click', event => {
+  const phase = lineGesturePhase();
+  const started = lurePress;
+  lurePress = undefined;
+  if (event.detail && started?.phase !== phase) return;
+  if (phase === 'jig' || (phase === 'hook' && outingTime.dateNow() - biteAt >= state.window.from)) {
+    void activatePrimary();
+  }
+});
 for (const button of [...skillRow.children, ...practiceButtons]) {
   button.addEventListener('click', () => { if (!gameBlocked() && !button.disabled && state?.stage === 'landed') void perform('upgrade', { skill: button.dataset.skill }); });
 }
@@ -2227,8 +2252,8 @@ function renderCampaignSearch() {
   const fish = swimPositions?.fish ?? [];
   const message = fish.some(swimmer => swimmer.mood === 'approach') ? 'It’s coming to the jig.'
     : fish.some(swimmer => swimmer.mood === 'away') ? 'It backed off. Try a different lure.'
-      : state.reaction === 'slipped-hook' ? 'It slipped the hook. Jig again.'
-        : fish.some(swimmer => swimmer.near) ? 'Jig near a fish.' : 'Scroll up or down to find the fish.';
+      : state.reaction === 'slipped-hook' ? 'It slipped the hook. Click or tap to jig again.'
+        : fish.some(swimmer => swimmer.near) ? 'Click or tap the jig.' : 'Scroll to a fish’s depth, then click or tap the jig.';
   setStatus(practiceError ?? message);
 }
 

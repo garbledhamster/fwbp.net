@@ -99,7 +99,7 @@ async function checkFight(browser, mobile, mode) {
   assert.equal(await action.textContent(), 'Next fish');
   assert.equal(await page.locator('.fishing-line').isHidden(), true);
   await press(action);
-  assert.match(await status.textContent(), /find the fish/i);
+  assert.match(await status.textContent(), mode === 'Campaign' ? /scroll to a fish’s depth/i : /find the fish/i);
   assert.deepEqual(errors, []);
   await page.close();
 }

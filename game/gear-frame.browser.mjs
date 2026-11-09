@@ -5,7 +5,7 @@ const evidence=process.env.FISHING_EVIDENCE;
 if(evidence) await mkdir(evidence,{recursive:true});
 await withBrowser(async browser=>{
   for(const viewport of [{width:1200,height:720},{width:320,height:720},{width:720,height:320}]){
-    const {page,press,enter,tray,errors}=await practicePage(browser,{viewport,mobile:viewport.width<800});
+    const {page,press,closeDialog,enter,tray,errors}=await practicePage(browser,{viewport,mobile:viewport.width<800});
     await page.evaluate(async()=>{
       const {loadProfile}=await import('./game/profile.mjs?v=connected-rpg');
       const p=await loadProfile();
@@ -49,8 +49,7 @@ await withBrowser(async browser=>{
     await press(selected.locator('[data-item-details]'));
     const details=page.locator('.fishing-item-details');
     await details.waitFor();
-    await page.keyboard.press('Escape');
-    await details.waitFor({state:'hidden'});
+    await closeDialog(details, details.getByRole('button', {name:'Back to item'}));
     await selected.locator('[data-item-details]:focus').waitFor();
     await press(selected.locator('[data-shop-action="equip"]'));
     await gear.locator('[data-gear-message]').filter({hasText:/equipped for the next Campaign outing/}).waitFor().catch(async error=>{ console.error(viewport, await gear.locator('[data-gear-message]').textContent()); if(evidence)await page.screenshot({path:`${evidence}/failure-${viewport.width}.png`}); throw error; });

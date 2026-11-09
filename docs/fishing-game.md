@@ -69,7 +69,7 @@ A wrong lure makes the fish back away. Rare fish leave after two wrong jigs and 
 
 ### Campaign
 
-Choose **Campaign** from **Play fishing game**. Use Bryan’s clue to pick a spot on Mille Lacs, then open a hole. Scroll to a fish’s depth and work the bait with the marker beside the line. A fish that likes the bait swims toward the jig. Contact tugs the line and starts the wait for gold. Set the hook in gold, then work the line anywhere in the water. Deeper fish take more reeling, and heavy fish and tight line slow each pull. The gauge compares the load with your line rating.
+Choose **Campaign** from **Play fishing game**. Use Bryan’s clue to pick a spot on Mille Lacs, then open a hole. Scroll to a fish’s depth and click or tap the jig to work the bait. A fish that likes the bait swims toward the jig. Contact tugs the line and starts the wait for gold. Set the hook in gold, then work the line anywhere in the water. Deeper fish take more reeling, and heavy fish and tight line slow each pull. The gauge compares the load with your line rating.
 
 Land fish to earn coins. A new Campaign player claims the free **Starter Shore permit** in the tackle shop before the first outing. Choose a locked area to meet Officer Rowan, a fictional conservation guide, who names its permit, price and any coin shortfall. **Get this permit** opens that exact shop item. Closing the shop returns to the chosen area so you can decide when to fish. Existing saves retain their permits. The **Deep Reef permit** costs 25 game coins and opens a second area of Mille Lacs with a different mix of fish. These permits unlock game areas; for real fishing, check [Minnesota DNR requirements](https://www.dnr.state.mn.us/regulations/fishing/index.html) and [Mille Lacs rules](https://www.dnr.state.mn.us/fishing/millelacs.html).
 
@@ -111,6 +111,6 @@ Run `node game/map.browser.mjs` for permit return, bite commitment, abandonment 
 
 ### Campaign line gestures
 
-Scroll or swipe up on the line marker to jig or set the hook. After hooking a fish, scroll or swipe anywhere in the water. Up reels or pulls up at the hole, and down loosens. The bottom tray keeps bait and the line tension meter. Controls in Pause lists the keyboard equivalents. Add `?campaign-live-buttons=1` to the page URL to restore the live action buttons for a comparison. The save, Next fish and Your Lake actions are available in either view.
+Click or tap the jig to work the bait. When the fish bites, wait for gold and click or tap the jig again to set the hook. After hooking a fish, scroll or swipe anywhere in the water. Up reels or pulls up at the hole, and down loosens. The bottom tray keeps bait and the line tension meter. Controls in Pause lists the keyboard equivalents. Add `?campaign-live-buttons=1` to the page URL to restore the live action buttons for a comparison. The save, Next fish and Your Lake actions are available in either view.
 
-Run `node game/campaign-tray.browser.mjs` for six catches by desktop wheel or phone swipe, including a failed save and retry, Your Lake return and the end of the outing. `node game/gestures.browser.mjs` covers input guards and landscape touch.
+Run `node game/campaign-tray.browser.mjs` for six catches by click and wheel or tap and swipe, including a failed save and retry, Your Lake return and the end of the outing. `node game/gestures.browser.mjs` covers input guards and landscape touch.

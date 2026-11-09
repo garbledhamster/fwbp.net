@@ -15,6 +15,7 @@ async function checkOuting(browser, mobile) {
   const marker = page.locator('[data-line-gesture-marker]');
   const up = marker.locator('[data-line-gesture-up]');
   const down = marker.locator('[data-line-gesture-down]');
+  const lureAction = marker.locator('button');
   const liveActions = tray.locator('.fishing-action, [data-loosen]');
   const lures = tray.getByRole('group', { name: 'Lures' });
   const lureButton = name => lures.getByRole('button', { name, exact: true });
@@ -36,11 +37,11 @@ async function checkOuting(browser, mobile) {
     await page.screenshot({ path: join(evidence, `campaign-tray-${mobile ? 'phone' : 'desktop'}-${label}.png`) });
   }
 
-  async function stroke(direction, atMarker = false) {
-    const box = await (atMarker ? marker : tray).boundingBox();
+  async function stroke(direction) {
+    const box = await tray.boundingBox();
     assert.ok(box, 'the stroke has a visible start area');
-    const x = atMarker ? box.x + box.width / 2 : 30;
-    const y = atMarker ? box.y + box.height / 2 : Math.max(75, box.y * .52);
+    const x = 30;
+    const y = Math.max(75, box.y * .52);
     if (!touch) {
       await page.mouse.move(x, y);
       await page.mouse.wheel(0, direction * 100);
@@ -107,7 +108,7 @@ async function checkOuting(browser, mobile) {
 
     await press(button('Menu'), 'Enter');
     await press(pause.getByRole('button', { name: 'Controls', exact: true }), 'Enter');
-    assert.match(await pause.innerText(), /scroll or swipe up.*jig or set the hook/i);
+    assert.match(await pause.innerText(), /click or tap the jig.*set the hook/i);
     assert.match(await pause.locator('dl').innerText(), /R\s+Set the hook.*reel.*pull up/i);
     await press(pause.getByRole('button', { name: 'Back to Pause', exact: true }), 'Enter');
     await closeDialog(pause, pause.getByRole('button', { name: 'Resume fishing', exact: true }));
@@ -115,21 +116,20 @@ async function checkOuting(browser, mobile) {
     for (let attempt = 1; attempt <= 6; attempt++) {
       assert.match(await tray.locator('[data-run-progress]').innerText(), new RegExp(`${attempt}/6$`));
       const species = await findFish();
-      await up.filter({ hasText: /Jig/ }).waitFor();
-      assert.equal(await down.isVisible(), false, 'search only shows the upward guide');
+      await marker.getByRole('button', { name: 'Jig lure' }).waitFor();
+      assert.equal(await up.isVisible(), false, 'the jig has no callout');
       const lure = luresBySpecies[species];
       assert.ok(lure, `the current fish has a known bait: ${species}`);
       if (attempt === 1) await press(lureButton(lure === 'Spoon' ? 'Jig' : 'Spoon'));
       await press(lureButton(lure));
       assert.equal(await lureButton(lure).getAttribute('aria-pressed'), 'true');
       if (attempt === 1) await capture('jig');
-      await stroke(-1, true);
+      await (mobile ? lureAction.tap() : lureAction.click());
       await waitForBite();
-      assert.equal(await up.isVisible(), false, 'the marker withholds the hook arrow while waiting for gold');
+      assert.equal(await lureAction.getAttribute('aria-disabled'), 'true', 'the lure waits for gold');
       await tick(700);
-      await up.filter({ hasText: /Set hook/ }).waitFor();
-      assert.equal(await down.isVisible(), false, 'the bite only shows the upward guide');
-      await stroke(-1, true);
+      await marker.getByRole('button', { name: 'Set hook' }).waitFor();
+      await (mobile ? lureAction.tap() : lureAction.click());
       assert.equal(await lureButton(lure).isDisabled(), true, 'bait locks once hooked');
       await assertLiveControlsHidden();
 

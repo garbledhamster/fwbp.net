@@ -781,13 +781,9 @@ html:has(body[data-fishing-paused]) { overflow: hidden; }
   align-content: center;
   justify-items: end;
   gap: 3px;
-  width: 108px;
-  min-height: 72px;
-  padding-inline: 5px;
+  width: 52px;
+  height: 52px;
   translate: -50% -50%;
-  border: 1px dashed #fff1cfab;
-  border-radius: 9px;
-  background: #19342c36;
   color: #fff1cf;
   font-size: .75rem;
   font-weight: 750;
@@ -795,11 +791,25 @@ html:has(body[data-fishing-paused]) { overflow: hidden; }
 }
 .fishing-line-gesture[hidden] { display: none; }
 .fishing-line-gesture > span { padding: 2px 5px; border-radius: 4px; background: #162e26; }
-.fishing-line-gesture,
+.fishing-lure-action {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  appearance: none;
+  border: 0;
+  border-radius: 50%;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.fishing-lure-action:focus-visible { outline: 2px solid #fff1cf; outline-offset: 2px; }
+.lake[data-line-gesture="hook"] .fishing-line-gesture,
 .lake:is([data-line-gesture="reel"], [data-line-gesture="lift"]) { touch-action: pinch-zoom; }
 .lake:is([data-line-gesture="reel"], [data-line-gesture="lift"]) .fishing-line-gesture {
-  border-color: transparent;
-  background: none;
+  width: 108px;
+  height: 72px;
+  padding-inline: 5px;
   pointer-events: none;
 }
 /* Campaign map uses packaged shoreline, contours and cell coordinates. */

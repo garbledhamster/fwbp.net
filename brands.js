@@ -1,9 +1,9 @@
 import { fishProfiles } from "./assets/fish-profiles.js";
 
 import { speciesArt as species } from "./game/species-catalog.mjs";
-import { loadProfile } from "./game/profile.mjs?v=campaign-playtest";
+import { loadProfile } from "./game/profile.mjs?v=campaign-tap-jig";
 import { renderSpeciesVideo } from "./game/species-video.mjs";
-import { fillSpeciesCard } from "./game/collection.mjs?v=campaign-playtest";
+import { fillSpeciesCard } from "./game/collection.mjs?v=campaign-tap-jig";
 import { spriteHref } from "./game/lake-sprites.mjs";
 
 const debris = {

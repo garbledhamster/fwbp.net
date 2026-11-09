@@ -50,9 +50,10 @@ async function campaign(browser, { mobile = false } = {}) {
   async function hook(lure, species) {
     await press(tray.getByRole('group', { name: 'Lures' }).getByRole('button', { name: lure, exact: true }));
     await findFish({ species });
-    await gesture(mobile ? -60 : -100, await markerPoint());
+    const jig = marker.getByRole('button', { name: 'Jig lure' });
+    await (mobile ? jig.tap() : jig.click());
     await waitForBite();
-    assert.equal(await marker.locator('[data-line-gesture-wait]').isVisible(), true);
+    assert.match(await status.textContent(), /wait for gold/i);
     await wait(700);
     await gesture(mobile ? -60 : -100, await markerPoint());
     assert.match(await status.textContent(), /reel it up toward the hole/i);
