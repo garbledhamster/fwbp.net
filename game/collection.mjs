@@ -1,4 +1,4 @@
-import { applyProfile, loadProfile } from './profile.mjs?v=campaign-goals';
+import { applyProfile, loadProfile } from './profile.mjs?v=campaign-playtest';
 import { renderSpeciesVideo } from './species-video.mjs';
 import { collectibleSpecies, speciesArt, fishProfiles, lureTip } from './species-catalog.mjs';
 import { spriteHref } from './lake-sprites.mjs';

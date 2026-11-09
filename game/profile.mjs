@@ -1,4 +1,4 @@
-import { campaignGoals, lakes } from './rules.mjs?v=campaign-goals';
+import { campaignGoals, lakes } from './rules.mjs?v=campaign-playtest';
 import lakeMap from './lake-map-data.mjs';
 
 const speciesIds = new Set(lakes['mille-lacs'].fish.map(fish => fish.id));

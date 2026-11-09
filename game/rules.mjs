@@ -463,7 +463,9 @@ export function stepCampaignFish(run, now, { width, bands, lure, eye, reducedMot
   const newJig = jig && !jig.eye;
   if (newJig) jig.eye = { ...eye };
   const seeking = run.stage === 'seek' && now < run.expires && !seekExpired(run, now);
-  const reach = Math.min(420, width * .37);
+  // Keep the same lanes reachable and approach time comparable on wider water.
+  const horizontalScale = Math.max(1, width / 1200);
+  const reach = Math.min(420 * horizontalScale, width * .37);
   let first;
   const fish = saved.candidates.flatMap((candidate, slot) => {
     if (slot === saved.active && run.stage !== 'seek') return [];
@@ -495,7 +497,7 @@ export function stepCampaignFish(run, now, { width, bands, lure, eye, reducedMot
       y: centerY + Math.min(42, band.height * .085) * amplitude * Math.sin(t * (1.57 + slot * .13)),
     };
     const next = approaching ? eye : away ?? path;
-    const distance = Math.hypot(next.x - fish.x, next.y - fish.y);
+    const distance = Math.hypot((next.x - fish.x) / horizontalScale, next.y - fish.y);
     const speed = approaching ? Math.max(.17, Math.min(.32, width * .00032))
       : away ? .13 : Math.max(.085, width * .00021);
     const amount = distance ? Math.min(1, speed * elapsed / distance) : 1;

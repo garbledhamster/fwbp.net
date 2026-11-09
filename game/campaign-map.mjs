@@ -107,12 +107,20 @@ function drawMap() {
     .filter(Boolean)
     .join(' ');
 }
+function focusSelectedCell() {
+  const cell = map.querySelector(`[data-map-cell="${selected}"]`);
+  cell.focus();
+  const footer = map.querySelector('.fishing-map-actions');
+  const overlap = cell.getBoundingClientRect().bottom + 6 - footer.getBoundingClientRect().top;
+  if (overlap > 0) map.scrollTop += overlap;
+}
+
 export function openCampaignMap(options) {
   context = options;
   selected = options.selected ?? selected;
   drawMap();
   map.showModal();
-  map.querySelector(`[data-map-cell="${selected}"]`).focus();
+  focusSelectedCell();
 }
 map.addEventListener('click', (e) => {
   const b = e.target.closest('[data-map-cell]');
@@ -143,7 +151,7 @@ map.addEventListener('keydown', (e) => {
     selected = next.id;
     context.onSelect?.(selected);
     drawMap();
-    map.querySelector(`[data-map-cell="${selected}"]`).focus();
+    focusSelectedCell();
   }
 });
 map.querySelectorAll('input').forEach((input) => input.addEventListener('change', () => { if (!saving) drawMap(); }));
