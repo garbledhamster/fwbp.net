@@ -79,9 +79,10 @@ await withBrowser(async browser => {
   const saved = await command(page);
   await storeProfile(page, { ...saved, revision: saved.revision + 1, owned: saved.owned.filter(id => id !== 'deep-reef-license') });
   await press(reef);
-  const guide = page.locator('.fishing-permit');
+  const guide = page.getByRole('dialog', { name: 'Deep Reef permit', exact: true });
   await guide.waitFor();
-  await page.waitForFunction(() => !document.querySelector('[data-permit-shop]').disabled);
+  await guide.locator('[data-permit-message]').filter({ hasText: /^Deep Reef needs the Deep Reef permit.*25 coins.*40 coins/ }).waitFor();
+  await guide.locator('[data-permit-shop]:enabled').waitFor();
   assert.match(await guide.textContent(), /Deep Reef needs the Deep Reef permit/);
   assert.equal(await tray.isHidden(), true, 'fresh ownership controls access even when the picker showed prior eligibility');
   await press(guide.getByRole('button', { name: 'Back to areas' }));

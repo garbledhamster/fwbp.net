@@ -22,6 +22,13 @@ async function checkAccess(browser, mobile) {
     Math.random = () => rolls[draw++ % rolls.length];
   }, species);
   const openPicker = () => press(launch, 'Enter');
+  const waitPermit = async (area, message) => {
+    // A closed dialog keeps its previous enabled button during the next saved-profile read.
+    const current = page.getByRole('dialog', { name: `${area} permit`, exact: true });
+    await current.waitFor();
+    await current.locator('[data-permit-message]').filter({ hasText: message }).waitFor();
+    await current.locator('[data-permit-shop]:enabled').waitFor();
+  };
   const waitWallet = amount => wallet.filter({ hasText: new RegExp(`^${amount} coins$`) }).waitFor();
   const attemptPurchase = revision => page.evaluate(async savedRevision => {
     const { loadProfile, applyProfile } = await import(new URL('./game/profile.mjs?v=16', location.href));
@@ -55,8 +62,7 @@ async function checkAccess(browser, mobile) {
   await openPicker();
   assert.equal(await reef.isEnabled(), true, 'a blocked area remains actionable for guidance');
   await press(reef);
-  await guide.getByRole('button', { name: 'Get this permit' }).waitFor();
-  await page.waitForFunction(() => !document.querySelector('[data-permit-shop]').disabled);
+  await waitPermit('Deep Reef', /^Deep Reef needs the Deep Reef permit.*25 coins.*0 coins.*25 coins more/);
   assert.match(await guide.textContent(), /Deep Reef needs the Deep Reef permit.*25 coins.*0 coins.*25 coins more/is);
   assert.equal(await tray.isHidden(), true, 'blocked entry never starts an outing');
   assert.equal(await guide.locator('img').getAttribute('src'), './assets/fishing/conservation-officer.webp');
@@ -74,12 +80,12 @@ async function checkAccess(browser, mobile) {
 
   // Free starter claim is explicit and also returns to its area without auto-start.
   await press(shore);
-  await page.waitForFunction(() => !document.querySelector('[data-permit-shop]').disabled);
+  await waitPermit('Starter Shore', /^Starter Shore needs the Starter Shore permit.*free.*0 coins/);
   assert.match(await guide.textContent(), /Starter Shore.*free.*0 coins/is);
   await press(guide.getByRole('button', { name: 'Back to areas' }));
   assert.equal(await expectFocused(shore), true);
   await press(shore);
-  await page.waitForFunction(() => !document.querySelector('[data-permit-shop]').disabled);
+  await waitPermit('Starter Shore', /^Starter Shore needs the Starter Shore permit.*free.*0 coins/);
   await press(guide.getByRole('button', { name: 'Get this permit' }));
   await targetVisibleAndFocused(starter);
   await press(starter.getByRole('button', { name: /(?:Buy|Claim) Starter Shore permit/ }));
@@ -105,7 +111,7 @@ async function checkAccess(browser, mobile) {
   await leave();
   await openPicker();
   await press(reef);
-  await page.waitForFunction(() => !document.querySelector('[data-permit-shop]').disabled);
+  await waitPermit('Deep Reef', /^Deep Reef needs the Deep Reef permit.*25 coins.*30 coins/);
   await press(guide.getByRole('button', { name: 'Get this permit' }));
   await targetVisibleAndFocused(license);
   const stale = await attemptPurchase(broke.revision);
