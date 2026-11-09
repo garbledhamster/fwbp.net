@@ -40,7 +40,9 @@ await withBrowser(async browser => {
     assert.deepEqual(await page.evaluate(() => window.clockFixture.events), ['frame', 'new', 'interval', 'timeout']);
     await page.evaluate(() => window.clockFixture.clock.clearInterval(window.clockFixture.interval));
     await enter();
+    await page.waitForFunction(() => !document.querySelector('[data-exit]').disabled);
     const menu = tray.locator('[data-exit]');
+    assert.equal(await menu.evaluate(el => el === document.activeElement), true, 'ready outing focuses Menu');
     const pause = page.getByRole('dialog', { name: 'Paused' });
     const snapshot = () => tray.evaluate(el => ({
       countdown: el.querySelector('.fishing-countdown').textContent,
@@ -61,6 +63,9 @@ await withBrowser(async browser => {
       await tick(duration);
       assert.deepEqual(await snapshot(), before, 'Pause freezes stage, time, lure and tension');
       await press(pause.getByRole('button', { name: 'Resume fishing', exact: true }));
+      // Native dialog close restores focus before its queued close event releases
+      // the clock. Settle that event before advancing deterministic game time.
+      await page.waitForFunction(() => !document.body.hasAttribute('data-fishing-paused'));
       assert.equal(await menu.evaluate(el => el === document.activeElement), true, 'resume restores the opener');
     }
     await findFish();
@@ -111,6 +116,7 @@ await withBrowser(async browser => {
     await page.keyboard.press('Escape');
     assert.equal(await pause.isVisible(), true, 'nested Escape returns to Pause');
     await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !document.body.hasAttribute('data-fishing-paused'));
     assert.equal(await tray.isVisible(), true, 'Escape resumes without exiting');
 
     // Finish this fish and preserve its landed result without advancing it.
@@ -123,9 +129,13 @@ await withBrowser(async browser => {
     await findFish();
     await page.keyboard.press('2');
     for (let i = 0; i < 3; i++) { await page.keyboard.press('j'); await tick(300); }
-    assert.equal(await page.locator('.fishing-target.is-escaping').count(), 1);
+    assert.equal(await page.locator('.fishing-target.is-escaping').count(), mobile ? 0 : 1,
+      'reduced motion removes the fish immediately; normal motion schedules its exit');
     await dwell();
-    await tick(500);
+    await tick(400);
+    assert.equal(await page.locator('.fishing-target').count(), mobile ? 0 : 1,
+      'animated exit retains its remaining delay while paused');
+    await tick(100);
     assert.equal(await page.locator('.fishing-target').count(), 0, 'pending swim-away removal completes only after resuming');
     assert.deepEqual(errors, []);
     await page.close();

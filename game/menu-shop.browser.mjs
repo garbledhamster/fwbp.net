@@ -80,6 +80,7 @@ await withBrowser(async browser => {
     }
     assert.deepEqual(await saved(), before, 'browsing and Details do not alter coins, ownership or equipment');
     await press(shop.getByRole('button', { name: 'Back', exact: true }));
+    await page.waitForFunction(() => document.body.dataset.shopReturned === 'yes');
     assert.equal(await page.locator('body').getAttribute('data-shop-returned'), 'yes');
     assert.equal(await page.locator('.fishing-picker[open]').count(), 0, 'custom return replaces picker return');
 
@@ -100,11 +101,35 @@ await withBrowser(async browser => {
     await press(stronger.getByRole('button', { name: 'Buy Stronger line', exact: true }));
     await stronger.getByText('Owned', { exact: true }).waitFor();
     assert.equal((await saved()).coins, 90, 'explicit Buy spends once');
+    // Hold the actual IndexedDB completion event to expose the interval where
+    // the save is pending, regardless of machine speed or concurrent QA load.
+    await page.evaluate(() => {
+      const descriptor = Object.getOwnPropertyDescriptor(IDBTransaction.prototype, 'oncomplete');
+      Object.defineProperty(IDBTransaction.prototype, 'oncomplete', {
+        ...descriptor,
+        set(callback) {
+          descriptor.set.call(this, function (event) {
+            window.finishShopSave = () => {
+              Object.defineProperty(IDBTransaction.prototype, 'oncomplete', descriptor);
+              callback.call(this, event);
+            };
+          });
+        },
+      });
+    });
     await press(stronger.getByRole('button', { name: 'Equip Stronger line', exact: true }));
+    await page.waitForFunction(() => typeof window.finishShopSave === 'function');
+    assert.equal(await shop.locator('[data-shop-back]').isDisabled(), true, 'Back visibly waits for the pending save');
+    await page.keyboard.press('Escape');
+    assert.equal(await shop.isVisible(), true, 'Escape also preserves the pending save');
+    await page.evaluate(() => window.finishShopSave());
     await stronger.getByText('Equipped', { exact: true }).waitFor();
+    await page.waitForFunction(() => !document.querySelector('[data-shop-back]').disabled);
     assert.equal((await saved()).equipped.line, 'stronger-line');
     assert.equal(await tray.locator('meter').evaluate(el => el.max), max, 'current outing keeps its equipment snapshot');
+    const shopClosed = shop.evaluate(el => new Promise(resolve => el.addEventListener('close', () => resolve(), { once: true })));
     await press(shop.getByRole('button', { name: 'Back to Pause', exact: true }));
+    await shopClosed;
     await press(pause.getByRole('button', { name: 'Gear', exact: true }));
     const gear = page.getByRole('dialog', { name: 'Gear', exact: true });
     assert.match(await gear.locator('.fishing-loadout').textContent(), /This outing.*Starter line.*Next Campaign outing.*Stronger line/s);

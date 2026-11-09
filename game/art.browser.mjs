@@ -51,16 +51,32 @@ await withBrowser(async browser => {
     await buy.waitFor();
     await checkArt(shop, 'tackle-shop.webp');
     await checkArt(shop, 'marnie.webp');
-    assert.ok(await inDialogViewport(shop, buy), 'the first Buy control stays visible with the shop art');
+    if (size !== 'landscape') {
+      assert.ok(await inDialogViewport(shop, buy), 'the first Buy control stays visible with the shop art');
+    }
+    const categories = shop.getByRole('navigation', { name: 'Shop categories' });
+    for (const name of ['Fishing line', 'Hooks', 'Training', 'Licenses']) {
+      const category = categories.getByRole('button', { name, exact: true });
+      assert.ok(await inDialogViewport(shop, category), `${name} category stays visible with the shop art`);
+      const bounds = await category.boundingBox();
+      assert.ok(bounds.width >= 44 && bounds.height >= 44, `${name} has a usable touch target`);
+    }
     assert.ok(await shop.getByText(/Marnie/).isVisible(), 'the shop names its keeper');
     await capture(page, `${size}-tackle-shop`);
 
-    if (size === 'landscape') {
-      const licenses = shop.getByRole('heading', { name: 'Licenses' });
-      await licenses.scrollIntoViewIfNeeded();
-      assert.ok(await inDialogViewport(shop, licenses), 'scroll to the last section in short landscape');
-      assert.ok(await shop.evaluate(el => el.scrollTop > 0), 'scrolling stays inside the shop');
+    // The short landscape view prioritizes art and category access. Use each
+    // real category control and verify its destination, rather than requiring
+    // the art, navigation, Details and multiple item rows to fit at once.
+    for (const name of ['Hooks', 'Training', 'Licenses', 'Fishing line']) {
+      await press(categories.getByRole('button', { name, exact: true }));
+      const heading = shop.getByRole('heading', { name, exact: true });
+      assert.ok(await inDialogViewport(shop, heading), `${name} category reaches its heading`);
+      assert.equal(await heading.evaluate(el => el === document.activeElement), true, `${name} category receives focus`);
     }
+    await buy.scrollIntoViewIfNeeded();
+    assert.ok(await inDialogViewport(shop, buy), 'the first Buy control is reachable inside the shop');
+    assert.ok(await shop.evaluate(el => el.scrollWidth <= el.clientWidth), 'shop has no horizontal overflow');
+    await capture(page, `${size}-shop-purchase`);
 
     await press(shop.getByRole('button', { name: 'Back to outings' }));
     await picker.waitFor();

@@ -631,6 +631,11 @@ pause.addEventListener('click', async event => {
   }
 });
 
+function setShopBusy(value) {
+  shopBusy = value;
+  shop.querySelector('[data-shop-back]').disabled = value;
+}
+
 export async function openShop({ itemId, onClose } = {}) {
   // A pending catch must settle before a purchase can use its balance.
   if (!tray.hidden && (busy || catchSaveFailed || !usesLinePhysics())) return;
@@ -660,7 +665,7 @@ export async function openShop({ itemId, onClose } = {}) {
   shopRelease = acquireSuspension();
   if (picker.open) picker.close();
   shop.querySelector('[data-shop-back]').textContent = onClose ? 'Back' : returnToPause ? 'Back to Pause' : 'Back to outings';
-  shopBusy = true;
+  setShopBusy(true);
   shopBalance.textContent = '';
   shopList.replaceChildren();
   shopMessage.textContent = 'Opening the tackle shop…';
@@ -683,7 +688,7 @@ export async function openShop({ itemId, onClose } = {}) {
   } catch {
     if (current === shopGeneration) shopMessage.textContent = 'Couldn’t open your saved tackle. Close the shop and try again.';
   } finally {
-    if (current === shopGeneration) shopBusy = false;
+    if (current === shopGeneration) setShopBusy(false);
   }
 }
 
@@ -708,7 +713,7 @@ async function changeShopItem(event) {
   const id = control.closest('[data-item]').dataset.item;
   const type = control.dataset.shopAction;
   const message = source === shop ? shopMessage : pause.querySelector('[data-gear-message]');
-  shopBusy = true;
+  setShopBusy(true);
   message.textContent = 'Saving tackle…';
   source.querySelectorAll('[data-shop-action], [data-hook-step], [data-item-details], [data-view-shop], [data-shop-category]')
     .forEach(button => { button.disabled = true; });
@@ -733,7 +738,7 @@ async function changeShopItem(event) {
     const row = [...source.querySelectorAll('[data-item]')].find(row => row.dataset.item === id);
     row?.querySelector('[data-shop-action]')?.focus({ preventScroll: true });
   } finally {
-    shopBusy = false;
+    setShopBusy(false);
   }
 }
 shop.addEventListener('click', changeShopItem);
@@ -1462,7 +1467,14 @@ async function startSelected(selectedMode, selectedArea) {
   tray.hidden = false;
   document.body.classList.add('fishing');
   exit.focus({ preventScroll: true });
-  begin(selectedMode, selectedArea);
+  const current = generation + 1;
+  await begin(selectedMode, selectedArea);
+  // Loading a local profile temporarily disables Menu and drops browser focus.
+  // Restore it once this outing is ready, unless the player focused a control.
+  if (current === generation && !tray.hidden && !exit.disabled &&
+      (document.activeElement === document.body || document.activeElement === exit)) {
+    exit.focus({ preventScroll: true });
+  }
 }
 
 function leave() {
