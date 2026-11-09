@@ -25,6 +25,8 @@ await withBrowser(async browser => {
   await status.filter({ hasText: /couldn’t save.*coins/i }).waitFor();
   assert.equal(await action.textContent(), 'Save coins', 'keep a retry on the earned catch');
   assert.equal(await tray.locator('[data-wallet]').textContent(), '0 coins');
+  await page.clock.fastForward(20 * 60 * 1000);
+  assert.equal(await action.textContent(), 'Save coins', 'an expired outing keeps an earned payout available');
   await press(action);
   await status.filter({ hasText: /yellow perch.*\+10 coins/i }).waitFor();
   assert.equal(await tray.locator('[data-wallet]').textContent(), '10 coins');

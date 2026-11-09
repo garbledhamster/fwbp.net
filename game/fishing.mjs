@@ -201,6 +201,11 @@ function saveCampaignClock(elapsedMs) {
 function tickCampaignClock() {
   const current = clock;
   if (performance.now() >= current.until) {
+    // An expired clock must not discard a landed catch whose payout is still pending.
+    if (state?.stage === 'landed' && (busy || catchSaveFailed)) {
+      stopCampaignClock();
+      return;
+    }
     state = { ...state, stage: 'done', fish: null, fight: null, snap: null, cue: 'This outing expired.' };
     clearBite();
     stopCountdown();

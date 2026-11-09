@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { practicePage, withBrowser } from './browser-qa.mjs';
 
 async function attachedLine(page) {
-  return page.locator('.fishing-line path').evaluate(path => {
+  return page.locator('.fishing-line-path').evaluate(path => {
     const screen = point => point.matrixTransform(path.getScreenCTM());
     const start = screen(path.getPointAtLength(0));
     const end = screen(path.getPointAtLength(path.getTotalLength()));
@@ -14,10 +14,14 @@ async function attachedLine(page) {
   });
 }
 
+function startsAtHole(line) {
+  return Math.abs(line.startX - line.holeX) < 1 && Math.abs(line.startY - line.holeY) < 1;
+}
+
 async function assertAttached(page) {
   const line = await attachedLine(page);
   assert.ok(line.gap < 1, 'the line ends at the eye of the lure');
-  assert.ok(Math.abs(line.startX - line.holeX) < 1 && Math.abs(line.startY - line.holeY) < 1,
+  assert.ok(startsAtHole(line),
     `the line starts at the ice hole: ${JSON.stringify(line)}`);
   return line;
 }
@@ -68,7 +72,12 @@ async function checkTray(browser, mobile) {
   assert.ok(shallower.depth < deeper.depth - 15, 'scrolling up takes in line');
   if (!mobile) {
     await page.setViewportSize({ width: 1000, height: 660 });
-    await tick(32);
+    // Deliver the browser's resize and observer callbacks even when the test clock is paused.
+    for (let frame = 0; frame < 12; frame++) {
+      await tick(32);
+      if (startsAtHole(await attachedLine(page))) break;
+      await page.waitForTimeout(16);
+    }
     await assertAttached(page);
   }
 

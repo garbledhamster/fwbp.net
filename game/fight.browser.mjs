@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { practicePage, withBrowser } from './browser-qa.mjs';
 
 async function fightGeometry(page) {
-  return page.locator('.fishing-line path').evaluate(path => {
+  return page.locator('.fishing-line-path').evaluate(path => {
     const point = path.getPointAtLength(path.getTotalLength()).matrixTransform(path.getScreenCTM());
     const fish = document.querySelector('.fishing-target').getBoundingClientRect();
     const tray = document.querySelector('.fishing-tray').getBoundingClientRect();
