@@ -889,7 +889,7 @@ body[data-reduced] .fishing-auger-scene svg { transition: none; transform: none;
 .fishing-power small { display: block; font: .65rem/1.3 system-ui,sans-serif; }
 .fishing-shop [data-shop-message] { min-height: 1.2em; margin: 0; }
 .fishing-shop-categories { display: flex; gap: 6px; overflow-x: auto; overscroll-behavior: contain; }
-.fishing-shop-categories button { flex: 1 0 auto; padding: 5px 10px; }
+.fishing-shop-categories button { flex: 1 0 auto; min-width: 44px; padding: 5px 10px; }
 .fishing-shop [data-shop-items] { min-height: 0; display: grid; grid-template-columns: minmax(0,1.4fr) minmax(230px,1fr); gap: 14px; overflow: hidden; }
 .fishing-shop-grid { overflow: auto; overscroll-behavior: contain; min-height: 0; padding: 3px 8px 8px 3px; }
 .fishing-shop-grid section + section { margin-top: 18px; }
