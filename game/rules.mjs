@@ -87,8 +87,8 @@ const fightStepMs = 40;
 const surgeCycleMs = 2400;
 const reelLength = 1.5;
 const starterLineStrength = 8;
-const restingLoad = 1.1;
-const tightLoad = 4.8;
+export const lineBalanceLimits = Object.freeze({ low: 1.1, high: 4.8 });
+const { low: restingLoad, high: tightLoad } = lineBalanceLimits;
 
 function startLineFight(run, fish, encounter, now) {
   // Each deeper stretch of water adds another length of line to reel in.
@@ -163,10 +163,11 @@ function moveLineFight(run, action, target, reelEffort) {
   } else if (run.campaign) {
     fight.paidOut = Math.max(0, fight.paidOut - stroke);
     if (!fight.tight) {
+      const engaged = Math.max(0, stroke - fight.slack);
       // Winding line under resistance raises the fish less, leaving more load on the line.
       const fishDrag = Math.max(0, fight.pull - .6) * .12;
       const lineDrag = Math.max(0, (fight.tension - restingLoad) / (tightLoad - restingLoad)) * .34;
-      const travel = stroke * (1 - fishDrag) * (1 - lineDrag);
+      const travel = engaged * (1 - fishDrag) * (1 - lineDrag);
       fight.remaining = Math.max(0, fight.remaining - travel);
     }
   } else {

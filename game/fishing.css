@@ -830,7 +830,6 @@ html:has(body[data-fishing-paused]) { overflow: hidden; }
   user-select: none;
 }
 .fishing-line-gesture[hidden] { display: none; }
-.fishing-line-gesture > span { padding: 2px 5px; border-radius: 4px; background: #162e26; }
 .fishing-lure-action {
   position: absolute;
   inset: 0;
@@ -847,11 +846,53 @@ html:has(body[data-fishing-paused]) { overflow: hidden; }
 .lake[data-line-gesture="hook"] .fishing-line-gesture,
 .lake:is([data-line-gesture="reel"], [data-line-gesture="lift"]) { touch-action: pinch-zoom; }
 .lake:is([data-line-gesture="reel"], [data-line-gesture="lift"]) .fishing-line-gesture {
-  width: 108px;
-  height: 72px;
-  padding-inline: 5px;
+  display: block;
+  width: var(--fight-guide-width, 110px);
+  height: auto;
+  translate: -100% -50%;
   pointer-events: none;
 }
+.fishing-fight-guide {
+  display: grid;
+  gap: 4px;
+  padding: 5px 6px;
+  border: 1px solid #a0ad84;
+  border-radius: 6px;
+  background: #122b27;
+  text-align: center;
+  font-size: .68rem;
+  line-height: 1.12;
+}
+.fishing-fight-guide[hidden], .fishing-fight-guide [hidden] { display: none; }
+.fishing-fight-guide [data-fight-balance] {
+  position: relative;
+  height: 8px;
+  margin: 2px 2px 1px;
+  border-radius: 3px;
+  background: linear-gradient(to right,
+    #5d9299 0 var(--balance-low),
+    #a5d09d var(--balance-low) var(--balance-high),
+    #d98762 var(--balance-high) 100%);
+}
+.fishing-fight-guide [data-fight-balance] i {
+  position: absolute;
+  inset: -2px auto -2px var(--balance-load);
+  width: 3px;
+  translate: -50% 0;
+  border-radius: 2px;
+  background: #fff5d2;
+  box-shadow: 0 0 0 1px #17231c;
+}
+.fishing-fight-guide [data-fight-balance-state] { color: #bfdfb7; }
+.fishing-fight-guide[data-balance="slack"] [data-fight-balance-state] { color: #abd9de; }
+.fishing-fight-guide[data-balance="tight"] [data-fight-balance-state] { color: #ffbc9b; }
+.fishing-fight-guide :is([data-line-gesture-up], [data-line-gesture-down]) {
+  display: grid;
+  gap: 2px;
+  padding-top: 3px;
+  border-top: 1px solid #426456;
+}
+.fishing-fight-guide small { font-size: inherit; color: #e9d2a5; }
 /* Campaign map uses packaged shoreline, contours and cell coordinates. */
 .fishing-map {
   width: min(940px, calc(100vw - 24px));

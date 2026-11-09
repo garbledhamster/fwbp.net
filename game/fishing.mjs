@@ -1,6 +1,6 @@
 import { openCampaignMap, mapCells, firstShoreHole, confirmEndAttempt } from './campaign-map.mjs?v=campaign-map-access';
 import { createSuspensionClock } from './suspension.mjs';
-import { catchQuality, moveToHole, stepCampaignFish, abandonHoleFish, advanceLineFight, apply, campaignAreas, campaignDepthBand, campaignPhase, lakes, lineEffort, lures, practiceLevelXp, practiceSkills, publicRun, skills, start, starterArea } from './rules.mjs?v=campaign-map-discovery';
+import { catchQuality, moveToHole, stepCampaignFish, abandonHoleFish, advanceLineFight, apply, campaignAreas, campaignDepthBand, campaignPhase, lakes, lineBalanceLimits, lineEffort, lures, practiceLevelXp, practiceSkills, publicRun, skills, start, starterArea } from './rules.mjs?v=campaign-fight-balance';
 import { areaPermit, hasAreaAccess, campaignGoal, campaignProgress, campaignTraining, campaignTechniques, techniqueState, shopAvailability, applyProfile, campaignMilestone, loadProfile, shopItems } from './profile.mjs?v=campaign-map-discovery';
 import { lureTip } from './species-catalog.mjs';
 import { openYourLake } from './collection.mjs?v=campaign-map-discovery';
@@ -240,11 +240,22 @@ const lineGestureMarker = document.createElement('div');
 lineGestureMarker.className = 'fishing-line-gesture';
 lineGestureMarker.setAttribute('data-line-gesture-marker', '');
 lineGestureMarker.hidden = true;
-lineGestureMarker.innerHTML = '<button type="button" class="fishing-lure-action" hidden></button><span data-line-gesture-up hidden></span><span data-line-gesture-down hidden>↓ Loosen</span>';
+lineGestureMarker.innerHTML = `<button type="button" class="fishing-lure-action" hidden></button>
+  <div class="fishing-fight-guide" data-fight-guide hidden>
+    <span>Line balance</span>
+    <div data-fight-balance role="meter" aria-label="Line balance" aria-valuemin="0"><i aria-hidden="true"></i></div>
+    <strong data-fight-balance-state></strong>
+    <span data-line-gesture-up hidden><b></b><small></small></span>
+    <span data-line-gesture-down hidden><b></b><small>Loosen</small></span>
+  </div>`;
 lake.append(lineGestureMarker);
 const lureAction = lineGestureMarker.querySelector('button');
 const lineGestureUp = lineGestureMarker.querySelector('[data-line-gesture-up]');
 const lineGestureDown = lineGestureMarker.querySelector('[data-line-gesture-down]');
+const fightGuide = lineGestureMarker.querySelector('[data-fight-guide]');
+const fightBalance = fightGuide.querySelector('[data-fight-balance]');
+const fightBalanceState = fightGuide.querySelector('[data-fight-balance-state]');
+const coarsePointer = matchMedia('(pointer: coarse)');
 const celebration = document.createElement('div');
 celebration.className = 'fishing-celebration';
 celebration.hidden = true;
@@ -997,7 +1008,6 @@ function iceHole(hole = iceCeiling.getBoundingClientRect()) {
   return { x: hole.left + hole.width * .62, y: hole.top + hole.height * 20 / 110 };
 }
 
-const lineGestureLabels = { reel: '↑ Reel', lift: '↑ Pull up' };
 const hookedGesture = phase => phase === 'reel' || phase === 'lift';
 
 function lineGesturePhase() {
@@ -1012,6 +1022,42 @@ function clearLineGestureMarker() {
   if (lake.dataset.lineGesture) delete lake.dataset.lineGesture;
 }
 
+function positionFightGuide(water, phase, viewportLeft, viewportTop, bottom) {
+  const fish = target?.getBoundingClientRect();
+  if (!fish) return clearLineGestureMarker();
+  const fishGap = 12;
+  const right = fish.left - fishGap;
+  const width = Math.min(110, right - viewportLeft - 6);
+  if (width < 48) return clearLineGestureMarker();
+
+  const { tension, lineStrength, tight } = state.fight;
+  const { low, high } = lineBalanceLimits;
+  const readout = tight ? 'Tight' : tension < low ? 'Slack' : 'Balanced';
+  fightGuide.dataset.balance = readout.toLowerCase();
+  if (fightBalanceState.textContent !== readout) fightBalanceState.textContent = readout;
+  fightBalance.style.setProperty('--balance-low', `${low / lineStrength * 100}%`);
+  fightBalance.style.setProperty('--balance-high', `${high / lineStrength * 100}%`);
+  fightBalance.style.setProperty('--balance-load', `${Math.min(1, tension / lineStrength) * 100}%`);
+  fightBalance.setAttribute('aria-valuemax', lineStrength);
+  fightBalance.setAttribute('aria-valuenow', tension);
+  fightBalance.setAttribute('aria-valuetext', `${tension} of ${lineStrength} pounds. ${readout}.`);
+  const input = coarsePointer.matches ? 'Swipe' : 'Scroll';
+  lineGestureUp.hidden = tight;
+  lineGestureDown.hidden = !tight;
+  const direction = tight ? lineGestureDown : lineGestureUp;
+  const label = tight ? `↓ ${input} down` : `↑ ${input} up`;
+  const caption = phase === 'lift' ? 'Pull up' : 'Reel in';
+  if (direction.firstElementChild.textContent !== label) direction.firstElementChild.textContent = label;
+  if (!tight && direction.lastElementChild.textContent !== caption) direction.lastElementChild.textContent = caption;
+
+  lineGestureMarker.style.setProperty('--fight-guide-width', `${width}px`);
+  const halfHeight = lineGestureMarker.offsetHeight / 2;
+  const center = fish.top + fish.height / 2;
+  const y = Math.max(viewportTop + halfHeight + 4, Math.min(center, bottom - halfHeight - 4));
+  lineGestureMarker.style.left = `${right - water.left}px`;
+  lineGestureMarker.style.top = `${y - water.top}px`;
+}
+
 function positionLineGestureMarker(water, x, y) {
   const phase = lineGesturePhase();
   if (!phase) return clearLineGestureMarker();
@@ -1024,21 +1070,17 @@ function positionLineGestureMarker(water, x, y) {
   if (lureAction.getAttribute('aria-label') !== label) lureAction.setAttribute('aria-label', label);
   if (lureAction.getAttribute('aria-disabled') !== String(waiting)) lureAction.setAttribute('aria-disabled', String(waiting));
   lureAction.hidden = fighting;
-  if (fighting && lineGestureUp.textContent !== lineGestureLabels[phase]) lineGestureUp.textContent = lineGestureLabels[phase];
-  lineGestureUp.hidden = !fighting || state.fight?.tight === true;
-  lineGestureDown.hidden = !fighting;
+  fightGuide.hidden = !fighting;
   lineGestureMarker.hidden = false;
   const { offsetLeft = 0, offsetTop = 0, width = innerWidth } = window.visualViewport ?? {};
+  const bottom = Math.min(water.bottom, tray.getBoundingClientRect().top);
+  if (fighting) return positionFightGuide(water, phase, offsetLeft, offsetTop, bottom);
   const left = Math.max(water.left, offsetLeft);
   const right = Math.min(water.right, offsetLeft + width);
   const top = Math.max(water.top, offsetTop);
-  const bottom = Math.min(water.bottom, tray.getBoundingClientRect().top);
   // Keep the whole target reachable even when the rig is at the ice hole or the screen edge.
-  const guideOffset = fighting ? -62 : 0;
-  const halfWidth = fighting ? 54 : 26;
-  const halfHeight = fighting ? 39 : 26;
-  const markerX = Math.max(left + halfWidth, Math.min(water.left + x + guideOffset, right - halfWidth));
-  const markerY = Math.max(top + halfHeight, Math.min(water.top + y, bottom - halfHeight));
+  const markerX = Math.max(left + 26, Math.min(water.left + x, right - 26));
+  const markerY = Math.max(top + 26, Math.min(water.top + y, bottom - 26));
   lineGestureMarker.style.left = `${markerX - water.left}px`;
   lineGestureMarker.style.top = `${markerY - water.top}px`;
 }
@@ -1230,7 +1272,7 @@ function setAction(actionIcon, label) {
 function renderLineLoad() {
   const load = state?.fight?.tension ?? state?.snap?.tension ?? 0;
   meter.max = state?.lineStrength ?? 8;
-  meter.high = 4.8;
+  meter.high = lineBalanceLimits.high;
   meter.value = load;
   const reading = `${load} / ${meter.max} lb`;
   if (pullsText.textContent !== reading) pullsText.textContent = reading;

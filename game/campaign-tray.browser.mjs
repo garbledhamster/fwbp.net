@@ -142,7 +142,7 @@ async function checkOuting(browser, mobile) {
 
       for (let strokeCount = 0; strokeCount < 30; strokeCount++) {
         await advanceInput();
-        assert.equal(await down.isVisible(), true,
+        assert.equal(await up.isVisible() || await down.isVisible(), true,
           `catch ${attempt}, stroke ${strokeCount}: ${await tray.getByRole('status').textContent()}`);
         if (await up.isVisible() && /Pull up/.test(await up.innerText())) break;
         await stroke(await up.isVisible() ? -1 : 1);

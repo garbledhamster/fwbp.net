@@ -211,6 +211,17 @@ test('Campaign payout responds to effort while the fish can take up the new slac
   assert.ok(hard.run.fight.tension > hard.fight.tension, 'the fish pulls back as its surge uses the slack');
 });
 
+test('Campaign reeling takes up slack before it moves the fish', () => {
+  const run = hookedFish(.05, .4);
+  const loose = rules.apply(run, { action: 'loosen' }, 3900).fight;
+  const tookUpSlack = rules.apply(run, { action: 'reel' }, 4200).fight;
+  assert.ok(loose.slack > 1.49);
+  assert.equal(tookUpSlack.remaining, loose.remaining, 'winding slack does not pull the fish');
+  assert.ok(tookUpSlack.slack < .01);
+  const reeled = rules.apply(run, { action: 'reel' }, 4500).fight;
+  assert.ok(reeled.remaining < tookUpSlack.remaining, 'a taut line lets the next reel move the fish');
+});
+
 test('Practice line fight ignores Campaign stroke effort', () => {
   const reel = reelEffort => {
     const run = rules.start(1000, () => 0, undefined, { practice: true });
