@@ -47,7 +47,7 @@ async function checkLandscape(browser, mode) {
   await press(button('Spoon'));
   await findFish({ species: 'muskie' });
   if (campaign) {
-    await swipe(-1, true);
+    await marker.getByRole('button', { name: 'Jig lure' }).tap();
     await waitForBite();
   } else await press(action);
   await tick(700);
