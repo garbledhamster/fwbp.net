@@ -85,6 +85,7 @@
 .ice-light { position: absolute; }
 .dive[data-dive="weeds"] {
   --water-start: clamp(35px, 5vw, 52px);
+  --water-end: clamp(17px, 3vw, 34px);
   display: grid;
   align-content: center;
   min-height: clamp(385px, 52svh, 560px);

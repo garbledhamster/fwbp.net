@@ -47,6 +47,7 @@ export async function practicePage(browser, { mobile = false, configure } = {}) 
 
   async function press(locator, key = 'Space') {
     if (mobile) {
+      await locator.scrollIntoViewIfNeeded();
       const box = await locator.boundingBox();
       assert.ok(box, 'a touch control must be in view');
       await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
@@ -54,6 +55,17 @@ export async function practicePage(browser, { mobile = false, configure } = {}) 
       await locator.focus();
       await page.keyboard.press(key);
     }
+  }
+
+  async function chooseMode(name = 'Practice') {
+    const picker = page.getByRole('dialog', { name: 'Choose an outing' });
+    await press(picker.getByRole('button', { name, exact: true }), 'Enter');
+    if (name === 'Campaign') await tray.locator('[data-wallet]').waitFor();
+  }
+
+  async function enter(name = 'Practice') {
+    await press(launch, 'Enter');
+    await chooseMode(name);
   }
 
   async function findFish() {
@@ -67,8 +79,23 @@ export async function practicePage(browser, { mobile = false, configure } = {}) 
     }, null, { polling: 25 });
   }
 
+  async function reelToHole() {
+    let reels = 0;
+    for (let move = 0; move < 24; move++) {
+      await page.clock.runFor(300);
+      const label = await action.textContent();
+      if (label === 'Pull up') return reels;
+      assert.equal(label, 'Reel', 'the fish is still hooked');
+      const cue = await tray.getByRole('status').textContent();
+      const tight = /line’s tight/i.test(cue);
+      if (!tight) reels++;
+      await press(tight ? button('Loosen') : action);
+    }
+    assert.fail('the fish did not reach the ice hole');
+  }
+
   return {
-    page, tray, action, launch, button, press, errors, findFish,
+    page, tray, action, launch, button, press, errors, findFish, chooseMode, enter, reelToHole,
     status: tray.getByRole('status'),
     timing: tray.locator('.fishing-timing'),
     tick: ms => page.clock.runFor(ms),

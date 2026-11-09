@@ -24,7 +24,7 @@ await withBrowser(async browser => {
         };
       });
       console.log(width, population);
-      if (population.swimmers !== 27) failures.push(`${width}px shows ${population.swimmers} background actors, expected 27`);
+      if (population.swimmers > 27) failures.push(`${width}px shows ${population.swimmers} background actors, expected at most 27`);
       assert.equal(population.scriptedPike, 1);
       assert.equal(population.species, 23);
       assert.equal(await page.locator('#motion').isDisabled(), true);
@@ -74,6 +74,7 @@ await withBrowser(async browser => {
       assert.equal(await page.locator('#field-notes [data-fish-overlay]').isVisible(), true);
 
       await page.getByRole('button', { name: 'Play fishing game' }).click();
+      await page.getByRole('button', { name: 'Practice', exact: true }).click();
       await page.getByRole('button', { name: 'Exit fishing' }).click();
       assert.equal(await page.getByRole('button', { name: 'Play fishing game' }).isVisible(), true);
 

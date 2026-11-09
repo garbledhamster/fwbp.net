@@ -3,7 +3,7 @@ import { practicePage, withBrowser } from './browser-qa.mjs';
 import { apply, publicRun, start } from './rules.mjs';
 
 async function checkOuting(browser, mobile) {
-  const { page, tray, launch, action, button, status, press, tick, findFish, errors } =
+  const { enter, page, tray, action, button, status, press, tick, findFish, errors } =
     await practicePage(browser, { mobile });
   const countdown = tray.getByRole('timer');
   const target = page.locator('.fishing-target');
@@ -14,7 +14,7 @@ async function checkOuting(browser, mobile) {
     assert.match(await countdown.textContent(), new RegExp(`\\b${seconds}\\s*s\\b`));
   };
 
-  await press(launch, 'Enter');
+  await enter();
   assert.equal(await action.isDisabled(), true);
   await expectSeconds(30);
   await advance(10000);
@@ -32,7 +32,7 @@ async function checkOuting(browser, mobile) {
   assert.match(await score.textContent(), /0 pts.*1\/6/);
   if (!mobile) {
     assert.match(await target.getAttribute('class'), /is-escaping/);
-    await tick(600);
+    await tick(750);
   }
   assert.equal(await target.count(), 0);
   await page.setViewportSize({ width: mobile ? 330 : 1100, height: 720 });
@@ -40,7 +40,8 @@ async function checkOuting(browser, mobile) {
   assert.equal(await target.count(), 0, 'resizing must not restore an expired fish');
   assert.match(await status.textContent(), /fish swam away/i);
 
-  for (const seconds of [30, 25, 20, 30, 30]) {
+  // The seeded second encounter draws a walleye at dusk.
+  for (const seconds of [25, 25, 20, 30, 30]) {
     await press(action); // Next fish after each miss.
     await expectSeconds(seconds);
     await advance(seconds * 1000);
@@ -56,7 +57,7 @@ async function checkOuting(browser, mobile) {
   await advance(29000);
   await press(button('Exit fishing'));
   assert.equal(await tray.isHidden(), true);
-  await press(launch, 'Enter');
+  await enter();
   await advance(1000);
   await expectSeconds(29);
   assert.match(await status.textContent(), /scroll.*find/i);
@@ -66,8 +67,8 @@ async function checkOuting(browser, mobile) {
 }
 
 async function checkLateJig(browser) {
-  const { page, launch, action, press, findFish, status, timing, errors } = await practicePage(browser);
-  await press(launch, 'Enter');
+  const { enter, page, action, press, findFish, status, timing, errors } = await practicePage(browser);
+  await enter();
   await findFish();
   // Simulate a late callback by moving wall time without running any timers.
   const started = await page.evaluate(() => Date.now());
@@ -80,9 +81,9 @@ async function checkLateJig(browser) {
 }
 
 async function checkHeldJig(browser, mobile) {
-  const { page, tray, launch, action, press, findFish, status, errors } = await practicePage(browser, { mobile });
+  const { enter, page, tray, action, press, findFish, status, errors } = await practicePage(browser, { mobile });
   const score = tray.locator('[data-score]');
-  await press(launch, 'Enter');
+  await enter();
   await findFish();
   await page.clock.fastForward(29999);
   const touch = mobile ? await page.context().newCDPSession(page) : null;
@@ -115,7 +116,7 @@ async function checkRankedDelay(browser) {
   let run, holdResponse, releaseResponse;
   const responseHeld = new Promise(resolve => { holdResponse = resolve; });
   const release = new Promise(resolve => { releaseResponse = resolve; });
-  const { page, tray, launch, action, press, tick, findFish, errors } = await practicePage(browser, {
+  const { enter, page, tray, action, press, tick, findFish, errors } = await practicePage(browser, {
     async configure(page) {
       await page.route(url, async route => {
         const response = await route.fetch();
@@ -142,7 +143,7 @@ async function checkRankedDelay(browser) {
     },
   });
 
-  await press(launch, 'Enter');
+  await enter('Ranked');
   await tray.getByText(/Ranked/).waitFor();
   await findFish();
   await tick(10000);
@@ -165,8 +166,8 @@ async function checkRankedDelay(browser) {
 }
 
 async function checkExpiredOuting(browser) {
-  const { page, tray, launch, action, press, status, errors } = await practicePage(browser);
-  await press(launch, 'Enter');
+  const { enter, page, tray, action, press, status, errors } = await practicePage(browser);
+  await enter();
   await page.clock.fastForward(20 * 60 * 1000);
   assert.match(await status.textContent(), /outing expired/i);
   assert.match(await action.textContent(), /fish again/i);

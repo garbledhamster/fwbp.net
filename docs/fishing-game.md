@@ -8,13 +8,15 @@ The first outing should teach you how to find, hook and land a fish. Show how th
 
 Start at the ice hole and scroll the lake to find a fish. Jig becomes available when the fish comes into view above the tackle tray. Pick one of three lures and reel when the line is ready. Next fish leaves you at the same depth, so look above and below you. The catch log shows which lure worked for each fish you landed.
 
+In Campaign and Practice, smaller fish fill the background. Look for the larger fish with the small diamond above it. Each outing starts fish on the left, middle and right across six depths.
+
 Each outing has six encounters. Common fish give you 30 seconds, Uncommon fish 25 seconds, and Rare fish 20 seconds. The clock starts when the fish arrives and keeps running while you search or try lures. If time runs out, the fish swims away. It counts as one encounter and earns zero points and XP. You can leave at any time or start another outing when you finish.
 
 ## Architecture
 
 GitHub Pages continues to serve the site. A dedicated Firebase project, `fwbp-fishing-game`, hosts the optional ranked API. The browser owns animation and input. A single HTTPS function owns ranked encounters, action order, server timing, catch values and submission. Firestore transactions serialize updates to a run and accept one public score per run. Direct database access is denied. The server accepts action and nickname fields and derives the points itself. Use random bearer tokens, fixed run limits, constrained names, start quotas, expiring records and bounded function instances. A script can still imitate valid play.
 
-Practice uses the same rules in memory. It is labeled before play and its scores stay out of the public board. A ranked connection failure offers a fresh practice outing. It never converts a practice result into a ranked entry.
+Practice uses the Campaign fishing rules in memory with Starter Shore tackle and a fresh clock. It is labeled before play and its scores stay out of the public board. A ranked connection failure offers a fresh practice outing. It never converts a practice result into a ranked entry.
 
 ## Engineering
 
@@ -37,7 +39,7 @@ Rollback by reverting the site feature and publishing a fresh numbered version. 
 
 ## Lake, grades and skills
 
-Mille Lacs is the first lake. Keep its roster and encounter weights in a lake profile so a future outing can choose another profile at the start. This release has no lake picker. Start with yellow perch, rock bass, walleye, northern pike, smallmouth bass and muskellunge. The odds, lure pairings and size bands are game rules. The two record catches used as reference are a 58¼-inch muskie and a 46¼-inch northern pike from Mille Lacs. [Minnesota DNR species report](https://files.dnr.state.mn.us/publications/fisheries/special_reports/151.pdf) · [Minnesota DNR catch-and-release records](https://www.dnr.state.mn.us/fishing/catch-and-release.html)
+Mille Lacs is the first lake. Keep its roster and encounter weights in a lake profile so a future outing can choose another profile at the start. Practice and Ranked use this lake profile without a picker. Start with yellow perch, rock bass, walleye, northern pike, smallmouth bass and muskellunge. The odds, lure pairings and size bands are game rules. The two record catches used as reference are a 58¼-inch muskie and a 46¼-inch northern pike from Mille Lacs. [Minnesota DNR species report](https://files.dnr.state.mn.us/publications/fisheries/special_reports/151.pdf) · [Minnesota DNR catch-and-release records](https://www.dnr.state.mn.us/fishing/catch-and-release.html)
 
 Each fish has a length and grade. Trophy and record lengths score more. A rare gilded color adds its own bonus and is a fictional game variant. In Ranked, players can invest the point from each catch in Quick Bite, Line Control, or Lift. Quick Bite opens the reel window sooner. Line Control keeps it open longer, and Lift reduces the extra pulls for fish that fight. Ranks reset for each outing.
 
@@ -47,15 +49,32 @@ The dedicated [Firebase project](https://console.firebase.google.com/project/fwb
 
 ### Level-up celebration
 
-In Practice, each landed fish earns 10 XP toward Level 2, separate from its score. The second catch reaches Level 2 and brings up Bryan’s portrait, ribbon, and fish silhouettes. With reduced motion, the portrait and ribbon stay still. The tray announces the milestone and keeps the choice visible after the celebration fades. Choose one rank of **Line Control** for 350 ms more to set the hook, or **Lift** for one fewer pull on a fish that fights, down to one. **Next fish** skips the choice for this outing. A new Practice outing starts at Level 1 with fresh XP and ranks. In Ranked, the celebration still appears on each catch.
+In Practice, each landed fish earns 10 XP toward Level 2, separate from its score. The second catch reaches Level 2 and brings up Bryan’s portrait, ribbon, and fish silhouettes. With reduced motion, the portrait and ribbon stay still. The tray announces the milestone and keeps the choice visible after the celebration fades. Choose one rank of **Line Control** for 350 ms more to set the hook, or **Lift** to reel in extra line on the first clear pull of each fight. **Next fish** skips the choice for this outing. A new Practice outing starts at Level 1 with fresh XP and ranks. In Ranked, the celebration still appears on each catch.
 
 ### Working the line
 
 The lure hangs from the ice hole on one continuous line. Jig bounces it vertically, and the fish comes to inspect it. The tackle tray and lure share one SVG icon sheet, with labels on the controls.
 
-The first reel uses the gold timing band. In Practice, Bryan tells you to wait at the bite and calls “Yeah, reel it!” when the window opens. A bite before the fish’s deadline gives you the full reel window. If the window closes, press **Reel** to resolve the attempt. You can jig again if the fish still has time left. Common fish usually land on the first reel. Stronger or trophy fish pull the line tight. **Loosen** to drop the tension, then **Reel** when the line clears. Use **Pull up** on the last turn. Reeling against a tight line raises tension and can break it. Tougher fish surge more often. The ranked server still decides accepted timing and points.
+The first reel uses the gold timing band. In Practice, Bryan tells you to wait at the bite and calls “Yeah, reel it!” when the window opens. A bite before the fish’s deadline gives you the full reel window. If the window closes, press **Reel** to resolve the attempt. You can jig again if the fish still has time left. In Campaign and Practice, **Loosen** when the line tightens, **Reel** when it clears, and **Pull up** when the fish reaches the ice hole. Reeling against a tight line raises tension and can break it. In Ranked, the server decides timing and points, and a standard common fish can land on the first reel.
 
+
+Bryan speaks in the Field Comic bubble during Campaign and Practice. A slipped hook, a catch, and a fish that runs out its timer each use a different portrait. Use **Try again** in the bubble to jig after a missed hook, or **Next fish** after a catch or departure. While a fish is hooked, the cue beside the line shows whether to reel up or loosen.
+
+A wrong lure makes the fish back away. Rare fish leave after two wrong jigs and other fish leave after three. The next encounter starts with a fresh count. Scroll upward again at the ice hole to bring the lure in. It stays visible at the rim when you stop scrolling.
+
+
+### Campaign
+
+Choose **Campaign** from **Play fishing game**. Scroll to find a fish and follow the line down from the ice hole. Jig with a lure the fish responds to, then set the hook in the gold window. Every hooked fish has to come back to the ice hole. A deeper fish takes more reeling, and the fish’s species and size affect how hard it pulls. Use **Loosen** when the line tightens, reel when it clears, and choose **Pull up** when the fish reaches the hole. The gauge compares the current load with the rating of your equipped line.
+
+Land fish to earn coins. To spend them, exit the outing and choose **Tackle shop** from the outing menu. The 8 lb starter line, starter hook and Starter Shore license are free. A standard Yellow perch earns enough for the 12 lb line. The Fine-wire hook gives Jig 200 ms more to set the hook, and Line Control training gives all lures 350 ms more. The Deep Reef license opens a second area of Mille Lacs with a different mix of fish.
+
+Campaign cycles through 30 seconds of day, 30 seconds of dusk and 45 seconds of night during an outing. The light and phase label change together. The new odds apply when you move to the next fish; the current fish keeps its countdown. The clock pauses between outings.
+
+The browser saves the wallet, tackle, training, licenses, clock and credited catches together. An outing uses the equipment you chose when you started it. Practice uses the same tackle tray, fight and lighting cycle with the starter hook and 8 lb line. It starts in daylight and keeps its XP and skill choice for that outing. Ranked uses server timing, points and gear rules; campaign purchases never enter its requests.
 
 ### Run the game checks
 
-Run `node --test game/rules.test.mjs` for the shared rules. To replay the seeded browser checks, start the local site as described in the README. Set `FISHING_QA_URL` to that URL and run `node game/search.browser.mjs`, `node game/escape.browser.mjs`, `node game/cues.browser.mjs` and `node game/milestone.browser.mjs`. If Playwright is installed outside the checkout, set `PLAYWRIGHT_MODULE` to its module path. Use `CHROME_PATH` if you need to point Playwright to an installed Chrome.
+Run `node --test game/*.test.mjs` for the rules. Start the local site as described in the README. Set `FISHING_QA_URL` to that URL, then run `for check in game/*.browser.mjs; do node "$check" || break; done`. If Playwright is installed outside the checkout, set `PLAYWRIGHT_MODULE` to its module path. Use `CHROME_PATH` to point Playwright to an installed Chrome.
+
+The seeded shop check finds and lands a fish, buys and equips stronger line, and compares the same hard pull after dusk on desktop and at 320 px. Set `FISHING_EVIDENCE_DIR` to capture the catch, shop and both surge outcomes when running `node game/shop.browser.mjs`.
