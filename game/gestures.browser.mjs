@@ -205,14 +205,31 @@ async function checkGestures(browser, layout) {
 }
 
 async function checkKeyboard(browser) {
-  const { page, action, enter, findFish, waitForBite, tick, errors } = await practicePage(browser);
-  await page.evaluate(() => { Math.random = () => .98; });
+  const { page, action, button, enter, findFish, waitForBite, tick, press, closeDialog, errors } = await practicePage(browser);
+  await page.evaluate(async () => {
+    const { applyProfile } = await import('./game/profile.mjs');
+    await applyProfile({ type: 'award', key: 'practice-fixture:0', mode: 'practice', outcome: 'landed',
+      speciesId: 'muskie', catch: { points: 75 } });
+    Math.random = () => .98;
+  });
   await enter('Campaign');
   const startingDepth = await page.evaluate(() => scrollY);
   await page.keyboard.press('ArrowDown');
   assert.ok(await page.evaluate(() => scrollY) > startingDepth, 'Arrow Down lowers the lure');
   await findFish({ species: 'muskie' });
   const fish = page.locator('.fishing-swimmer[data-species="muskie"]');
+  const pause = page.getByRole('dialog', { name: 'Paused' });
+  const lake = page.getByRole('dialog', { name: 'Your Lake' });
+  const tip = page.locator('.fishing-studied-cue');
+  await press(button('Menu'), 'Enter');
+  await press(pause.getByRole('button', { name: 'Your Lake' }), 'Enter');
+  await press(lake.locator('button[data-species="muskie"]'), 'Enter');
+  await press(lake.getByRole('button', { name: 'Learn this tip' }), 'Enter');
+  await lake.getByRole('button', { name: 'Tip learned' }).waitFor();
+  await closeDialog(lake, lake.getByRole('button', { name: 'Return to outing' }));
+  await closeDialog(pause, pause.getByRole('button', { name: 'Resume fishing' }));
+  await tick(32);
+  assert.equal(await tip.isVisible(), false, 'a newly learned tip leaves the current swimmer unchanged');
   await page.keyboard.press('j');
   await tick(32);
   assert.equal(await fish.getAttribute('data-swim'), 'away', 'a fish backs away from the wrong bait');
@@ -221,6 +238,7 @@ async function checkKeyboard(browser) {
   await findFish({ species: 'muskie' });
   await page.keyboard.press('j');
   await waitForBite();
+  assert.equal(await tip.isVisible(), false, 'contact preserves the swimmer’s original guidance');
   await tick(700);
   await page.keyboard.press('r');
   assert.equal(await action.textContent(), 'Reel', 'R in gold starts the fight');

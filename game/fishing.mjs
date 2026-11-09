@@ -232,7 +232,7 @@ const lineCallout = line.querySelector('.fishing-line-callout');
 const biteRipple = line.querySelector('.fishing-bite-ripple');
 const biteFlash = line.querySelector('.fishing-bite-flash');
 const campaignSwimmers = new Map();
-let swimFrame, swimPositions, campaignBiteEye;
+let swimFrame, swimPositions, campaignBiteAnchor;
 const lineGestureMarker = document.createElement('div');
 lineGestureMarker.className = 'fishing-line-gesture';
 lineGestureMarker.setAttribute('data-line-gesture-marker', '');
@@ -1100,11 +1100,12 @@ function positionFishingLine(search, water = lake.getBoundingClientRect()) {
     const scene = target.parentElement.getBoundingClientRect();
     const fish = target.getBoundingClientRect();
     const [mouthX, mouthY] = mouthOffset(state.fish.id, target.hasAttribute('data-facing-right'));
-    const biteY = campaignBiteEye ? water.top + campaignBiteEye.y : scene.top + scene.height * biteDepth;
+    const biteBand = campaignBiteAnchor ? scenes[state.fish.depth].getBoundingClientRect() : scene;
+    const biteY = biteBand.top + biteBand.height * (campaignBiteAnchor?.depth ?? biteDepth);
     const depth = fight ? fight.remaining / fight.startDepth : 1;
     const lineX = hole.x + (fight?.x ?? 0) * Math.min(82, innerWidth * .10);
     const closing = fight ? Math.max(0, 1 - (outingTime.dateNow() - fight.hookedAt) / 380) : 1;
-    const x = campaignBiteEye ? lineX + (water.left + campaignBiteEye.x - hole.x) * closing : lineX;
+    const x = campaignBiteAnchor ? lineX + (water.left + water.width * campaignBiteAnchor.x - hole.x) * closing : lineX;
     const y = stage === 'landed'
       ? Math.max(hole.y + 12, water.top + fish.height * mouthY + 8)
       : hole.y + (biteY - hole.y) * depth + (fight?.y ?? 0) * 16 - (cue.offset ?? 0);
@@ -1460,11 +1461,10 @@ function renderCatchActions() {
 function renderStudiedCue() {
   let id = state?.fish && encounterTip && fishInView() ? state.fish.id : undefined;
   if (state?.hole && state.stage === 'seek') {
-    const studied = profile?.studiedSpecies;
-    id = studied?.length ? swimPositions?.fish
+    id = swimPositions?.fish
       .filter(swimmer => swimmer.near)
       .map(swimmer => campaignSwimmers.get(swimmer.slot))
-      .find(fish => studied.includes(fish?.dataset.species) && fishInView(fish))?.dataset.species : undefined;
+      .find(fish => fish?.hasAttribute('data-studied') && fishInView(fish))?.dataset.species;
   }
   const tip = id && lureTip(id);
   const visible = usesLinePhysics() && tip && ['seek', 'bite', 'fight'].includes(state.stage);
@@ -2182,7 +2182,7 @@ function removeCampaignSwimmers() {
   outingTime.cancel(swimFrame);
   for (const fish of campaignSwimmers.values()) fish.remove();
   campaignSwimmers.clear();
-  swimFrame = swimPositions = campaignBiteEye = undefined;
+  swimFrame = swimPositions = campaignBiteAnchor = undefined;
 }
 
 function startCampaignSwimmers() {
@@ -2191,6 +2191,7 @@ function startCampaignSwimmers() {
     swimmer.className = 'fishing-swimmer';
     swimmer.dataset.species = fish.id;
     swimmer.dataset.candidate = fish.slot;
+    swimmer.toggleAttribute('data-studied', profile?.studiedSpecies?.includes(fish.id));
     swimmer.setAttribute('aria-hidden', 'true');
     const [x, y] = fishMouths[fish.id];
     swimmer.style.setProperty('--mouth-x', x);
@@ -2216,7 +2217,7 @@ function releaseCampaignSwimmer() {
   target.className = 'fishing-swimmer';
   target.hidden = false;
   campaignSwimmers.set(Number(target.dataset.candidate), target);
-  target = campaignBiteEye = undefined;
+  target = campaignBiteAnchor = undefined;
 }
 
 function animateCampaignFish() {
@@ -2245,9 +2246,11 @@ function animateCampaignFish() {
     target.className = 'fishing-target is-biting';
     target.classList.toggle('gilded', state.fish.gilded);
     delete target.dataset.swim;
-    campaignBiteEye = eye;
+    // Keep the bite at the same depth within its band when the viewport changes.
+    const band = bands[state.fish.depth];
+    campaignBiteAnchor = { x: eye.x / water.width, depth: (eye.y - band.top) / band.height };
     biteAt = now;
-    encounterTip = profile?.studiedSpecies?.includes(state.fish.id) ? lureTip(state.fish.id) : undefined;
+    encounterTip = target.hasAttribute('data-studied') ? lureTip(state.fish.id) : undefined;
     practiceError = undefined;
     clearBite();
     stopCountdown();
