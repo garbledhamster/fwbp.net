@@ -79,8 +79,20 @@ export async function practicePage(browser, { mobile = false, configure } = {}) 
     }, null, { polling: 25 });
   }
 
+  async function reelToHole() {
+    for (let move = 0; move < 24; move++) {
+      await page.clock.runFor(300);
+      const label = await action.textContent();
+      if (label === 'Pull up') return;
+      assert.equal(label, 'Reel', 'the Campaign fish is still hooked');
+      const cue = await tray.getByRole('status').textContent();
+      await press(/Line tight/i.test(cue) ? button('Loosen') : action);
+    }
+    assert.fail('the Campaign fish did not reach the ice hole');
+  }
+
   return {
-    page, tray, action, launch, button, press, errors, findFish, chooseMode, enter,
+    page, tray, action, launch, button, press, errors, findFish, chooseMode, enter, reelToHole,
     status: tray.getByRole('status'),
     timing: tray.locator('.fishing-timing'),
     tick: ms => page.clock.runFor(ms),

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { practicePage, withBrowser } from './browser-qa.mjs';
 
 async function checkAccess(browser, mobile) {
-  const { page, launch, tray, action, status, button, enter, press, tick, findFish, errors } =
+  const { page, launch, tray, action, status, button, enter, press, tick, findFish, errors, reelToHole } =
     await practicePage(browser, { mobile });
   const picker = page.getByRole('dialog', { name: 'Choose an outing' });
   const shop = page.getByRole('dialog', { name: 'Tackle shop' });
@@ -40,6 +40,8 @@ async function checkAccess(browser, mobile) {
     await findFish();
     await press(action);
     await tick(700);
+    await press(action);
+    await reelToHole();
     await press(action);
     await waitWallet(balance);
     assert.match(await status.textContent(), fish);

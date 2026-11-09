@@ -20,7 +20,7 @@ test('the Fine-wire hook grants 200 ms with Jig only', () => {
     window: { from: 550, until: 2100 }, stage: 'seek',
   });
   assert.deepEqual(tryHook({ campaign: { hook: finesseHook }, delay: 2300 }), {
-    window: { from: 550, until: 2300 }, stage: 'landed',
+    window: { from: 550, until: 2300 }, stage: 'fight',
   });
   assert.equal(tryHook({ campaign: { hook: finesseHook }, delay: 2301 }).stage, 'seek');
   assert.deepEqual(tryHook({ species: .55, lure: 'minnow', campaign: { hook: finesseHook }, delay: 2200 }), {
@@ -34,7 +34,7 @@ test('Line Control widens the window with any lure and stacks with the equipped 
   });
   const campaign = { hook: finesseHook, lineControlRank: 1 };
   assert.deepEqual(tryHook({ campaign, delay: 2650 }), {
-    window: { from: 550, until: 2650 }, stage: 'landed',
+    window: { from: 550, until: 2650 }, stage: 'fight',
   });
   assert.equal(tryHook({ campaign, delay: 2651 }).stage, 'seek');
   assert.equal(tryHook({ campaign, delay: 549 }).stage, 'seek', 'neither upgrade opens the window early');

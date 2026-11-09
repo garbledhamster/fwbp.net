@@ -1,11 +1,11 @@
 export const lures = { jig: 'Jig', spoon: 'Spoon', minnow: 'Minnow' };
 const milleLacs = [
-  { id: 'perch', size: [5, 13, 11], name: 'Yellow perch', rarity: 'Common', points: 10, lure: 'jig', art: ['scenes', 'bi-perch', '0 0 172 66'], weight: 5 },
-  { id: 'rock-bass', size: [5, 12, 10], name: 'Rock bass', rarity: 'Common', points: 15, lure: 'jig', art: ['fish', 'rock-bass', '0 0 160 92'], weight: 4 },
-  { id: 'walleye', size: [12, 32, 28], name: 'Walleye', rarity: 'Uncommon', points: 25, lure: 'minnow', art: ['scenes', 'bi-walleye', '0 0 172 66'], weight: 3 },
-  { id: 'pike', size: [18, 46, 39, 46.25], name: 'Northern pike', rarity: 'Uncommon', points: 35, lure: 'spoon', art: ['lake-life', 'pike', '0 0 230 72'], weight: 3 },
-  { id: 'smallmouth', size: [8, 22, 19], name: 'Smallmouth bass', rarity: 'Uncommon', points: 30, lure: 'minnow', art: ['lake-life', 'bass', '0 0 172 80'], weight: 3 },
-  { id: 'muskie', size: [24, 58, 50, 58.25], name: 'Muskie', rarity: 'Rare', points: 75, lure: 'spoon', art: ['fish', 'muskie', '0 0 245 72'], weight: 1 },
+  { id: 'perch', pull: 0.65, size: [5, 13, 11], name: 'Yellow perch', rarity: 'Common', points: 10, lure: 'jig', art: ['scenes', 'bi-perch', '0 0 172 66'], weight: 5 },
+  { id: 'rock-bass', pull: 0.85, size: [5, 12, 10], name: 'Rock bass', rarity: 'Common', points: 15, lure: 'jig', art: ['fish', 'rock-bass', '0 0 160 92'], weight: 4 },
+  { id: 'walleye', pull: 1.8, size: [12, 32, 28], name: 'Walleye', rarity: 'Uncommon', points: 25, lure: 'minnow', art: ['scenes', 'bi-walleye', '0 0 172 66'], weight: 3 },
+  { id: 'pike', pull: 2.2, size: [18, 46, 39, 46.25], name: 'Northern pike', rarity: 'Uncommon', points: 35, lure: 'spoon', art: ['lake-life', 'pike', '0 0 230 72'], weight: 3 },
+  { id: 'smallmouth', pull: 2, size: [8, 22, 19], name: 'Smallmouth bass', rarity: 'Uncommon', points: 30, lure: 'minnow', art: ['lake-life', 'bass', '0 0 172 80'], weight: 3 },
+  { id: 'muskie', pull: 2.8, size: [24, 58, 50, 58.25], name: 'Muskie', rarity: 'Rare', points: 75, lure: 'spoon', art: ['fish', 'muskie', '0 0 245 72'], weight: 1 },
 ];
 export const lakes = { 'mille-lacs': { name: 'Mille Lacs', fish: milleLacs } };
 export const skills = { quick: 'Quick Bite', control: 'Line Control', lift: 'Lift' };
@@ -66,16 +66,22 @@ function hookWindow(run, fish) {
   return window;
 }
 export const runLifetime = 20 * 60 * 1000;
+const moveIntervalMs = 250;
 const fightStepMs = 40;
 const surgeCycleMs = 2400;
 const reelLength = 1.5;
 const tightLoad = 4.8;
 
-function startCampaignFight(run, effort, now) {
-  const distance = effort * 2;
+function startCampaignFight(run, fish, encounter, now) {
+  // Each deeper stretch of water adds another length of line to reel in.
+  const startDepth = reelLength * (encounter.depth + 1 + encounter.y / 100);
+  const [min, max] = fish.size;
+  const size = (run.catch.length - min) / (max - min);
+  // Even a big fish gives the angler room to react on starter line.
+  const pull = Math.min(3.3, Math.round(fish.pull * (0.9 + size * 0.5) * 10) / 10);
   run.fight = {
-    lineStrength: run.campaign.lineStrength, effort, hookedAt: now, elapsed: 0,
-    distance, remaining: distance, paidOut: distance, tension: 1.1,
+    lineStrength: run.campaign.lineStrength, startDepth, pull, hookedAt: now, elapsed: 0,
+    distance: startDepth, remaining: startDepth, paidOut: startDepth, tension: 1.1,
     x: 0, y: 0, slack: 0, tight: false, pullUp: false,
   };
   run.stage = 'fight';
@@ -86,14 +92,14 @@ function sampleFight(run) {
   const fight = run.fight;
   const phase = fight.elapsed % surgeCycleMs;
   const surge = Math.max(0, Math.min(phase / 600, 1, (1800 - phase) / 700));
-  const extension = (fight.effort === 3 ? 2.8 : 2) * surge;
-  fight.distance = fight.remaining + extension;
-  fight.x = Math.sin(phase * 2 * Math.PI / surgeCycleMs) * (fight.effort === 3 ? 1 : .7);
-  fight.y = fight.distance - fight.effort * 2;
+  const roomToRun = Math.min(1, fight.remaining / reelLength);
+  fight.y = fight.pull * surge * roomToRun;
+  fight.distance = fight.remaining + fight.y;
+  fight.x = Math.sin(phase * 2 * Math.PI / surgeCycleMs) * (fight.pull / 2.8) * roomToRun;
   fight.slack = Math.max(0, fight.paidOut - fight.distance);
   fight.tension = Math.round(Math.max(0, 1.1 + (fight.distance - fight.paidOut) * 2) * 10) / 10;
   fight.tight = fight.tension >= tightLoad;
-  fight.pullUp = fight.remaining <= reelLength;
+  fight.pullUp = fight.remaining === 0;
   if (fight.tension > fight.lineStrength) {
     run.snap = { tension: fight.tension, lineStrength: fight.lineStrength };
     miss(run);
@@ -126,7 +132,9 @@ function campaignFightMove(run, action, target) {
   if (action === 'loosen') {
     const room = Math.max(0, fight.distance + reelLength - fight.paidOut);
     fight.paidOut += Math.min(room, reelLength);
-  } else if (action === 'lift' && fight.pullUp && !fight.tight) {
+  } else if (action === 'lift') {
+    if (!fight.pullUp) throw Error('Reel the fish to the ice hole first.');
+    if (fight.tight) throw Error('Loosen the line before pulling up.');
     land(run, target);
     return;
   } else {
@@ -206,7 +214,7 @@ export function apply(run, input, now, { campaignElapsedMs = run.campaign?.elaps
     if (run.stage !== 'fight') return publicRun(run);
   }
   const paced = ['jig', 'lift', 'loosen'].includes(input.action) || (campaignFight && input.action === 'reel');
-  if (paced && now - run.last < 250) throw Error('Give the line a moment.');
+  if (paced && now - run.last < moveIntervalMs) throw Error('Give the line a moment.');
   const encounter = run.encounters[run.index];
   const target = lakes[run.lake].fish[encounter?.species];
   if (jig) {
@@ -228,17 +236,19 @@ export function apply(run, input, now, { campaignElapsedMs = run.campaign?.elaps
       const gilded = encounter.colorRoll >= .97;
       const points = target.points + (grade === 'Record' ? 60 : grade === 'Trophy' ? 20 : 0) + (gilded ? 30 : 0);
       run.catch = { name: target.name, rarity: target.rarity, points, lure: target.lure, length, grade, gilded };
-      const effort = target.rarity === 'Rare' || grade !== 'Standard' ? 3
-        : target.rarity === 'Uncommon' ? 2 : 0;
-      if (effort && run.campaign) {
-        startCampaignFight(run, effort, now);
-      } else if (effort) {
-        const surge = effort === 3 ? 80 : 68;
-        run.fight = { pulls: Math.max(1, effort - run.skills.lift), tension: surge, surge };
-        run.stage = 'fight';
-        run.cue = 'Loosen up! Give it some line.';
+      if (run.campaign) {
+        startCampaignFight(run, target, encounter, now);
       } else {
-        land(run, target);
+        const effort = target.rarity === 'Rare' || grade !== 'Standard' ? 3
+          : target.rarity === 'Uncommon' ? 2 : 0;
+        if (effort) {
+          const surge = effort === 3 ? 80 : 68;
+          run.fight = { pulls: Math.max(1, effort - run.skills.lift), tension: surge, surge };
+          run.stage = 'fight';
+          run.cue = 'Loosen up! Give it some line.';
+        } else {
+          land(run, target);
+        }
       }
     } else {
       run.stage = 'seek';
@@ -278,7 +288,10 @@ export function apply(run, input, now, { campaignElapsedMs = run.campaign?.elaps
     }
     run.index++;
     run.catch = null;
-    if (run.campaign) run.snap = null;
+    if (run.campaign) {
+      run.snap = null;
+      run.last = now - moveIntervalMs;
+    }
     run.stage = run.index === run.encounters.length ? 'done' : 'seek';
     if (run.stage === 'seek') chooseCampaignSpecies(run, campaignElapsedMs);
     run.seekUntil = run.stage === 'seek' ? seekDeadline(run, now) : null;

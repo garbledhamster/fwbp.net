@@ -166,6 +166,7 @@ const slots = [...tray.querySelectorAll('[data-lure]')];
 let launch, previousScroll, run, state, token, target, busy, failed, biteAt, frame;
 let mode, rigFrame, fightFrame, jigAt = -Infinity;
 let profile, outingId, catchReward, catchSaveFailed;
+let campaignBiteDepth;
 let campaignArea = starterArea;
 let pickerGeneration = 0;
 let clock, clockWrite, suspendedClock;
@@ -403,6 +404,10 @@ function campaignMouth() {
   return { x: fish.left + fish.width * x, y: fish.top + fish.height * y };
 }
 
+function campaignHole(hole = iceCeiling.getBoundingClientRect()) {
+  return { x: hole.left + hole.width * .62, y: hole.top + hole.height * 20 / 110 };
+}
+
 function drawCampaignLine(eye, slack = 0, tight = false) {
   const visible = !tray.hidden && mode === 'campaign' && state?.fish && !failed && state.stage !== 'landed';
   line.toggleAttribute('hidden', !visible);
@@ -411,8 +416,9 @@ function drawCampaignLine(eye, slack = 0, tight = false) {
   // All points use the same unscaled SVG coordinate space inside the lake.
   const water = lake.getBoundingClientRect();
   const hole = iceCeiling.getBoundingClientRect();
-  const x0 = hole.left + hole.width * .62 - water.left;
-  const y0 = hole.top + hole.height * 20 / 110 - water.top;
+  const start = campaignHole(hole);
+  const x0 = start.x - water.left;
+  const y0 = start.y - water.top;
   const elapsed = (performance.now() - jigAt) / 340;
   const bounce = elapsed < 1 ? 12 * Math.sin(Math.PI * elapsed) : 0;
   const end = eye ?? campaignSearchEye(hole);
@@ -430,22 +436,44 @@ function drawCampaignLine(eye, slack = 0, tight = false) {
 }
 
 function positionCampaignLine() {
-  const attached = mode === 'campaign' && target && ['bite', 'fight'].includes(state?.stage);
+  const stage = state?.stage;
+  const attached = mode === 'campaign' && target && ['bite', 'fight', 'landed'].includes(stage);
   const fight = attached && state.fight;
   let curve = 0;
-  if (fight) {
-    target.classList.add('is-hooked');
-    target.style.setProperty('--fight-x', `${fight.x * Math.min(82, innerWidth * .10)}px`);
-    target.style.setProperty('--fight-y', `${fight.y * 16}px`);
-    const loadRatio = Math.min(1, fight.tension / fight.lineStrength);
-    curve = Math.min(54, fight.slack * 7 + (1 - loadRatio) * 14);
+  if (attached) {
+    const hole = campaignHole();
+    const scene = target.parentElement.getBoundingClientRect();
+    const fish = target.getBoundingClientRect();
+    const [mouthX, mouthY] = fishMouths[state.fish.id];
+    const biteY = scene.top + scene.height * campaignBiteDepth;
+    const depth = fight ? fight.remaining / fight.startDepth : 1;
+    const x = hole.x + (fight?.x ?? 0) * Math.min(82, innerWidth * .10);
+    const y = stage === 'landed'
+      ? Math.max(hole.y + 12, lake.getBoundingClientRect().top + fish.height * mouthY + 8)
+      : hole.y + (biteY - hole.y) * depth + (fight?.y ?? 0) * 16;
+    target.style.setProperty('--bite-x', `${x - scene.left + fish.width * (.5 - mouthX)}px`);
+    target.style.setProperty('--bite-y', `${y - scene.top + fish.height * (.5 - mouthY)}px`);
+    if (fight) target.classList.add('is-hooked');
+    if (fight && !fight.pullUp) {
+      const loadRatio = Math.min(1, fight.tension / fight.lineStrength);
+      curve = Math.min(54, fight.slack * 7 + (1 - loadRatio) * 14);
+    }
   }
   drawCampaignLine(attached ? campaignMouth() : undefined, curve, fight?.tight === true);
 }
 
+function reframeHookedFish() {
+  const fish = target.getBoundingClientRect();
+  const waterTop = window.visualViewport?.offsetTop ?? 0;
+  const waterBottom = tray.getBoundingClientRect().top;
+  if (waterBottom - waterTop <= fish.height || (fish.top >= waterTop && fish.bottom < waterBottom)) return;
+  window.scrollBy({ top: fish.top + fish.height / 2 - (waterTop + waterBottom) / 2, behavior: 'instant' });
+  updateSearch();
+}
+
 function fightCue(fight) {
   if (fight.tight) return 'Line tight. Loosen.';
-  return fight.pullUp ? 'Line clear. Pull up.' : 'Line clear. Reel.';
+  return fight.pullUp ? 'At the ice hole. Pull up.' : 'Line clear. Reel.';
 }
 
 function setAction(actionIcon, label) {
@@ -498,11 +526,8 @@ function jigCampaignLine() {
 
 function fishToLure() {
   const eye = campaignSearchEye(iceCeiling.getBoundingClientRect());
-  const fish = target.getBoundingClientRect();
   const scene = target.parentElement.getBoundingClientRect();
-  const [x, y] = fishMouths[state.fish.id];
-  target.style.setProperty('--bite-x', `calc(var(--line-x) + ${fish.width * (.5 - x)}px)`);
-  target.style.setProperty('--bite-y', `${eye.y - scene.top + fish.height * (.5 - y)}px`);
+  campaignBiteDepth = (eye.y - scene.top) / scene.height;
 }
 
 function setStatus(message) {
@@ -863,13 +888,7 @@ window.addEventListener('resize', () => {
   updateSearch();
   if (!shortLandscape.matches || mode !== 'campaign' || state?.stage !== 'fight' || !target) return;
 
-  // Rotation can put the hooked fish under the tray. Move the view once and leave the fight alone.
-  const fish = target.getBoundingClientRect();
-  const waterTop = window.visualViewport?.offsetTop ?? 0;
-  const waterBottom = tray.getBoundingClientRect().top;
-  if (waterBottom - waterTop <= fish.height || (fish.top >= waterTop && fish.bottom < waterBottom)) return;
-  window.scrollBy({ top: fish.top + fish.height / 2 - (waterTop + waterBottom) / 2, behavior: 'instant' });
-  updateSearch();
+  reframeHookedFish();
 });
 window.visualViewport?.addEventListener('scroll', updateSearch, { passive: true });
 window.visualViewport?.addEventListener('resize', updateSearch);
@@ -976,6 +995,15 @@ async function perform(move, input = {}) {
   busy = false;
   render();
   syncCountdown(serverNow);
+  const reeledIn = move === 'reel' && state.fight && state.fight.remaining < prior.fight?.remaining;
+  if (mode === 'campaign' && target && prior.fight && (reeledIn || state.stage === 'landed')) {
+    if (state.fight?.pullUp || state.stage === 'landed') {
+      window.scrollTo({ top: 0, behavior: 'instant' });
+      updateSearch();
+    } else {
+      reframeHookedFish();
+    }
+  }
   if (focused === action || (move === 'upgrade' && skillRow.hidden && practiceChoice.hidden)) {
     action.focus({ preventScroll: true });
   }

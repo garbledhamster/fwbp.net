@@ -50,7 +50,7 @@ async function scrollStep(page, direction, mobile) {
 }
 
 async function checkTray(browser, mobile) {
-  const { page, tray, launch, action, button, status, press, tick, findFish, errors } =
+  const { page, tray, launch, action, button, status, press, tick, findFish, errors, reelToHole } =
     await practicePage(browser, { mobile });
   await press(launch);
   const picker = page.getByRole('dialog', { name: 'Choose an outing' });
@@ -101,6 +101,8 @@ async function checkTray(browser, mobile) {
   await press(action);
   await tick(700);
   assert.match(await status.textContent(), /yeah, reel it/i, 'a late bite keeps its hook window');
+  await press(action);
+  await reelToHole();
   await press(action);
   await tray.getByText(/Yellow perch.*points/i).waitFor();
   if (!mobile) {

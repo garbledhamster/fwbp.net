@@ -1,13 +1,17 @@
 import assert from 'node:assert/strict';
+import { mkdir } from 'node:fs/promises';
+import { join } from 'node:path';
 import { practicePage, withBrowser } from './browser-qa.mjs';
 
 async function fightGeometry(page) {
   return page.locator('.fishing-line-path').evaluate(path => {
     const point = path.getPointAtLength(path.getTotalLength()).matrixTransform(path.getScreenCTM());
+    const start = path.getPointAtLength(0).matrixTransform(path.getScreenCTM());
     const fish = document.querySelector('.fishing-target').getBoundingClientRect();
     const tray = document.querySelector('.fishing-tray').getBoundingClientRect();
     return {
-      x: point.x, y: point.y, gap: Math.hypot(point.x - fish.left - fish.width * 7 / 245,
+      x: point.x, y: point.y, distanceToHole: Math.hypot(point.x - start.x, point.y - start.y),
+      gap: Math.hypot(point.x - fish.left - fish.width * 7 / 245,
         point.y - fish.top - fish.height * 42 / 72),
       fishInView: fish.left >= 0 && fish.right <= innerWidth && fish.top >= 0 && fish.bottom < tray.top,
     };
@@ -25,6 +29,12 @@ async function checkFight(browser, mobile) {
   });
   const load = tray.locator('meter');
   const loosen = button('Loosen');
+  const evidence = process.env.FISHING_EVIDENCE_DIR;
+  const capture = async name => {
+    if (!evidence || mobile) return;
+    await mkdir(evidence, { recursive: true });
+    await page.screenshot({ path: join(evidence, `${name}.png`), animations: 'disabled' });
+  };
 
   async function hook() {
     await enter('Campaign');
@@ -51,6 +61,7 @@ async function checkFight(browser, mobile) {
   assert.match(await status.textContent(), /line tight.*loosen/i);
   assert.equal(await loosen.evaluate(el => el.classList.contains('fishing-recommended')), true);
   const reelSlot = await action.boundingBox();
+  await capture('haul-start');
 
   await page.evaluate(() => scrollBy(0, 36));
   await tick(32);
@@ -66,8 +77,12 @@ async function checkFight(browser, mobile) {
   }
   assert.ok((await fightGeometry(page)).y < looseDepth, 'reeling a clear line brings the fish up');
   assert.equal(await action.textContent(), 'Pull up');
+  const atHole = await fightGeometry(page);
+  assert.ok(atHole.distanceToHole < 1 && atHole.gap < 1, 'Pull up is offered only at the ice hole');
+  assert.ok(atHole.y >= 0, 'the camera follows the fish back to the visible hole');
   assert.equal((await action.boundingBox()).x, reelSlot.x);
   assert.match(await status.textContent(), /pull up/i);
+  await capture('haul-hole');
   await tick(300);
   await press(action);
   await tray.getByText(/Muskie.*75 points/i).waitFor();

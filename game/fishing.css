@@ -241,8 +241,8 @@ body.fishing:has(.fishing-tray[data-mode="campaign"]) .fishing-target {
   .fishing-line-callout { display: none; }
 }
 body.fishing:has(.fishing-tray[data-mode="campaign"]) .fishing-target:is(.is-biting, .is-hooked) {
-  left: calc(var(--bite-x, var(--line-x)) + var(--fight-x, 0px));
-  top: calc(var(--bite-y, 44%) + var(--fight-y, 0px));
+  left: var(--bite-x, var(--line-x));
+  top: var(--bite-y, 44%);
   transition: none;
 }
 

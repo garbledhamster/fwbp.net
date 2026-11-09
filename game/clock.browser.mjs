@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { practicePage, withBrowser } from './browser-qa.mjs';
 
 await withBrowser(async browser => {
-  const { page, tray, launch, action, button, status, press, enter, tick, findFish, errors } =
+  const { page, tray, launch, action, button, status, press, enter, tick, findFish, errors, reelToHole } =
     await practicePage(browser);
   const label = tray.locator('[data-phase]');
   const lake = page.locator('.lake');
@@ -28,6 +28,8 @@ await withBrowser(async browser => {
   const dusk = await color();
   assert.notEqual(dusk, daylight);
   assert.match(await status.textContent(), /yeah, reel it/i, 'the phase change keeps the active bite window');
+  await press(action);
+  await reelToHole();
   await press(action);
   await status.filter({ hasText: /yellow perch.*10 coins/i }).waitFor();
   await press(button('Exit fishing'));

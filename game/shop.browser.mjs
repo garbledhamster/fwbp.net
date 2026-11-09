@@ -31,7 +31,7 @@ async function search(page, tray, action, mobile) {
 }
 
 async function checkShop(browser, mobile) {
-  const { page, launch, tray, action, status, button, enter, press, tick, errors } =
+  const { page, launch, tray, action, status, button, enter, press, tick, errors, reelToHole } =
     await practicePage(browser, { mobile });
   const picker = page.getByRole('dialog', { name: 'Choose an outing' });
   const shop = page.getByRole('dialog', { name: 'Tackle shop' });
@@ -91,6 +91,8 @@ async function checkShop(browser, mobile) {
   await press(picker.getByRole('button', { name: 'Back to the site' }));
 
   await startWith(.05, 'Jig');
+  await reelToHole();
+  await press(action);
   await textVisible(tray, /Yellow perch.*\+10 coins/i);
   const landedFish = page.locator('.fishing-target');
   assert.ok(await landedFish.isVisible(), 'show the fish with its catch payout');

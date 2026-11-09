@@ -28,10 +28,12 @@ test('a phase change preserves the active fish and deadline until the next encou
   assert.equal(stillSearching.fish.id, 'rock-bass');
   assert.equal(stillSearching.seekUntil, deadline);
   rules.apply(run, { action: 'jig', lure: 'jig' }, 2800, { campaignElapsedMs: 30800 });
-  assert.equal(rules.apply(run, { action: 'reel' }, 3500, { campaignElapsedMs: 31500 }).stage, 'landed');
+  assert.equal(rules.apply(run, { action: 'reel' }, 3500, { campaignElapsedMs: 31500 }).stage, 'fight');
+  for (const now of [3800, 4100, 4400]) rules.apply(run, { action: 'reel' }, now);
+  assert.equal(rules.apply(run, { action: 'lift' }, 4700).stage, 'landed');
 
-  const next = rules.apply(run, { action: 'next' }, 4000, { campaignElapsedMs: 32000 });
+  const next = rules.apply(run, { action: 'next' }, 5000, { campaignElapsedMs: 33000 });
   assert.equal(next.fish.id, 'walleye');
-  assert.equal(next.seekUntil, 29000);
+  assert.equal(next.seekUntil, 30000);
   assert.equal(next.count, 6);
 });

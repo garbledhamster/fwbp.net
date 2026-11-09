@@ -58,7 +58,7 @@ The first reel uses the gold timing band. In Practice, Bryan tells you to wait a
 
 ### Campaign
 
-Choose **Campaign** from **Play fishing game**. Scroll to find a fish and follow the line down from the ice hole. Jig with a lure the fish responds to, then set the hook in the gold window. Strong fish pull on their own. When the line tightens, use **Loosen** to give the fish room. Reel when it clears and use **Pull up** when the fish is close. The gauge compares the current load with the rating of your equipped line.
+Choose **Campaign** from **Play fishing game**. Scroll to find a fish and follow the line down from the ice hole. Jig with a lure the fish responds to, then set the hook in the gold window. Every hooked fish has to come back to the ice hole. A deeper fish takes more reeling, and the fish’s species and size affect how hard it pulls. Use **Loosen** when the line tightens, reel when it clears, and choose **Pull up** when the fish reaches the hole. The gauge compares the current load with the rating of your equipped line.
 
 Land fish to earn coins. To spend them, exit the outing and choose **Tackle shop** from the outing menu. The 8 lb starter line, starter hook and Starter Shore license are free. A standard Yellow perch earns enough for the 12 lb line. The Fine-wire hook gives Jig 200 ms more to set the hook, and Line Control training gives all lures 350 ms more. The Deep Reef license opens a second area of Mille Lacs with a different mix of fish.
 

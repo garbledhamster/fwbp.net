@@ -2,11 +2,13 @@ import assert from 'node:assert/strict';
 import { practicePage, withBrowser } from './browser-qa.mjs';
 
 await withBrowser(async browser => {
-  const { page, tray, action, status, enter, press, findFish, tick, errors } = await practicePage(browser);
+  const { page, tray, action, status, enter, press, findFish, tick, errors, reelToHole } = await practicePage(browser);
   await enter('Campaign');
   await findFish();
   await press(action);
   await tick(700);
+  await press(action);
+  await reelToHole();
 
   // Abort the next browser save, then let the real store handle the retry.
   await page.evaluate(() => {
