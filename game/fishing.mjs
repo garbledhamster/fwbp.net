@@ -141,7 +141,7 @@ pause.innerHTML = `
       <dt><kbd>L</kbd></dt><dd>Loosen during a fight</dd>
       <dt><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></dt><dd>Jig, Spoon, Minnow while searching</dd>
       <dt><kbd>Esc</kbd></dt><dd>Menu / Back / Resume</dd>
-      <dt>Arrows / Page keys</dt><dd>Scroll the lake; Left / Right browse a focused hook carousel</dd>
+      <dt>Arrows / Page keys</dt><dd>Scroll the lake. In Gear, use arrow keys to browse focused item tiles.</dd>
     </dl>
     <p data-campaign-gestures hidden>In Campaign, scroll or swipe up on the marker to jig or set the hook. Once hooked, scroll or swipe anywhere in the water. Go up to reel or pull up and down to loosen.</p>
     <p>In Practice and Ranked, tap the labeled fishing buttons. Details shows each item’s effect. Campaign tackle changes apply to the next outing. Practice uses starter tackle and its own Level 2 skill choice. Ranked uses server timing and an Exit button.</p>
@@ -333,7 +333,6 @@ let shopReturn, shopRelease, pauseRelease, pauseOpener, detailsOpener;
 let outingEquipment;
 let pausePanel = 'menu';
 let pauseGeneration = 0;
-let hookSelection = 'starter-hook';
 let detailsPress;
 let pausedAnimations = [];
 
@@ -555,36 +554,6 @@ function shopItemState(item) {
   };
   return { owned, equipped, canEquip, shortfall, locked, level, status: statuses[availability.status] };
 }
-function shopItem(item, inventory = false) {
-  const { owned, equipped, canEquip, shortfall, locked, level } = shopItemState(item);
-  const action = (type, label, disabled = false) =>
-    `<button type="button" data-shop-action="${type}" aria-label="${label} ${item.name}" ${disabled ? 'disabled' : ''}>${label}</button>`;
-  return `<li data-item="${item.id}" tabindex="-1">
-    <div><strong>${icon(item.category)} ${item.name}</strong><p>${item.effect}</p><p>Level ${level}${locked ? ' · Locked' : ''}</p>
-      <button type="button" data-item-details="${item.id}">Details<span class="fishing-announcement"> for ${item.name}</span></button></div>
-    <div class="fishing-shop-action">
-      <span>${owned ? equipped ? 'Equipped' : 'Owned' : coins(item.cost)}</span>
-      ${owned ? canEquip && !equipped ? action('equip', 'Equip') : '' : inventory ? `<button type="button" data-view-shop="${item.id}">View in shop</button>` : action('buy', 'Buy', shortfall > 0 || locked)}
-    </div>
-  </li>`;
-}
-
-function hookCarousel(inventory = false) {
-  const hooks = shopItems.filter(item => item.category === 'hook');
-  let selected = hooks.findIndex(item => item.id === hookSelection);
-  if (selected < 0) selected = 0;
-  hookSelection = hooks[selected].id;
-  const cardPrefix = inventory ? 'gear-hook' : 'shop-hook';
-  return `<div class="fishing-hook-carousel" tabindex="0" role="group" aria-label="Hook carousel" aria-describedby="${cardPrefix}-${hookSelection}" data-hook-carousel>
-    <div class="fishing-carousel-nav">
-      <button type="button" data-hook-step="-1" aria-label="Previous hook" ${selected === 0 ? 'disabled' : ''}>Previous</button>
-      <span data-hook-position role="status">Hook ${selected + 1} of ${hooks.length}</span>
-      <button type="button" data-hook-step="1" aria-label="Next hook" ${selected === hooks.length - 1 ? 'disabled' : ''}>Next</button>
-    </div>
-    <ul>${hooks.map((item, i) => shopItem(item, inventory).replace('<li ', `<li id="${cardPrefix}-${item.id}" ${i !== selected ? 'hidden' : ''} `)).join('')}</ul>
-  </div>`;
-}
-
 let shopSelection = 'stronger-line';
 let shopPane = 'grid';
 let shopGridScroll = 0;
@@ -777,14 +746,12 @@ export async function openShop({ itemId, onClose } = {}) {
   shopResumeRequested = false;
   shop.querySelector('[data-shop-resume]').hidden = !returnToPause || Boolean(onClose);
   const opener = document.activeElement;
-  const parentHook = hookSelection;
   const parentScroll = pause.querySelector('[data-gear-content]').scrollTop;
   const parentItem = opener?.closest('[data-item]')?.dataset.item;
   shopReturn = onClose ?? (() => {
     if (returnToPause) {
       if (!pause.open) openPause();
       else if (pausePanel === 'gear') {
-        hookSelection = parentHook;
         renderGear();
         pause.querySelector('[data-gear-content]').scrollTop = parentScroll;
         const row = [...pause.querySelectorAll('[data-item]')].find(row => row.dataset.item === parentItem);
@@ -855,7 +822,7 @@ async function changeShopItem(event) {
   const message = source === shop ? shopMessage : pause.querySelector('[data-gear-message]');
   setShopBusy(true);
   message.textContent = 'Saving tackle…';
-  source.querySelectorAll('[data-shop-action], [data-hook-step], [data-item-details], [data-view-shop], [data-shop-category], [data-shop-select], [data-shop-grid-back]')
+  source.querySelectorAll('[data-shop-action], [data-item-details], [data-view-shop], [data-shop-category], [data-shop-select], [data-shop-grid-back]')
     .forEach(button => { button.disabled = true; });
   try {
     const result = await applyProfile({ type, id, revision: profile.revision });
@@ -884,14 +851,6 @@ async function changeShopItem(event) {
 shop.addEventListener('click', changeShopItem);
 pause.addEventListener('click', changeShopItem);
 
-function browseHook(container, index) {
-  if (shopBusy) return;
-  const hooks = shopItems.filter(item => item.category === 'hook');
-  hookSelection = hooks[Math.max(0, Math.min(hooks.length - 1, index))].id;
-  container.outerHTML = hookCarousel(pause.contains(container));
-  const replacement = (shop.open ? shop : pause).querySelector('[data-hook-carousel]');
-  replacement.focus({ preventScroll: true });
-}
 function openDetails(id, opener) {
   if (shopBusy || itemDetails.open) return;
   const item = shopItems.find(item => item.id === id);
@@ -914,19 +873,6 @@ for (const surface of [shop, pause]) {
       const heading = shopList.querySelector(`#shop-${category.dataset.shopCategory}`);
       heading.scrollIntoView({ block: 'start' }); heading.focus({ preventScroll: true });
     }
-    const arrow = event.target.closest('[data-hook-step]');
-    if (arrow) {
-      const hooks = shopItems.filter(item => item.category === 'hook');
-      browseHook(arrow.closest('[data-hook-carousel]'), hooks.findIndex(item => item.id === hookSelection) + Number(arrow.dataset.hookStep));
-    }
-  });
-  surface.addEventListener('keydown', event => {
-    const carousel = event.target.closest('[data-hook-carousel]');
-    if (!carousel || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
-    event.preventDefault();
-    const hooks = shopItems.filter(item => item.category === 'hook');
-    const current = hooks.findIndex(item => item.id === hookSelection);
-    browseHook(carousel, event.key === 'Home' ? 0 : event.key === 'End' ? hooks.length - 1 : current + (event.key === 'ArrowRight' ? 1 : -1));
   });
   let gesture;
   let suppressClick = false;
@@ -940,9 +886,8 @@ for (const surface of [shop, pause]) {
   surface.addEventListener('pointerdown', event => {
     cancelPress();
     suppressClick = false;
-    const carousel = event.target.closest('[data-hook-carousel]');
     const row = event.target.closest('[data-item]');
-    gesture = { x: event.clientX, y: event.clientY, carousel, row };
+    gesture = { x: event.clientX, y: event.clientY };
     if (row && event.pointerType !== 'mouse' && !event.target.closest('button')) {
       detailsPress = setTimeout(() => { openDetails(row.dataset.item, row); gesture = undefined; }, 500);
     }
@@ -950,15 +895,7 @@ for (const surface of [shop, pause]) {
   surface.addEventListener('pointermove', event => {
     if (gesture && Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y) > 10) { cancelPress(); suppressClick = true; }
   });
-  surface.addEventListener('pointerup', event => {
-    cancelPress();
-    if (!gesture) return;
-    const { carousel, x, y } = gesture;
-    gesture = undefined;
-    if (!carousel || Math.abs(event.clientX - x) < 45 || Math.abs(event.clientY - y) > 25) return;
-    const hooks = shopItems.filter(item => item.category === 'hook');
-    browseHook(carousel, hooks.findIndex(item => item.id === hookSelection) + (event.clientX < x ? 1 : -1));
-  });
+  surface.addEventListener('pointerup', () => { cancelPress(); gesture = undefined; });
   surface.addEventListener('pointercancel', () => { cancelPress(); gesture = undefined; });
   surface.addEventListener('pointerleave', cancelPress);
 }

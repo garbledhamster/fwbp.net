@@ -701,10 +701,6 @@ body.fishing:has(.fishing-tray[data-line-physics]) .fishing-target:is(.is-biting
 .fishing-controls-list kbd { font: 700 .9em system-ui, sans-serif; }
 .fishing-shop-categories { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .fishing-shop-categories button { display: flex; justify-content: center; align-items: center; gap: 6px; }
-.fishing-hook-carousel { margin-block: 8px; touch-action: pan-y; user-select: none; -webkit-touch-callout: none; border: 1px solid #81936f; border-radius: 4px; padding: 10px; background: #213c31; }
-.fishing-carousel-nav { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
-.fishing-carousel-nav button { flex: 0 1 auto; min-width: 44px; }
-.fishing-carousel-nav [data-hook-position] { font-size: .8rem; font-variant-numeric: tabular-nums; text-align: center; }
 .fishing-shop :is(li, h3) { scroll-margin-block: 12px; }
 .fishing-shop li > div > strong .tackle-icon, .fishing-pause li > div > strong .tackle-icon { vertical-align: middle; color: var(--lamp); }
 .fishing-shop [data-item-details], .fishing-pause [data-item-details] { min-height: 44px; margin-top: 6px; font-size: .8rem; }
@@ -720,8 +716,6 @@ body[data-fishing-paused] :is(.fishing-target, .fishing-target *, .fishing-bobbe
   .fishing-pause, .fishing-shop { padding: 16px; }
   .fishing-menu-actions { gap: 8px; }
   .fishing-menu-actions button { padding-inline: 6px; gap: 5px; font-size: .87rem; }
-  .fishing-carousel-nav { gap: 4px; }
-  .fishing-carousel-nav button { padding-inline: 8px; font-size: .8rem; }
 }
 @media (orientation: landscape) and (max-height: 430px) {
   .fishing-pause, .fishing-shop { max-height: calc(100dvh - 16px); }
