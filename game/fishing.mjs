@@ -1617,6 +1617,7 @@ window.addEventListener('scroll', () => {
 }, { passive: true });
 const wheelQuietMs = 145;
 const wheelThreshold = 24;
+const wheelLinePx = 16;
 const swipeThreshold = 34;
 const lineControl = 'button, a, input, select, textarea, label, summary, dialog, [contenteditable], [role="button"], [role="link"], [data-line-gesture-ignore]';
 
@@ -1625,13 +1626,17 @@ function gestureSurface(target, phase) {
     && (hookedGesture(phase) ? lake.contains(target) : lineGestureMarker.contains(target));
 }
 
-function workLine(phase, direction, speed) {
+function effortFromSpeed(distance, duration) {
+  // A normal stroke covers about two thirds of a CSS pixel per millisecond.
+  return 1 + (distance / duration / .65 - 1) * .45;
+}
+
+function workLine(phase, direction, effort) {
   if (phase !== lineGesturePhase()) return;
   if (direction > 0) {
     if (hookedGesture(phase)) loosenLine();
   } else {
-    const reelEffort = phase === 'reel' ? Math.min(1.5, .5 + Math.max(0, speed - 24) / 85) : undefined;
-    activatePrimary(reelEffort);
+    activatePrimary(phase === 'reel' ? effort : undefined);
   }
 }
 
@@ -1639,7 +1644,7 @@ window.addEventListener('wheel', event => {
   if (mode !== 'campaign' || tray.hidden || event.defaultPrevented) return;
   const phase = lineGesturePhase();
   const deltaMode = event.deltaMode;
-  const scale = deltaMode === 1 ? 16 : deltaMode === 2 ? innerHeight : 1;
+  const scale = deltaMode === 1 ? wheelLinePx : deltaMode === 2 ? innerHeight : 1;
   const x = event.deltaX * scale;
   const y = event.deltaY * scale;
   const direction = Math.sign(y);
@@ -1647,7 +1652,8 @@ window.addEventListener('wheel', event => {
     && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey;
   const captured = gestureSurface(event.target, phase) && !event.ctrlKey && !event.metaKey;
   if (!wheelBurst || event.timeStamp - wheelBurst.last >= wheelQuietMs) {
-    wheelBurst = { phase: captured && !busy ? phase : undefined, direction, version: state?.version, distance: 0 };
+    wheelBurst = { phase: captured && !busy ? phase : undefined, direction, version: state?.version,
+      distance: 0, started: event.timeStamp };
   }
   wheelBurst.last = event.timeStamp;
   if (captured) event.preventDefault();
@@ -1657,11 +1663,18 @@ window.addEventListener('wheel', event => {
     return;
   }
   wheelBurst.distance += Math.abs(y);
-  if (wheelBurst.distance >= wheelThreshold) {
-    const { distance } = wheelBurst;
+  if (wheelBurst.distance >= (deltaMode === 1 ? wheelLinePx : wheelThreshold)) {
+    const { distance, started } = wheelBurst;
+    // Wheel events don't identify the hardware. Treat a single coarse packet
+    // as a notch; estimate the speed of smaller pixel packets from their onset.
+    const pixelStroke = deltaMode === 0 && (distance < 48 || distance > Math.abs(y));
+    const notch = deltaMode === 0 ? 100 : deltaMode === 1 ? 3 * wheelLinePx : innerHeight;
+    const effort = pixelStroke
+      ? effortFromSpeed(distance, Math.max(32, event.timeStamp - started + 16))
+      : 1 + Math.max(0, distance / notch - 1) * .4;
     // Do not rearm until the stream goes quiet, including through a phase change.
     wheelBurst.phase = undefined;
-    workLine(phase, direction, distance);
+    workLine(phase, direction, effort);
   }
 }, { capture: true, passive: false });
 
@@ -1703,8 +1716,8 @@ lake.addEventListener('touchend', event => {
   const x = point.clientX - touch.x;
   const y = point.clientY - touch.y;
   if (Math.abs(y) < swipeThreshold || Math.abs(y) <= Math.abs(x) * 1.3) return;
-  const speed = Math.abs(y) * 160 / Math.max(80, event.timeStamp - touch.started);
-  workLine(touch.phase, Math.sign(y), speed);
+  const effort = effortFromSpeed(Math.abs(y), Math.max(80, event.timeStamp - touch.started));
+  workLine(touch.phase, Math.sign(y), effort);
 }, { passive: false });
 lake.addEventListener('touchcancel', () => { lineTouch = undefined; });
 

@@ -20,7 +20,7 @@ export async function withBrowser(check) {
   }
 }
 
-export async function practicePage(browser, { mobile = false, viewport, configure } = {}) {
+export async function practicePage(browser, { mobile = false, viewport, configure, seeded = true } = {}) {
   const page = await browser.newPage({
     viewport: viewport ?? { width: mobile ? 320 : 1200, height: 720 },
     hasTouch: mobile,
@@ -32,7 +32,7 @@ export async function practicePage(browser, { mobile = false, viewport, configur
   page.on('pageerror', error => errors.push(error.message));
   await page.clock.install({ time: clockStart });
   await page.clock.pauseAt(clockStart + 1000);
-  await page.addInitScript(seed => {
+  if (seeded) await page.addInitScript(seed => {
     let draw = 0;
     Math.random = () => seed[draw++ % seed.length];
   }, outingSeed);
