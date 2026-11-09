@@ -6,17 +6,24 @@ map.className = 'fishing-picker fishing-map';
 map.setAttribute('aria-labelledby', 'lake-map-title');
 map.innerHTML = `<h2 id="lake-map-title">Campaign · Mille Lacs</h2>
   <p>Choose a spot to check the water. You can return to a hole you opened today.</p>
-  <p data-map-allowance role="status"></p>
   <div class="fishing-map-overlays"><label><input type="checkbox" data-map-depth checked> Depth</label>
   <label><input type="checkbox" data-map-temperature> Temperature</label></div>
   <div class="fishing-map-layout"><div class="fishing-map-water" role="group" aria-label="Mille Lacs water cells">
     <img src="./assets/maps/mille-lacs.svg" alt="Mille Lacs shoreline and depth contours, north at the top" width="500" height="500">
     <div class="fishing-map-cells">${mapCells.map((cell) => `<button type="button" data-map-cell="${cell.id}" style="left:${cell.x / 5}%;top:${cell.y / 5}%"></button>`).join('')}</div></div>
-    <section class="fishing-map-inspector" aria-labelledby="map-hole-title"><h3 id="map-hole-title"></h3><p data-map-goal></p><p data-map-info></p><p data-map-permit></p><p data-map-fish></p><p data-map-budget></p></section></div>
+    <section class="fishing-map-inspector" aria-labelledby="map-hole-title"><h3 id="map-hole-title"></h3><p data-map-info></p><p data-map-permit></p><p data-map-fish></p><p data-map-budget></p></section></div>
   <p data-map-legend>Depth in feet: light cells 5–15 ft; medium 20–25 ft; dark 30–35 ft.</p>
   <p class="fishing-map-note">Depths rounded from Minnesota DNR contours. Temperature and likely fish are gameplay estimates.</p>
   <p data-map-message role="status"></p>
-  <div class="fishing-map-actions"><button type="button" data-map-back>Back</button><button type="button" data-map-end>End day</button><button type="button" data-map-drill>Drill hole</button></div>
+  <div class="fishing-map-actions">
+    <div class="fishing-map-plan">
+      <p data-map-goal></p>
+      <p data-map-allowance role="status"></p>
+    </div>
+    <button type="button" data-map-back>Back</button>
+    <button type="button" data-map-end>End day</button>
+    <button type="button" data-map-drill>Drill hole</button>
+  </div>
   <small>Bathymetry © Minnesota Department of Natural Resources. Simplified for gameplay; not for navigation.
     <a href="https://www.dnr.state.mn.us/sitetools/data_software_license.html" target="_blank" rel="noopener">Data terms</a></small>`;
 const drill = document.createElement('dialog');

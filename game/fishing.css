@@ -859,7 +859,12 @@ body[data-reduced] .fishing-auger-scene svg { transition: none; transform: none;
 .fishing-map-cells button { scroll-margin-block: 20px 100px; }
 .fishing-map [data-map-drill], .fishing-drill [data-drill-turn] { background: #f2bd63; color: #1d2025; border-color: #f2bd63; }
 .fishing-map [data-map-drill]:disabled { opacity: .55; }
+.fishing-map-plan { display: grid; flex: 1 1 220px; gap: 4px; order: 1; }
+.fishing-map-plan p { margin: 0; }
 .fishing-map [data-map-allowance] { color: #a6f0f5; font-weight: 700; }
+@media (max-width: 600px) and (orientation: portrait) {
+ .fishing-map-plan { flex-basis: 100%; order: 0; }
+}
 .fishing-map [data-map-message]:empty, .fishing-drill [data-map-message]:empty { display: none; }
 .fishing-picker [data-outing-message]:empty, .fishing-pause [data-pause-error]:empty { display: none; }
 
