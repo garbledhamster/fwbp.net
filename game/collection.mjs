@@ -1,4 +1,4 @@
-import { applyProfile, loadProfile } from './profile.mjs?v=connected-rpg';
+import { applyProfile, loadProfile } from './profile.mjs?v=mille-lacs-campaign';
 import { renderSpeciesVideo } from './species-video.mjs';
 import { collectibleSpecies, speciesArt, fishProfiles, lureTip } from './species-catalog.mjs';
 import { spriteHref } from './lake-sprites.mjs';

@@ -1,4 +1,4 @@
-import { lakes } from './rules.mjs?v=connected-rpg';
+import { lakes } from './rules.mjs?v=mille-lacs-campaign';
 
 const speciesIds = new Set(lakes['mille-lacs'].fish.map(fish => fish.id));
 export const shopItems = [
