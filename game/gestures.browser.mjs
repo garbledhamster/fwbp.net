@@ -247,6 +247,33 @@ async function checkKeyboard(browser) {
   await page.close();
 }
 
+async function checkExpiredRetry(browser) {
+  const { page, action, enter, findFish, waitForBite, tick } = await practicePage(browser);
+  await page.evaluate(() => { Math.random = () => .98; });
+  await enter('Campaign');
+  await page.keyboard.press('2');
+  await findFish({ species: 'muskie' });
+  await page.keyboard.press('j');
+  await waitForBite();
+  const slot = await page.locator('.fishing-target').getAttribute('data-candidate');
+  await page.keyboard.press('r');
+  assert.equal(await action.textContent(), 'Try again');
+  const released = page.locator(`.fishing-swimmer[data-candidate="${slot}"]`);
+  assert.equal(await released.count(), 1, 'an early hook returns the fish to the water');
+  const others = page.locator(`.fishing-swimmer:not([data-candidate="${slot}"])`);
+  const otherSlots = await others.evaluateAll(fish => fish.map(swimmer => swimmer.dataset.candidate));
+
+  await tick(31000);
+  assert.equal(await action.textContent(), 'Next fish');
+  const expired = page.locator(`:is(.fishing-swimmer, .fishing-target)[data-candidate="${slot}"]`);
+  assert.equal(await expired.count(), 0, 'the fish leaves the water when the retry window expires');
+  assert.deepEqual(await others.evaluateAll(fish => fish.map(swimmer => swimmer.dataset.candidate)), otherSlots);
+  const previous = await others.first().getAttribute('style');
+  await tick(64);
+  assert.notEqual(await others.first().getAttribute('style'), previous, 'the other fish keep swimming');
+  await page.close();
+}
+
 await withBrowser(async browser => {
   for (const layout of layouts) {
     await checkGestures(browser, layout);
@@ -254,4 +281,6 @@ await withBrowser(async browser => {
   }
   await checkKeyboard(browser);
   console.log('PASS: Campaign keyboard depth, bait response, jig and hook');
+  await checkExpiredRetry(browser);
+  console.log('PASS: Campaign retry expiry removes only the released fish');
 });

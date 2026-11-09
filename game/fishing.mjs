@@ -1376,6 +1376,12 @@ function removeTarget() {
 }
 
 function swimAway() {
+  if (!target && campaignBiteAnchor) {
+    // A slipped hook returns the committed fish to the free swimmers until retry or expiry.
+    const { slot } = campaignBiteAnchor;
+    target = campaignSwimmers.get(slot);
+    campaignSwimmers.delete(slot);
+  }
   if (!target || reducedMotion()) {
     removeTarget();
     return;
@@ -1388,8 +1394,8 @@ function swimAway() {
   target.style.setProperty('--y', `${fish.top + fish.height / 2 - scene.top}px`);
   target.style.setProperty('--escape-x', `${toRight ? innerWidth - center + fish.width : -center - fish.width}px`);
   target.toggleAttribute('data-facing-right', toRight);
-  target.classList.remove('is-curious', 'is-biting', 'is-hooked');
-  target.classList.add('is-escaping');
+  target.classList.remove('fishing-swimmer', 'is-curious', 'is-biting', 'is-hooked');
+  target.classList.add('fishing-target', 'is-escaping');
   escapeTimer = outingTime.timeout(removeTarget, 720);
 }
 
@@ -2231,7 +2237,7 @@ function releaseCampaignSwimmer() {
   target.className = 'fishing-swimmer';
   target.hidden = false;
   campaignSwimmers.set(Number(target.dataset.candidate), target);
-  target = campaignBiteAnchor = undefined;
+  target = undefined;
 }
 
 function animateCampaignFish() {
@@ -2262,7 +2268,7 @@ function animateCampaignFish() {
     delete target.dataset.swim;
     // Keep the bite at the same depth within its band when the viewport changes.
     const band = bands[state.fish.depth];
-    campaignBiteAnchor = { x: eye.x / water.width, depth: (eye.y - band.top) / band.height };
+    campaignBiteAnchor = { slot: swimPositions.slot, x: eye.x / water.width, depth: (eye.y - band.top) / band.height };
     biteAt = now;
     encounterTip = target.hasAttribute('data-studied') ? lureTip(state.fish.id) : undefined;
     practiceError = undefined;
