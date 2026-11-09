@@ -712,3 +712,32 @@ html:has(body[data-fishing-paused]) { overflow: hidden; }
 @media (min-width: 480px) and (max-height: 420px) and (orientation: landscape) {
   .fishing-catch-actions :is(button, a) { flex-basis: 0; }
 }
+
+.fishing-line-gesture {
+  position: absolute;
+  z-index: 3;
+  display: grid;
+  align-content: center;
+  justify-items: end;
+  gap: 3px;
+  width: 108px;
+  min-height: 72px;
+  padding-inline: 5px;
+  translate: -50% -50%;
+  border: 1px dashed #fff1cfab;
+  border-radius: 9px;
+  background: #19342c36;
+  color: #fff1cf;
+  font-size: .75rem;
+  font-weight: 750;
+  user-select: none;
+}
+.fishing-line-gesture[hidden] { display: none; }
+.fishing-line-gesture > span { padding: 2px 5px; border-radius: 4px; background: #162e26; }
+.fishing-line-gesture,
+.lake:is([data-line-gesture="reel"], [data-line-gesture="lift"]) { touch-action: pinch-zoom; }
+.lake:is([data-line-gesture="reel"], [data-line-gesture="lift"]) .fishing-line-gesture {
+  border-color: transparent;
+  background: none;
+  pointer-events: none;
+}

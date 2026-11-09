@@ -131,6 +131,7 @@ pause.innerHTML = `
       <dt><kbd>Esc</kbd></dt><dd>Menu / Back / Resume</dd>
       <dt>Arrows / Page keys</dt><dd>Scroll the lake; Left / Right browse a focused hook carousel</dd>
     </dl>
+    <p data-campaign-gestures hidden>In Campaign, scroll or swipe up on the marker to jig or set the hook. Once hooked, scroll or swipe up anywhere in the water to reel or pull up. Go down to loosen.</p>
     <p>Touch uses the labeled fishing buttons. Details shows each item’s effect. Campaign tackle changes apply to the next outing. Practice uses starter tackle and its own Level 2 skill choice. Ranked uses server timing and an Exit button.</p>
     <button type="button" data-action="back">Back to Pause</button>
   </section>`;
@@ -212,6 +213,14 @@ const linePath = line.querySelector('path');
 const lineRig = line.querySelector('g');
 const lineLure = line.querySelector('use');
 const lineCallout = line.querySelector('.fishing-line-callout');
+const lineGestureMarker = document.createElement('div');
+lineGestureMarker.className = 'fishing-line-gesture';
+lineGestureMarker.setAttribute('data-line-gesture-marker', '');
+lineGestureMarker.hidden = true;
+lineGestureMarker.innerHTML = '<span data-line-gesture-up></span><span data-line-gesture-down hidden>↓ Loosen</span>';
+lake.append(lineGestureMarker);
+const lineGestureUp = lineGestureMarker.querySelector('[data-line-gesture-up]');
+const lineGestureDown = lineGestureMarker.querySelector('[data-line-gesture-down]');
 const celebration = document.createElement('div');
 celebration.className = 'fishing-celebration';
 celebration.hidden = true;
@@ -280,7 +289,7 @@ const slots = [...tray.querySelectorAll('[data-lure]')];
 let launch, previousScroll, run, state, token, target, busy, failed, biteAt, frame;
 let mode, rigFrame, fightFrame, jigAt = -Infinity;
 let retractTimer, retractFrame, retractAt;
-let lastTouchY;
+let lastTouchY, lineTouch, wheelBurst;
 let profile, outingId, catchReward, catchSaveFailed, settledCatch;
 const catchActions = tray.querySelector('.fishing-catch-actions');
 const catchLake = tray.querySelector('[data-catch-lake]');
@@ -316,6 +325,8 @@ export function acquireSuspension() {
   const first = !outingTime.suspended;
   const releaseTime = outingTime.acquire();
   if (first) {
+    lineTouch = undefined;
+    clearLineGestureMarker();
     pausedAnimations = [...lake.getAnimations({ subtree: true }), ...celebration.getAnimations({ subtree: true })]
       .filter(animation => animation.playState === 'running');
     pausedAnimations.forEach(animation => animation.pause());
@@ -584,6 +595,7 @@ function showPausePanel(panel) {
   title.textContent = { menu: 'Paused', gear: 'Gear', controls: 'Controls' }[panel];
   pause.scrollTop = 0;
   if (panel === 'gear') renderGear();
+  pause.querySelector('[data-campaign-gestures]').hidden = mode !== 'campaign';
   title.focus({ preventScroll: true });
 }
 
@@ -868,11 +880,43 @@ function iceHole(hole = iceCeiling.getBoundingClientRect()) {
   return { x: hole.left + hole.width * .62, y: hole.top + hole.height * 20 / 110 };
 }
 
+const lineGestureLabels = { jig: '↑ Jig', hook: '↑ Set hook', reel: '↑ Reel', lift: '↑ Pull up' };
+const hookedGesture = phase => phase === 'reel' || phase === 'lift';
+
+function lineGesturePhase() {
+  if (mode !== 'campaign' || tray.hidden || outingTime.suspended || dialogOpen() || failed) return;
+  if (state?.stage === 'seek' && fishInView()) return 'jig';
+  if (state?.stage === 'bite') return 'hook';
+  if (state?.stage === 'fight') return state.fight?.pullUp ? 'lift' : 'reel';
+}
+
+function clearLineGestureMarker() {
+  if (!lineGestureMarker.hidden) lineGestureMarker.hidden = true;
+  if (lake.dataset.lineGesture) delete lake.dataset.lineGesture;
+}
+
+function positionLineGestureMarker(water, x, y) {
+  const phase = lineGesturePhase();
+  if (!phase) return clearLineGestureMarker();
+  if (lake.dataset.lineGesture !== phase) {
+    lake.dataset.lineGesture = phase;
+    lineGestureUp.textContent = lineGestureLabels[phase];
+    lineGestureDown.hidden = !hookedGesture(phase);
+  }
+  lineGestureMarker.hidden = false;
+  const top = Math.max(water.top, window.visualViewport?.offsetTop ?? 0);
+  const bottom = Math.min(water.bottom, tray.getBoundingClientRect().top);
+  // Keep the whole target reachable even when the rig is at the ice hole.
+  const center = Math.max(top + 39, Math.min(water.top + y, bottom - 39));
+  lineGestureMarker.style.left = `${x + 18}px`;
+  lineGestureMarker.style.top = `${center - water.top}px`;
+}
+
 function drawFishingLine(eye, slack = 0, fight) {
   const visible = !tray.hidden && usesLinePhysics() && state && !failed && !state.snap
     && !['landed', 'done'].includes(state.stage);
   line.toggleAttribute('hidden', !visible);
-  if (!visible) return;
+  if (!visible) return clearLineGestureMarker();
 
   // All points use the same unscaled SVG coordinate space inside the lake.
   const water = lake.getBoundingClientRect();
@@ -896,7 +940,8 @@ function drawFishingLine(eye, slack = 0, fight) {
   lineLure.setAttribute('x', -lureX);
   lineLure.setAttribute('y', -lureY);
   lineLure.toggleAttribute('hidden', Boolean(eye));
-  const showHint = fight && !fight.pullUp && eye.y >= 25 && eye.y < tray.getBoundingClientRect().top;
+  positionLineGestureMarker(water, x, y);
+  const showHint = mode !== 'campaign' && fight && !fight.pullUp && eye.y >= 25 && eye.y < tray.getBoundingClientRect().top;
   lineCallout.toggleAttribute('hidden', !showHint);
   if (showHint) {
     lineCallout.setAttribute('transform', `translate(${x} ${y})`);
@@ -1372,6 +1417,7 @@ async function begin(selectedMode = mode, selectedArea = campaignArea) {
   catchSaveFailed = false;
   lure = 'jig';
   const current = ++generation;
+  lineTouch = wheelBurst = undefined;
   busy = true;
   failed = false;
   mode = selectedMode;
@@ -1491,6 +1537,8 @@ function leave() {
   removeTarget();
   tray.hidden = bobber.hidden = true;
   line.setAttribute('hidden', '');
+  clearLineGestureMarker();
+  lineTouch = wheelBurst = undefined;
   document.body.classList.remove('fishing');
   window.scrollTo({ top: previousScroll, behavior: 'instant' });
   launch.focus({ preventScroll: true });
@@ -1549,8 +1597,101 @@ window.addEventListener('scroll', () => {
   if (window.scrollY > 2 && (retractTimer !== undefined || retractAt !== undefined)) resetRetraction();
   updateSearch();
 }, { passive: true });
+const wheelQuietMs = 145;
+const wheelThreshold = 24;
+const swipeThreshold = 34;
+const lineControl = 'button, a, input, select, textarea, label, summary, dialog, [contenteditable], [role="button"], [role="link"], [data-line-gesture-ignore]';
+
+function gestureSurface(target, phase) {
+  return phase && !target.closest(lineControl)
+    && (hookedGesture(phase) ? lake.contains(target) : lineGestureMarker.contains(target));
+}
+
+function workLine(phase, direction, speed) {
+  if (phase !== lineGesturePhase()) return;
+  if (direction > 0) {
+    if (hookedGesture(phase)) loosenLine();
+  } else {
+    const reelEffort = phase === 'reel' ? Math.min(1.5, .5 + Math.max(0, speed - 24) / 85) : undefined;
+    activatePrimary(reelEffort);
+  }
+}
+
 window.addEventListener('wheel', event => {
-  if (outingTime.suspended || dialogOpen()) return;
+  if (mode !== 'campaign' || tray.hidden || event.defaultPrevented) return;
+  const phase = lineGesturePhase();
+  const deltaMode = event.deltaMode;
+  const scale = deltaMode === 1 ? 16 : deltaMode === 2 ? innerHeight : 1;
+  const x = event.deltaX * scale;
+  const y = event.deltaY * scale;
+  const direction = Math.sign(y);
+  const deliberate = direction && Math.abs(y) > Math.abs(x) * 1.3
+    && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey;
+  const captured = gestureSurface(event.target, phase) && !event.ctrlKey && !event.metaKey;
+  if (!wheelBurst || event.timeStamp - wheelBurst.last >= wheelQuietMs) {
+    wheelBurst = { phase: captured && !busy ? phase : undefined, direction, version: state?.version, distance: 0 };
+  }
+  wheelBurst.last = event.timeStamp;
+  if (captured) event.preventDefault();
+  if (!captured || !deliberate || busy || !event.cancelable
+    || wheelBurst.phase !== phase || wheelBurst.direction !== direction || wheelBurst.version !== state?.version) {
+    wheelBurst.phase = undefined;
+    return;
+  }
+  wheelBurst.distance += Math.abs(y);
+  if (wheelBurst.distance >= wheelThreshold) {
+    const { distance } = wheelBurst;
+    // Do not rearm until the stream goes quiet, including through a phase change.
+    wheelBurst.phase = undefined;
+    workLine(phase, direction, distance);
+  }
+}, { capture: true, passive: false });
+
+window.addEventListener('touchstart', event => {
+  // The second finger can start outside the lake or over the tray.
+  if (event.touches.length !== 1) lineTouch = undefined;
+}, { capture: true, passive: true });
+lake.addEventListener('touchstart', event => {
+  const phase = lineGesturePhase();
+  const point = event.touches[0];
+  if (event.touches.length !== 1 || busy || !gestureSurface(event.target, phase)) {
+    lineTouch = undefined;
+    return;
+  }
+  lineTouch = { phase, version: state.version, id: point.identifier, x: point.clientX, y: point.clientY,
+    started: event.timeStamp, held: false };
+}, { passive: true });
+lake.addEventListener('touchmove', event => {
+  if (!lineTouch) return;
+  if (event.touches.length !== 1 || !event.cancelable || !lineGesturePhase()) {
+    lineTouch = undefined;
+    return;
+  }
+  const point = event.touches[0];
+  if (point.identifier !== lineTouch.id) {
+    lineTouch = undefined;
+    return;
+  }
+  event.preventDefault();
+  lineTouch.held = true;
+}, { passive: false });
+lake.addEventListener('touchend', event => {
+  const touch = lineTouch;
+  lineTouch = undefined;
+  const point = event.changedTouches[0];
+  if (!touch?.held || event.touches.length || point?.identifier !== touch.id) return;
+  event.preventDefault();
+  if (touch.version !== state?.version || touch.phase !== lineGesturePhase()) return;
+  const x = point.clientX - touch.x;
+  const y = point.clientY - touch.y;
+  if (Math.abs(y) < swipeThreshold || Math.abs(y) <= Math.abs(x) * 1.3) return;
+  const speed = Math.abs(y) * 160 / Math.max(80, event.timeStamp - touch.started);
+  workLine(touch.phase, Math.sign(y), speed);
+}, { passive: false });
+lake.addEventListener('touchcancel', () => { lineTouch = undefined; });
+
+window.addEventListener('wheel', event => {
+  if (event.defaultPrevented || outingTime.suspended || dialogOpen()) return;
   if (event.deltaY < 0 && !event.target.closest('.fishing-tray')) retractAtHole();
 }, { passive: true });
 lake.addEventListener('touchstart', event => {
@@ -1558,7 +1699,7 @@ lake.addEventListener('touchstart', event => {
   lastTouchY = event.touches.length === 1 ? event.touches[0].clientY : undefined;
 }, { passive: true });
 lake.addEventListener('touchmove', event => {
-  if (outingTime.suspended || dialogOpen()) return;
+  if (event.defaultPrevented || outingTime.suspended || dialogOpen()) return;
   const y = event.touches.length === 1 ? event.touches[0].clientY : undefined;
   if (y !== undefined && lastTouchY !== undefined && y > lastTouchY + 2) retractAtHole();
   lastTouchY = y;
@@ -1615,7 +1756,7 @@ async function retryCatchCoins() {
   action.focus({ preventScroll: true });
 }
 
-async function perform(move, input = {}) {
+async function perform(move, input = {}, reelEffort) {
   if (busy || outingTime.suspended || !state) return;
   if (move === 'next') { campaignMilestoneNotice = false; settledCatch = undefined; }
   const prior = state;
@@ -1640,7 +1781,7 @@ async function perform(move, input = {}) {
   try {
     const result = token
       ? await api(move, { ...input, version: state.version })
-      : { state: apply(run, { action: move, ...input }, appliedAt, { campaignElapsedMs: outingElapsed() }) };
+      : { state: apply(run, { action: move, ...input }, appliedAt, { campaignElapsedMs: outingElapsed(), reelEffort }) };
     if (current !== generation) return;
     ({ state, serverNow } = result);
     practiceError = undefined;
@@ -1697,7 +1838,10 @@ async function perform(move, input = {}) {
   if (focused === loosen) (loosen.disabled || loosen.hidden ? action : loosen).focus({ preventScroll: true });
 }
 
-loosen.addEventListener('click', () => { if (!gameBlocked() && !loosen.disabled && state?.stage === 'fight') void perform('loosen'); });
+function loosenLine() {
+  if (!gameBlocked() && !loosen.disabled && state?.stage === 'fight') void perform('loosen');
+}
+loosen.addEventListener('click', loosenLine);
 
 function rememberAction() {
   jigActivation = state?.stage === 'seek';
@@ -1710,7 +1854,7 @@ action.addEventListener('pointercancel', () => { jigActivation = fightActivation
 action.addEventListener('keydown', event => {
   if (!event.repeat && ['Enter', ' '].includes(event.key)) rememberAction();
 });
-action.addEventListener('click', () => {
+function activatePrimary(reelEffort) {
   if (gameBlocked() || action.disabled || !state) return;
   const startedBeforeMiss = jigActivation || fightActivation;
   jigActivation = fightActivation = false;
@@ -1720,8 +1864,9 @@ action.addEventListener('click', () => {
   if (state.stage === 'seek' && !fishInView()) return updateSearch();
   const fightMove = usesLinePhysics() && !state.fight?.pullUp ? 'reel' : 'lift';
   const move = { seek: 'jig', bite: 'reel', fight: fightMove, landed: 'next', missed: 'next' }[state.stage];
-  return perform(move, move === 'jig' ? { lure } : {});
-});
+  return perform(move, move === 'jig' ? { lure } : {}, reelEffort);
+}
+action.addEventListener('click', () => { void activatePrimary(); });
 for (const button of [...skillRow.children, ...practiceButtons]) {
   button.addEventListener('click', () => { if (!gameBlocked() && !button.disabled && state?.stage === 'landed') void perform('upgrade', { skill: button.dataset.skill }); });
 }
