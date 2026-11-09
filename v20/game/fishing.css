@@ -1,0 +1,1023 @@
+.fish-entry { padding: 0; border: 0; background: none; font: inherit; letter-spacing: inherit; text-align: left; }
+.fish-entry:hover { color: var(--lamp); }
+.game-entry { border: 1px solid #81936f; background: #213a2d; }
+.game-entry:hover { background: #36513a; }
+.fishing :is(.mast, .skip, .surface, .ice, .dive-content, .library, .field-notes, .merch, .lakebed-feature, .footer-rig, .footer-inner) { display: none; }
+.fishing .dive { min-height: 76svh; }
+.fishing .lake > [data-below-hole] { display: none; }
+/* Leave room to scroll the deepest fish above the fixed tray. */
+.fishing .lake[data-campaign-water] { padding-block-end: max(28svh, 112px); }
+.fishing .dive-actor[data-fish] { visibility: hidden; }
+.fishing-background-fish {
+  display: none;
+  position: absolute;
+  z-index: 0;
+  width: clamp(40px, 9vw, 104px);
+  translate: -50% -50%;
+  pointer-events: none;
+  opacity: .54;
+  filter: saturate(.55);
+}
+body.fishing:has(.fishing-tray[data-line-physics]) .fishing-background-fish { display: block; }
+.fishing-background-fish svg { display: block; width: 100%; }
+.fishing-background-fish[data-facing-right] svg { scale: -1 1; }
+.fishing-tray { position: fixed; z-index: 10; inset: auto 0 0; padding: 10px 12px max(10px, env(safe-area-inset-bottom)); background: #102a2a; border-top: 1px solid var(--rule); box-shadow: 0 -8px 30px #05191960; }
+.fishing-tray-inner { max-width: 560px; margin: auto; display: grid; gap: 7px; }
+.fishing-row { display: flex; gap: 6px; align-items: center; }
+.fishing-lures, .fishing-actions { display: contents; }
+.fishing-row > strong { margin-right: auto; color: var(--lamp); font-variant-numeric: tabular-nums; }
+.fishing-tray button { min-height: 44px; background: #1a3b3b; padding: 0 10px; border: 1px solid #527b76; border-radius: 4px; }
+.fishing-tray button[aria-pressed="true"], .fishing-tray .fishing-action { background: var(--lamp); color: var(--ink); border-color: var(--lamp); font-weight: 750; }
+.fishing-tray button:is(:disabled, [aria-disabled="true"]) { opacity: .55; cursor: default; }
+.fishing-action { flex: 1; }
+.fishing-status { color: var(--foam); font-size: .88rem; min-height: 1.55em; }
+.fishing-tray details { font-size: .84rem; }
+.fishing-timing { position: relative; height: 6px; background: #31524d; border-radius: 3px; }
+.fishing-timing::before { content: ""; position: absolute; inset: 0 0 0 26.2%; background: var(--lamp); border-radius: 3px; }
+.fishing-timing i { position: absolute; inset: -3px auto -3px var(--position, 0%); width: 3px; background: white; }
+.fishing .lake::before { display: none; }
+body.fishing .dive-ceiling { transform: none !important; }
+.fishing-target {
+  position: absolute; z-index: 1; left: var(--x); top: var(--y);
+  transform: translate(-50%, -50%); width: clamp(72px, 15vw, 145px);
+  pointer-events: none; transition: left .36s ease-out, top .36s ease-out;
+}
+.fishing-target svg { display: block; width: 100%; filter: drop-shadow(0 4px 6px #061d24); }
+.fishing-target.is-biting { left: var(--line-x); top: 44%; }
+.fishing-target.is-curious:not(.is-biting) { animation: fishing-inspect .65s ease-in-out; }
+.fishing-target[data-facing-right] svg { scale: -1 1; }
+.fishing-target:not(.is-biting, .is-hooked, .is-curious, .is-escaping) svg {
+  animation: fishing-drift 3.4s ease-in-out infinite alternate;
+}
+@keyframes fishing-drift {
+  to { transform: translate(5px, -3px) rotate(2deg); }
+}
+.fishing-target.is-escaping { animation: fishing-escape .72s ease-in both; transition: none; }
+@keyframes fishing-inspect {
+  45% { left: calc(var(--x) + (var(--line-x) - var(--x)) * .38); top: calc(var(--y) + (44% - var(--y)) * .38); }
+}
+@keyframes fishing-escape {
+  44% { transform: translate(calc(-50% + var(--escape-x) * .23), calc(-50% - 9px)); }
+  to { transform: translate(calc(-50% + var(--escape-x)), calc(-50% + 12px)); }
+}
+.fishing-bobber {
+  position: absolute; z-index: 2; left: var(--line-x); top: var(--line-depth, 0px);
+  width: 25px; height: 25px; transform: translate(-50%, 0);
+  color: var(--lamp); pointer-events: none;
+}
+.fishing-bobber::before {
+  content: ""; position: absolute; left: 50%; bottom: calc(100% - 2px);
+  height: calc(var(--line-depth, 0px) - var(--line-start, 0px)); border-left: 1px solid #ead7aa;
+}
+.fishing-bobber.is-jigging { animation: jig-bobber .34s ease-out; }
+.fishing-bobber.is-jigging::before { animation: jig-line .34s ease-out; }
+@keyframes jig-bobber { 40% { transform: translate(-50%, -11px); } }
+@keyframes jig-line { 40% { height: calc(var(--line-depth) - var(--line-start) - 11px); } }
+.tackle-icon {
+  width: 18px; height: 18px; flex: none;
+  fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+}
+.fishing-bobber .tackle-icon { width: 100%; height: 100%; }
+.fishing-tray button:has(.tackle-icon) { display: inline-flex; align-items: center; justify-content: center; gap: 4px; }
+.fishing-brand { border-radius: 4px; flex: none; }
+@media (max-width: 420px) {
+  .fishing-tray [data-lure], .fishing-tray [data-skill] { flex-direction: column; padding-inline: 7px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fishing-target { transition: none; }
+  .fishing-target svg, .fishing-target.is-curious, .fishing-target.is-escaping,
+  .fishing-bobber.is-jigging, .fishing-bobber.is-jigging::before { animation: none; }
+}
+.fishing-timing::before { left: var(--window-start, 26.2%); }
+.fishing-target.gilded svg { filter: sepia(1) saturate(1.8) drop-shadow(0 3px 7px #e5bc59); }
+.fishing-skills button { flex: 1; font-size: .8rem; }
+.fishing-tray [data-board], .fishing-tray details ul { max-height: 7rem; overflow: auto; margin-block: 0; }
+.fishing-tray [data-score] { font-size: .85rem; }
+.fishing-tray input { max-width: 9rem; padding: .5rem; }
+
+.fishing-celebration {
+  position: fixed;
+  z-index: 9;
+  inset: max(12px, env(safe-area-inset-top)) auto auto 50%;
+  width: min(168px, 42vw);
+  transform: translateX(-50%);
+  isolation: isolate;
+  text-align: center;
+  pointer-events: none;
+  animation: fishing-award-in .32s ease-out both;
+}
+.fishing-celebration img { display: block; width: 73%; height: auto; margin: auto auto -16px; }
+.fishing-ribbon {
+  position: relative;
+  padding: 5px 15px 8px;
+  color: #252416;
+  background: var(--lamp);
+  clip-path: polygon(0 0, 100% 0, 95% 50%, 100% 100%, 0 100%, 5% 50%);
+}
+.fishing-ribbon strong { display: block; font: bold 1.42rem/1.2 Georgia, serif; }
+.fishing-ribbon span { display: block; font-size: .8rem; font-weight: 720; }
+.fishing-splash { position: absolute; inset: 76% 0 auto; z-index: -1; }
+.fishing-splash svg {
+  position: absolute;
+  left: calc(50% - 12px);
+  width: 24px;
+  fill: #9dc7b7;
+  animation: fishing-school-out .85s ease-out var(--delay) both;
+}
+.fishing-splash svg:nth-child(odd) { fill: var(--lamp); }
+.fishing-announcement {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+@keyframes fishing-award-in {
+  from { transform: translate(-50%, -12px) scale(.94); opacity: 0; }
+}
+@keyframes fishing-school-out {
+  from { opacity: 0; transform: scale(.45); }
+  20% { opacity: 1; }
+  to { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(.85); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fishing-celebration, .fishing-splash svg { animation: none; }
+  .fishing-splash { display: none; }
+}
+
+.fishing-pressure { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; font-size: .83rem; }
+.fishing-pressure label { display: flex; align-items: center; gap: 6px; }
+.fishing-pressure meter { width: 6rem; }
+.fishing-pressure [data-pulls] { color: var(--lamp); }
+.fishing-tray [data-loosen] { flex: 1; }
+
+.fishing-tray button.fishing-action-quiet {
+  background: #1a3b3b; color: var(--foam); border-color: #527b76;
+}
+.fishing-tray button.fishing-recommended {
+  background: var(--lamp); color: var(--ink); border-color: var(--lamp); font-weight: 750;
+}
+
+.fishing-practice-progress { color: var(--lamp); font-size: .8rem; font-weight: 700; }
+.fishing-encounter { justify-content: space-between; flex-wrap: wrap; }
+.fishing-encounter:not(:has(> :not([hidden]))) { display: none; }
+.fishing-countdown { color: var(--foam); font-size: .8rem; font-variant-numeric: tabular-nums; }
+.fishing-practice-choice { display: grid; gap: 5px; font-size: .82rem; }
+.fishing-practice-choice .fishing-row { align-items: stretch; }
+.fishing-practice-choice button[data-skill] {
+  flex: 1 1 0; flex-direction: column; align-items: flex-start;
+  padding: 6px 8px; text-align: left; line-height: 1.2;
+}
+.fishing-practice-choice button span { display: flex; align-items: center; gap: 4px; font-weight: 750; }
+.fishing-practice-choice small { font-size: .76rem; }
+
+.fishing-picker {
+  width: min(460px, calc(100% - 32px));
+  max-height: calc(100% - 32px);
+  padding: clamp(16px, 5vw, 28px);
+  border: 1px solid #96a36d;
+  border-radius: 6px;
+  background: #18332a;
+  color: #fff1cf;
+}
+.fishing-picker::backdrop { background: #092420b8; }
+.fishing-picker h2 { font-size: clamp(1.75rem, 5vw, 2.25rem); }
+.fishing-dialog-intro { display: grid; gap: 12px; }
+.fishing-dialog-art {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 12 / 5;
+  object-fit: cover;
+  border: 1px solid #81936f;
+  border-radius: 4px;
+  background: #23453b;
+}
+.fishing-picker-options {
+  display: grid;
+  grid-template-columns: minmax(98px, auto) 1fr;
+  align-items: center;
+  gap: 10px 14px;
+  margin-block-start: 16px;
+}
+.fishing-picker button {
+  min-height: 44px;
+  padding-inline: 10px;
+  border: 1px solid #96a36d;
+  border-radius: 5px;
+  background: #25473a;
+}
+.fishing-picker [data-mode="campaign"] { background: #f2ba58; border-color: #f2ba58; color: #18332a; font-weight: 700; }
+.fishing-picker [data-area="deep-reef"][aria-disabled="true"] {
+  background: #213c31;
+  border-color: #738359;
+  color: #e4e4c7;
+  cursor: default;
+}
+.fishing-picker p { color: #ebebcd; font-size: .875rem; line-height: 1.35; }
+.fishing-picker form { margin-block-start: 18px; }
+.fishing-shop { width: min(510px, calc(100% - 24px)); }
+.fishing-shop-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; justify-content: space-between; }
+.fishing-shopkeeper { display: flex; align-items: center; gap: 10px; }
+.fishing-shopkeeper img {
+  display: block;
+  width: clamp(44px, 11vw, 60px);
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border: 1px solid #81936f;
+  border-radius: 4px;
+  background: #23453b;
+  flex: none;
+}
+.fishing-shopkeeper p { margin-block-start: 4px; }
+.fishing-shopkeeper p strong { color: var(--lamp); }
+.fishing-shop [data-shop-balance],
+.fishing-wallet {
+  color: #f6cb7e;
+  font-weight: 720;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.fishing-shop [data-shop-message] { min-height: 1.2rem; margin-block: 5px; }
+.fishing-shop [data-shop-items] { display: grid; gap: 14px; }
+.fishing-shop h3 {
+  margin: 0;
+  padding-block-end: 3px;
+  border-bottom: 1px solid #81936f;
+  font: bold 1.18rem/1.2 Georgia, serif;
+}
+.fishing-shop ul { list-style: none; margin: 0; padding: 0; }
+.fishing-shop li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(62px, auto);
+  gap: 10px;
+  align-items: center;
+  padding: 8px 2px;
+  border-bottom: 1px solid #63826966;
+}
+.fishing-shop li > div > strong { display: block; font-size: .93rem; }
+.fishing-shop-action { display: grid; justify-items: end; gap: 3px; font-size: .78rem; font-weight: 700; }
+.fishing-shop-action button { min-width: 62px; }
+.fishing-shop-action button:not(:disabled) { border-color: #f2ba58; }
+.fishing-shop-action button:disabled { opacity: .62; cursor: default; }
+.fishing-wallet { font-size: .84rem; }
+
+@media (max-width: 360px) {
+  .fishing-shop-heading { column-gap: 8px; }
+  .fishing-shopkeeper { gap: 8px; }
+  .fishing-shopkeeper h2 { font-size: 1.625rem; }
+  .fishing-shopkeeper p { font-size: .8rem; }
+}
+
+@media (orientation: landscape) and (max-height: 430px) {
+  .fishing-picker { padding: 12px 16px; }
+  .fishing-picker h2 { font-size: 1.6rem; }
+  .fishing-dialog-intro {
+    grid-template-columns: minmax(0, 1fr) 32%;
+    align-items: center;
+  }
+  .fishing-shopkeeper img { width: 44px; }
+  .fishing-picker-options { margin-block-start: 12px; }
+}
+
+.fishing-line {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.fishing-line-path {
+  fill: none;
+  stroke: #ffedbd;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+.fishing-line-rig use { fill: none; stroke: #ffedbd; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.fishing-line-eye { fill: #f2ba58; stroke: #6a552c; stroke-width: .75; }
+.fishing-line-callout path { fill: none; stroke: #ffedbd; stroke-width: 1.4; }
+.fishing-line-callout text {
+  fill: #fff1cf;
+  stroke: #172e26;
+  stroke-width: 3px;
+  paint-order: stroke fill;
+  font: 750 13px system-ui, sans-serif;
+}
+body.fishing:has(.fishing-tray[data-line-physics]) .fishing-target {
+  width: clamp(72px, 14vw, 195px);
+}
+body.fishing:has(.fishing-tray[data-line-physics]) .fishing-target:not(.is-biting, .is-hooked, .is-escaping)::before {
+  content: "";
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  border: 2px solid #fff1cf;
+  border-radius: 1px;
+  background: #1c362f;
+  box-shadow: 1px 2px 4px #061d24;
+  transform: translateX(-50%) rotate(45deg);
+}
+body.fishing:has(.fishing-tray[data-line-physics]) .fishing-target:is(.is-biting, .is-hooked) {
+  left: var(--bite-x, var(--line-x));
+  top: var(--bite-y, 44%);
+  transition: none;
+}
+
+.fishing-tray[data-line-physics] {
+  --tackle-cream: #fff1cf;
+  --tackle-olive: #96a36d;
+  --tackle-amber: #f2ba58;
+  --tackle-forest: #18332a;
+  --tackle-corner: clamp(10px, 1.55vw, 23px);
+  left: 50%;
+  right: auto;
+  width: min(88.5%, 1400px);
+  padding: 0 0 max(14px, env(safe-area-inset-bottom));
+  translate: -50% 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--tackle-cream);
+}
+[data-line-physics] .fishing-tray-inner {
+  max-width: none;
+  gap: 4px;
+}
+[data-line-physics] .fishing-heading { padding-inline: 8px; }
+[data-line-physics] .fishing-heading [data-score] {
+  color: var(--tackle-cream);
+  font-family: Georgia, serif;
+  font-size: clamp(.88rem, 1.65vw, 1.55rem);
+  line-height: 1.15;
+}
+[data-line-physics] .fishing-brand { width: clamp(28px, 3.25vw, 47px); height: auto; }
+[data-line-physics] .fishing-countdown {
+  color: var(--tackle-cream);
+  font-weight: 620;
+  text-shadow: 0 1px 5px #0c201b, 0 1px 5px #0c201b;
+}
+[data-line-physics] .fishing-dialogue {
+  display: grid;
+  grid-template-columns: clamp(42px, 5vw, 64px) minmax(0, 1fr);
+  align-items: end;
+  gap: 10px;
+  width: min(100%, 590px);
+  padding-inline: 4px;
+}
+[data-line-physics] .fishing-portrait {
+  --portrait-corner: 7px;
+  aspect-ratio: 1;
+  position: relative;
+  display: grid;
+  overflow: hidden;
+  isolation: isolate;
+  padding: 3px;
+  background: #e7b85b;
+  box-shadow: inset 0 0 0 1px #ffe8aa;
+  clip-path: polygon(var(--portrait-corner) 0, calc(100% - var(--portrait-corner)) 0,
+    100% var(--portrait-corner), 100% calc(100% - var(--portrait-corner)),
+    calc(100% - var(--portrait-corner)) 100%, var(--portrait-corner) 100%,
+    0 calc(100% - var(--portrait-corner)), 0 var(--portrait-corner));
+}
+.fishing-portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  background: #294838;
+}
+.fishing-portrait img:is([data-portrait="leaning-in"], [data-portrait="front-facing"]) {
+  transform: scale(1.2);
+  transform-origin: center top;
+}
+.fishing-portrait img[data-portrait="walleye-portrait"] { object-fit: contain; }
+[data-line-physics] .fishing-speech {
+  --paper: #fff0ce;
+  --paper-edge: #caa75d;
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+  min-width: min(180px, 100%);
+  padding: 5px 10px 6px;
+  border: 2px solid var(--paper-edge);
+  border-radius: 10px 10px 10px 3px;
+  background: var(--paper);
+  color: #172e26;
+  box-shadow: 0 3px 8px #0c201b66;
+}
+[data-line-physics] .fishing-speech::before {
+  content: "";
+  position: absolute;
+  bottom: 10px;
+  left: -7px;
+  width: 10px;
+  height: 10px;
+  rotate: 45deg;
+  border: solid var(--paper-edge);
+  border-width: 0 0 2px 2px;
+  background: var(--paper);
+}
+.fishing-speaker { display: block; color: #47583d; font-size: .68rem; line-height: 1.1; font-weight: 780; }
+[data-line-physics] .fishing-status { color: inherit; min-height: auto; font-size: .93rem; line-height: 1.2; }
+[data-line-physics] .fishing-words { font-weight: 720; }
+.fishing-result { margin-block-start: 3px; color: #344a36; font-size: .76rem; }
+[data-line-physics] .fishing-encounter { padding-inline: 8px; }
+[data-line-physics] .fishing-timing { margin-inline: 8px; }
+[data-line-physics] .fishing-rack {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1.15fr) minmax(0, 1.18fr);
+  grid-template-areas: "lures tension actions";
+  align-items: stretch;
+  gap: clamp(12px, 1.8vw, 27px);
+  padding: clamp(10px, 1.65vw, 26px);
+}
+[data-line-physics] .fishing-rack::before,
+[data-line-physics] .fishing-rack::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  clip-path: polygon(var(--tackle-corner) 0, calc(100% - var(--tackle-corner)) 0,
+    100% var(--tackle-corner), 100% calc(100% - var(--tackle-corner)),
+    calc(100% - var(--tackle-corner)) 100%, var(--tackle-corner) 100%,
+    0 calc(100% - var(--tackle-corner)), 0 var(--tackle-corner));
+}
+[data-line-physics] .fishing-rack::before { inset: 0; background: var(--tackle-olive); }
+[data-line-physics] .fishing-rack::after { inset: 2px; background: var(--tackle-forest); }
+[data-line-physics] .fishing-tools { display: contents; }
+[data-line-physics] :is(.fishing-lures, .fishing-actions) {
+  display: grid;
+  gap: clamp(4px, .65vw, 11px);
+}
+[data-line-physics] .fishing-lures { grid-area: lures; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+[data-line-physics] .fishing-actions { grid-area: actions; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.fishing-tray[data-line-physics] button {
+  border: 2px solid var(--tackle-olive);
+  border-radius: clamp(5px, .8vw, 12px);
+  padding-inline: 4px;
+  background: #1e3b30;
+  color: var(--tackle-cream);
+  font-weight: 720;
+}
+.fishing-tray[data-line-physics] [data-exit] {
+  min-height: 44px;
+  padding-inline: 10px;
+  white-space: nowrap;
+}
+.fishing-tray[data-line-physics] :is([data-lure], .fishing-action, [data-loosen]) {
+  flex-direction: column;
+  min-height: clamp(58px, 7.65vw, 119px);
+  font-size: clamp(.7rem, 1.4vw, 1.35rem);
+  line-height: 1.15;
+}
+.fishing-tray[data-line-physics] :is([data-lure], .fishing-action, [data-loosen]) .tackle-icon {
+  width: clamp(23px, 3.7vw, 57px);
+  height: auto;
+}
+.fishing-tray[data-line-physics] [data-lure][aria-pressed="true"] {
+  border-color: var(--tackle-amber);
+  opacity: 1;
+}
+.fishing-tray[data-line-physics] :is(.fishing-action, [data-loosen]) { border-color: var(--tackle-cream); }
+.fishing-tray[data-line-physics] :is(.fishing-action:not(.fishing-action-quiet), [data-loosen].fishing-recommended) {
+  background: var(--tackle-amber);
+  border-color: var(--tackle-amber);
+  color: var(--tackle-forest);
+}
+[data-line-physics] .fishing-pressure {
+  grid-area: tension;
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 7px;
+  align-content: center;
+  align-items: start;
+  padding-inline: clamp(10px, 1.8vw, 28px);
+  border-inline: 1px solid var(--tackle-olive);
+}
+[data-line-physics] .fishing-pressure label { display: contents; }
+[data-line-physics] .fishing-pressure label span {
+  font: bold clamp(.83rem, 1.9vw, 1.86rem)/1.2 Georgia, serif;
+  letter-spacing: .01em;
+}
+[data-line-physics] .fishing-pressure [data-pulls] {
+  grid-column: 2;
+  grid-row: 1;
+  color: var(--tackle-cream);
+  font-size: clamp(.75rem, 1.65vw, 1.55rem);
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  white-space: nowrap;
+}
+[data-line-physics] .fishing-pressure meter {
+  grid-column: 1 / -1;
+  width: 100%;
+  height: clamp(14px, 2.7vw, 41px);
+  padding-top: clamp(7px, 1.3vw, 21px);
+  appearance: none;
+  background: repeating-linear-gradient(90deg, var(--tackle-cream) 0 2px, transparent 2px 10%) top / 100% 34% no-repeat;
+}
+[data-line-physics] meter::-webkit-meter-bar {
+  border: none;
+  border-radius: 0;
+  background: linear-gradient(90deg, #63775b 0 80%, #ad5148 80%);
+}
+[data-line-physics] meter::-webkit-meter-inner-element { display: block; }
+[data-line-physics] meter::-webkit-meter-optimum-value,
+[data-line-physics] meter::-webkit-meter-suboptimum-value,
+[data-line-physics] meter::-webkit-meter-even-less-good-value { background: #fbd070; }
+[data-line-physics] meter::-moz-meter-bar { background: #fbd070; }
+
+@media (max-width: 700px) {
+  .fishing-tray[data-line-physics] { width: calc(100% - 16px); padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+  [data-line-physics] .fishing-heading { gap: 5px; padding-inline: 2px; }
+  [data-line-physics] .fishing-heading [data-score] { font-size: .83rem; }
+  [data-line-physics] .fishing-heading [data-water] { letter-spacing: -.015em; }
+  [data-line-physics] .fishing-score-progress {
+    display: block;
+    margin-top: 3px;
+    font: 680 .72rem/1.2 system-ui, sans-serif;
+  }
+  [data-line-physics] .fishing-score-divider { display: none; }
+  [data-line-physics] .fishing-rack {
+    grid-template-columns: minmax(140px, 1fr) minmax(113px, .8fr);
+    grid-template-areas: "tension tension" "lures actions";
+    gap: 7px;
+    padding: 9px;
+  }
+  [data-line-physics] .fishing-pressure { border: 0; padding-inline: 2px; }
+  .fishing-tray[data-line-physics] :is([data-lure], .fishing-action, [data-loosen]) { padding-inline: 0; }
+  .fishing-tray[data-line-physics] [data-exit] { padding-inline: 6px; font-size: .8rem; }
+}
+
+@media (min-width: 480px) and (max-height: 420px) and (orientation: landscape) {
+  .fishing-tray[data-line-physics] {
+    width: calc(100% - 16px);
+    padding-bottom: max(6px, env(safe-area-inset-bottom));
+  }
+  [data-line-physics] .fishing-tray-inner {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    align-items: center;
+    gap: 3px 10px;
+  }
+  [data-line-physics] .fishing-tray-inner > :not(.fishing-heading, .fishing-dialogue) { grid-column: 1 / -1; }
+  [data-line-physics][data-mode="campaign"] .fishing-tray-inner {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  [data-line-physics][data-mode="campaign"] .fishing-heading [data-score] { font-size: .84rem; }
+  [data-line-physics][data-mode="campaign"] .fishing-score-progress {
+    display: block;
+    margin-top: 3px;
+    font: 680 .72rem/1.2 system-ui, sans-serif;
+  }
+  [data-line-physics][data-mode="campaign"] .fishing-score-divider { display: none; }
+  .fishing-tray[data-line-physics][data-mode="campaign"] :is([data-exit], [data-open-map]) {
+    min-width: 44px;
+    padding-inline: 6px;
+    font-size: .8rem;
+    white-space: nowrap;
+  }
+  [data-line-physics] .fishing-dialogue { grid-template-columns: 36px minmax(0, 1fr); gap: 7px; }
+  [data-line-physics] .fishing-speech { padding: 3px 7px; min-width: 0; }
+  [data-line-physics] .fishing-status { font-size: .82rem; }
+  [data-line-physics] .fishing-speech:has(.fishing-action) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0 6px;
+    align-items: center;
+  }
+  [data-line-physics] .fishing-speech:has(.fishing-action) :is(.fishing-speaker, .fishing-status) { grid-column: 1; }
+  [data-line-physics] .fishing-speech:has(.fishing-action) .fishing-action { grid-column: 2; grid-row: 1 / 3; margin: 0; }
+  [data-line-physics] .fishing-rack {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, .95fr) minmax(0, 1fr);
+    grid-template-areas: "lures tension actions";
+    gap: 6px;
+    padding: 6px 8px;
+  }
+  [data-line-physics] .fishing-pressure { padding-inline: 7px; }
+  .fishing-tray[data-line-physics] :is([data-lure], .fishing-action, [data-loosen]) {
+    min-height: 44px;
+    font-size: .72rem;
+  }
+  .fishing-tray[data-line-physics] :is([data-lure], .fishing-action, [data-loosen]) .tackle-icon { width: 18px; }
+}
+
+[data-campaign-bait-only] .fishing-rack {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "lures";
+}
+[data-campaign-bait-only] .fishing-rack:has(.fishing-pressure:not([hidden])) {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas: "lures tension";
+}
+@media (max-width: 479px), (max-width: 700px) and (min-height: 421px) {
+  [data-campaign-bait-only] .fishing-rack:has(.fishing-pressure:not([hidden])) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "tension" "lures";
+  }
+}
+
+.fishing-tray[data-line-physics] .fishing-speech > .fishing-action {
+  width: max-content;
+  max-width: 100%;
+  min-height: 44px;
+  margin-top: 4px;
+  padding: 3px 8px;
+  border: 1px solid #987c43;
+  border-radius: 4px;
+  color: #172e26;
+  background: #eed9a3;
+  font-size: .78rem;
+  flex-direction: row;
+}
+.fishing-tray[data-line-physics] .fishing-speech > .fishing-action:focus-visible { outline-color: #35523e; }
+.fishing-tray[data-line-physics] .fishing-speech > .fishing-action .tackle-icon { width: 16px; }
+.lake[data-fishing-light="dusk"] {
+  background-image:
+    radial-gradient(ellipse 94% 760px at 62% 0%, #c2a56b66, transparent 83%),
+    radial-gradient(ellipse 76% 980px at 18% 37%, #7b735c42, transparent 81%),
+    linear-gradient(167deg, #4f5943, #324b42 32%, #203c3b 66%, #172d33);
+}
+.lake[data-fishing-light="night"] {
+  background-image:
+    radial-gradient(ellipse 76% 720px at 62% 0%, #80aeb949, transparent 85%),
+    radial-gradient(ellipse 70% 1030px at 15% 40%, #36636b49, transparent 84%),
+    linear-gradient(168deg, #2c4b53, #1b3946 35%, #182e3b 69%, #132530);
+}
+.fishing-encounter [data-phase] {
+  color: #fff1cf;
+  font-size: .8rem;
+  font-weight: 700;
+  text-shadow: 0 1px 5px #0c201b, 0 1px 5px #0c201b;
+}
+
+/* Permit guidance shares the outing picker’s Field Comic surface. */
+.fishing-permit-guide {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.fishing-permit-guide img {
+  width: clamp(76px, 22vw, 140px);
+  height: auto;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+.fishing-permit-guide h2 { margin-bottom: .5rem; }
+.fishing-permit-guide p { margin: 0; }
+.fishing-permit-actions { display: flex; flex-wrap: wrap; gap: .65rem; }
+.fishing-permit-note { font-size: .85rem; line-height: 1.5; margin-top: 1.5rem; }
+.fishing-permit-note a { color: inherit; text-decoration: underline; }
+@media (max-width: 380px) {
+  .fishing-permit-guide { align-items: flex-start; gap: .6rem; }
+  .fishing-permit-actions button { width: 100%; }
+}
+
+/* Pause and tackle share the site’s Field Comic ink, paper and lamp colors. */
+.fishing-pause { width: min(510px, calc(100% - 24px)); overscroll-behavior: contain; }
+.fishing-picker { overscroll-behavior: contain; scrollbar-color: #96a36d #18332a; }
+.fishing-picker :is(button, [tabindex]):focus-visible { outline: 3px solid var(--lamp); outline-offset: 3px; }
+.fishing-picker button:is(:disabled, [aria-disabled="true"]) { opacity: .55; cursor: default; }
+.fishing-picker button:enabled:hover { background: #355a46; }
+.fishing-menu-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 18px; }
+.fishing-menu-actions button { display: flex; gap: 8px; align-items: center; justify-content: center; }
+.fishing-menu-actions [data-action="resume"] { grid-column: 1 / -1; background: var(--lamp); color: #18332a; border-color: var(--lamp); font-weight: 750; }
+.fishing-menu-actions [data-action="leave"] { grid-column: 1 / -1; margin-top: 6px; }
+.fishing-pause [data-pause-panel] > p { margin-block: 12px; }
+.fishing-pause [data-pause-panel] > button { margin-block-start: 16px; }
+.fishing-pause h3 { margin-block: 22px 8px; font: bold 1.2rem/1.3 Georgia, serif; }
+.fishing-loadout, .fishing-controls-list { display: grid; grid-template-columns: minmax(80px, .75fr) minmax(0, 1.5fr); gap: 10px 14px; margin-block: 18px; font-size: .875rem; }
+.fishing-loadout dt, .fishing-controls-list dt { color: var(--lamp); font-weight: 750; }
+.fishing-loadout dd, .fishing-controls-list dd { margin: 0; line-height: 1.6; }
+.fishing-loadout .tackle-icon { vertical-align: middle; }
+.fishing-controls-list kbd { font: 700 .9em system-ui, sans-serif; }
+.fishing-shop-categories { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.fishing-shop-categories button { display: flex; justify-content: center; align-items: center; gap: 6px; }
+.fishing-shop :is(li, h3) { scroll-margin-block: 12px; }
+.fishing-shop li > div > strong .tackle-icon, .fishing-pause li > div > strong .tackle-icon { vertical-align: middle; color: var(--lamp); }
+.fishing-shop [data-item-details], .fishing-pause [data-item-details] { min-height: 44px; margin-top: 6px; font-size: .8rem; }
+.fishing-pause ul { list-style: none; margin: 0; padding: 0; }
+.fishing-pause li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(62px, auto); gap: 10px; align-items: center; padding: 10px 2px; border-bottom: 1px solid #63826966; }
+.fishing-pause li p { margin-block: 4px; }
+.fishing-pause li strong { font-size: .93rem; }
+.fishing-pause .fishing-shop-action { max-width: 110px; }
+.fishing-item-details [data-item-description] > .tackle-icon { width: 40px; height: 40px; margin-top: 16px; color: var(--lamp); }
+.fishing-item-details p { margin-top: 12px; }
+body[data-fishing-paused] :is(.fishing-target, .fishing-target *, .fishing-bobber, .fishing-bobber::before, .fishing-celebration, .fishing-celebration *) { animation-play-state: paused !important; }
+@media (max-width: 360px) {
+  .fishing-pause, .fishing-shop { padding: 16px; }
+  .fishing-menu-actions { gap: 8px; }
+  .fishing-menu-actions button { padding-inline: 6px; gap: 5px; font-size: .87rem; }
+}
+@media (orientation: landscape) and (max-height: 430px) {
+  .fishing-pause, .fishing-shop { max-height: calc(100dvh - 16px); }
+  .fishing-menu-actions { margin-top: 10px; gap: 6px; }
+  .fishing-menu-actions [data-action="resume"], .fishing-menu-actions [data-action="leave"] { grid-column: auto; margin-top: 0; }
+  .fishing-shop-categories { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .fishing-shop-categories button { flex-direction: column; gap: 2px; font-size: .75rem; padding: 4px; }
+}
+html:has(body[data-fishing-paused]) { overflow: hidden; }
+
+.fishing-catch-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.fishing-catch-actions [data-catch-video] { display: contents; }
+.fishing-catch-actions :is(button, a) {
+  display: flex; flex: 1 1 200px; align-items: center; justify-content: center; gap: 6px;
+  min-width: 0; min-height: 44px; padding: 6px 9px; border: 1px solid #81936f; border-radius: 4px;
+  color: var(--paper); background: #213c31; font: 700 .78rem/1.3 system-ui, sans-serif;
+  text-align: center; text-decoration: none;
+}
+.fishing-catch-actions .tackle-icon { flex: none; width: 20px; height: 20px; }
+.fishing-catch-actions a:hover { background: #355a46; }
+.fishing-catch-actions a:focus-visible { outline: 3px solid var(--lamp); outline-offset: 2px; }
+@media (min-width: 480px) and (max-height: 420px) and (orientation: landscape) {
+  .fishing-catch-actions :is(button, a) { flex-basis: 0; }
+}
+
+.fishing-line-gesture {
+  position: absolute;
+  z-index: 3;
+  display: grid;
+  align-content: center;
+  justify-items: end;
+  gap: 3px;
+  width: 108px;
+  min-height: 72px;
+  padding-inline: 5px;
+  translate: -50% -50%;
+  border: 1px dashed #fff1cfab;
+  border-radius: 9px;
+  background: #19342c36;
+  color: #fff1cf;
+  font-size: .75rem;
+  font-weight: 750;
+  user-select: none;
+}
+.fishing-line-gesture[hidden] { display: none; }
+.fishing-line-gesture > span { padding: 2px 5px; border-radius: 4px; background: #162e26; }
+.fishing-line-gesture,
+.lake:is([data-line-gesture="reel"], [data-line-gesture="lift"]) { touch-action: pinch-zoom; }
+.lake:is([data-line-gesture="reel"], [data-line-gesture="lift"]) .fishing-line-gesture {
+  border-color: transparent;
+  background: none;
+  pointer-events: none;
+}
+/* Campaign map uses packaged shoreline, contours and cell coordinates. */
+.fishing-map { width: min(940px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow-y: auto; }
+.fishing-map h2, .fishing-map h3 { margin-block: 0 10px; }
+.fishing-map-layout { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(180px, 1fr); gap: 18px; }
+.fishing-map-water { position: relative; aspect-ratio: 1; min-width: 0; }
+.fishing-map-water > img { display: block; width: 100%; height: 100%; border-radius: 8px; }
+.fishing-map-cells { position: absolute; inset: 0; }
+.fishing-map-cells button { position: absolute; transform: translate(-50%, -50%); min-width: 44px; min-height: 44px; padding: 5px; border: 1px solid #b2d4d5; color: #fff4d4; background: #236879dd; font-weight: 800; }
+.fishing-map-cells button[data-depth="shallow"] { background: #387e87e8; }
+.fishing-map-cells button[data-depth="middle"] { background: #1e526ce8; }
+.fishing-map-cells button[data-depth="deep"] { background: #152e4de8; }
+.fishing-map-cells button[data-temperature="38"] { border-color: #dab0ff; }
+.fishing-map-cells button[data-temperature="37"] { border-color: #bbbdff; }
+.fishing-map-cells button[data-locked]::after { content: '•'; color: #ffd37e; }
+.fishing-map-cells button[aria-pressed="true"] { outline: 3px solid #78f5ff; outline-offset: 2px; z-index: 1; }
+.fishing-map button:focus-visible, .fishing-candidate:focus-visible { outline: 3px solid #fff5a3; outline-offset: 4px; }
+.fishing-map-inspector { padding: 16px; background: #10212b; border: 1px solid #7fabb7; border-radius: 8px; }
+.fishing-map-overlays, .fishing-map-actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-block: 12px; }
+.fishing-map-actions { position: sticky; bottom: -1px; background: #142631; padding-block: 12px; z-index: 2; }
+.fishing-map-actions button, .fishing-drill button { min-height: 44px; }
+[data-map-drill], [data-drill-turn] { background: #f2bd63; color: #1d2025; font-weight: 800; }
+.fishing-map-note, .fishing-map small { font-size: .8rem; line-height: 1.5; }
+.fishing-map-overlays label { min-height: 44px; display: flex; align-items: center; gap: 8px; }
+.fishing-auger-scene { display: flex; align-items: end; justify-content: center; height: 210px; background: url('../assets/fishing/mille-lacs-dawn.webp') center/cover; border-radius: 8px; }
+.fishing-auger-scene img { width: 150px; height: 180px; object-fit: contain; }
+.fishing-auger-scene svg { width: 130px; height: 180px; transform: rotate(var(--auger-turn, 0deg)); transition: transform .12s; }
+.fishing-drill progress { width: 100%; height: 24px; margin-top: 18px; accent-color: #78dce9; }
+.fishing-candidate { position: absolute; left: var(--x); top: var(--y); transform: translate(-50%,-50%); z-index: 15; width: clamp(100px, 17vw, 180px); min-height: 64px; padding: 6px; color: #fff4d4; background: #092b3caa; border: 1px solid #78dce9; border-radius: 12px; cursor: pointer; }
+.fishing-candidate svg { width: 100%; height: 55px; }
+.fishing-candidate span { display: block; font-size: 12px; }
+body.fishing:has(.fishing-tray[data-mode="campaign"]) .fishing-target::after { content: 'Selected target'; position: absolute; top: 100%; left: 0; right: 0; color: #fff4d4; background: #092b3ccc; font: 700 12px/1.5 sans-serif; text-align: center; }
+body:not(.fishing) .fishing-candidate { display: none; }
+@media (max-width: 600px) {
+ .fishing-map { padding: 14px; }
+ .fishing-map-layout { display: flex; flex-direction: column; gap: 10px; }
+ .fishing-map-inspector { padding: 10px; }
+ .fishing-map-inspector p { margin-block: 6px; }
+ .fishing-map-cells button { min-width: 44px; min-height: 44px; }
+}
+@media (max-height: 420px) and (orientation: landscape) {
+ .fishing-map-layout { grid-template-columns: 240px 1fr; }
+ .fishing-map { padding: 12px; }
+ .fishing-auger-scene { height: 100px; }
+ .fishing-auger-scene img, .fishing-auger-scene svg { height: 100px; }
+}
+@media (prefers-reduced-motion: reduce) { .fishing-auger-scene svg { transition: none; transform: none; } }
+body[data-reduced] .fishing-auger-scene svg { transition: none; transform: none; }
+/* Keep a programmatically focused cell clear of the sticky return actions. */
+.fishing-map { scroll-padding-block: 20px 100px; }
+.fishing-map-cells button { scroll-margin-block: 20px 100px; }
+.fishing-map [data-map-drill], .fishing-drill [data-drill-turn] { background: #f2bd63; color: #1d2025; border-color: #f2bd63; }
+
+/* Campaign progression and saved-catch panels use the same compact game frame. */
+.fishing-campaign-skills, .fishing-catch-popup { color: #f5ecd8; background: #142d3b; border: 5px ridge #91bbc7; border-radius: 18px; box-shadow: 0 12px 60px #000b; max-height: calc(100dvh - 24px); overflow: auto; }
+.fishing-campaign-skills h2, .fishing-campaign-skills h3, .fishing-campaign-skills h4, .fishing-catch-popup h2 { color: #fff1cc; }
+.fishing-skill-level { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.fishing-skill-level h3 { grid-column: 1 / -1; margin-bottom: 0; }
+.fishing-skill-level article { border: 1px solid #91bbc7; border-radius: 10px; padding: 12px; background: #0a1b27; }
+.fishing-skill-level h4 { margin: 0; }
+.fishing-campaign-skills footer, .fishing-catch-popup footer { position: sticky; bottom: -1px; display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 0; background: #142d3b; }
+.fishing-catch-popup { width: min(560px, calc(100vw - 20px)); text-align: center; --quality: #c48a5a; }
+.fishing-catch-popup[data-quality="silver"] { --quality: #d5e4ec; }
+.fishing-catch-popup[data-quality="gold"] { --quality: #ffd56b; }
+.fishing-reward-art { position: relative; border: 3px solid var(--quality); border-radius: 14px; background: #08212d; padding: 24px; }
+.fishing-reward-art svg { display: block; width: 100%; height: 110px; }
+.fishing-reward-quality, .fishing-reward-sparks { color: var(--quality); font-size: 1.35rem; font-weight: 800; }
+.fishing-reward-sparks { display: block; letter-spacing: 18px; animation: reward-sparks 1.6s ease-in-out 2; }
+@keyframes reward-sparks { 50% { opacity: .45; transform: translateY(-5px); } }
+@media (min-width: 900px) { .fishing-dialogue { font-size: 1.12rem; line-height: 1.45; } }
+@media (max-width: 480px) { .fishing-skill-level { grid-template-columns: 1fr; } .fishing-catch-popup { padding: 12px; } }
+@media (max-height: 420px) { .fishing-reward-art svg { height: 55px; } .fishing-reward-art { padding: 8px; } }
+@media (prefers-reduced-motion: reduce) { .fishing-reward-sparks { animation: none; } }
+/* Shared Field Comic menu frame: ice-blue steel, brass fittings and cream lettering. */
+:is(.fishing-frame, .fishing-map, .fishing-drill, .fishing-permit, .fishing-catch-popup) {
+  --frame-ink: #fff0ce;
+  --frame-blue: #102d3c;
+  --frame-edge: #8bb4c1;
+  color: var(--frame-ink);
+  background: linear-gradient(135deg, #254956, #102b3a 62%);
+  border: 5px ridge var(--frame-edge);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px #00101899;
+  scrollbar-color: #8bb4c1 #102d3c;
+  padding: 18px;
+}
+:is(.fishing-frame, .fishing-map, .fishing-drill, .fishing-permit)::backdrop { background: #061521d9; }
+:is(.fishing-frame, .fishing-map, .fishing-drill, .fishing-permit) :is(h2,h3) { color: #fff0ce; }
+:is(.fishing-frame, .fishing-map, .fishing-drill, .fishing-permit) :is(button,a) { min-height: 44px; }
+:is(.fishing-frame, .fishing-map, .fishing-drill, .fishing-permit) button {
+  color: #fff0ce; border: 1px solid #8bb4c1; background: #183d4d; border-radius: 4px;
+}
+:is(.fishing-frame, .fishing-map, .fishing-drill, .fishing-permit) button:enabled:hover { background: #305869; }
+:is(.fishing-frame, .fishing-map, .fishing-drill, .fishing-permit) :is(button,a,[tabindex]):focus-visible { outline: 3px solid #a6f0f5; outline-offset: 2px; }
+:is(.fishing-frame, .fishing-map, .fishing-drill, .fishing-permit) ::selection { background: #a6f0f5; color: #102d3c; }
+.fishing-frame :is([data-action="resume"], [data-shop-action="buy"], [data-shop-action="equip"]) {
+  background: #f1b747; border-color: #ffd990; color: #182b30; font-weight: 750;
+}
+.fishing-frame :is([data-action="resume"], [data-shop-action="buy"], [data-shop-action="equip"]):enabled:hover { background: #ffd181; }
+.fishing-frame a { color: #b4edf2; text-underline-offset: 3px; }
+.fishing-shop[open] {
+  display: grid; grid-template-rows: auto auto auto minmax(0,1fr) auto;
+  width: min(940px, calc(100% - 20px)); height: min(690px, calc(100dvh - 20px)); max-height: calc(100dvh - 20px);
+  overflow: hidden; gap: 8px;
+}
+.fishing-shop .fishing-dialog-intro { position: relative; min-height: 106px; padding: 10px; overflow: hidden; border: 1px solid #b59a61; border-radius: 4px; }
+.fishing-shop .fishing-dialog-art { position: absolute; inset: 0; height: 100%; object-position: center 45%; opacity: .28; z-index: 0; }
+.fishing-shop-heading { position: relative; z-index: 1; flex-wrap: nowrap; }
+.fishing-shopkeeper img { width: 76px; border: 2px solid #bea271; }
+.fishing-shopkeeper h2 { font-size: clamp(1.35rem, 3vw, 2rem); }
+.fishing-shop-ledger { display: grid; justify-items: end; gap: 10px; }
+.fishing-power { padding: 4px 12px; border: 1px solid #bd955a; background: #4b3423; font: bold 1rem Georgia,serif; text-align: center; }
+.fishing-power small { display: block; font: .65rem/1.3 system-ui,sans-serif; }
+.fishing-shop [data-shop-message] { min-height: 1.2em; margin: 0; }
+.fishing-shop-categories { display: flex; gap: 6px; overflow-x: auto; overscroll-behavior: contain; }
+.fishing-shop-categories button { flex: 1 0 auto; min-width: 44px; padding: 5px 10px; }
+.fishing-shop [data-shop-items] { min-height: 0; display: grid; grid-template-columns: minmax(0,1.4fr) minmax(230px,1fr); gap: 14px; overflow: hidden; }
+.fishing-shop-grid { overflow: auto; overscroll-behavior: contain; min-height: 0; padding: 3px 8px 8px 3px; }
+.fishing-shop-grid section + section { margin-top: 18px; }
+.fishing-shop h3 { margin: 0 0 8px; font-size: 1.2rem; }
+.fishing-item-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; }
+.fishing-item-grid button { display: grid; justify-items: start; align-content: start; gap: 6px; padding: 10px; text-align: left; }
+.fishing-item-grid button .tackle-icon { width: 44px; height: 44px; color: #e8c67f; }
+.fishing-item-grid strong { font-size: .86rem; line-height: 1.3; }
+.fishing-item-grid :is(span,small) { font-size: .75rem; line-height: 1.3; }
+.fishing-item-grid button[aria-pressed="true"] { border: 2px solid #9eeaf0; background: #255260; padding: 9px; }
+.fishing-shop-inspector { min-height: 0; display: grid; grid-template-rows: minmax(0,1fr) auto; border-left: 1px solid #8bb4c1; padding-left: 14px; }
+.fishing-inspector-content { overflow: auto; overscroll-behavior: contain; padding: 3px; }
+.fishing-inspector-content > .tackle-icon { width: 100%; height: 100px; margin-bottom: 12px; color: #e8c67f; }
+.fishing-inspector-content p { margin-bottom: 14px; font-size: .9rem; line-height: 1.5; }
+.fishing-inspector-action { padding-top: 10px; border-top: 1px solid #8bb4c1; }
+.fishing-inspector-action button { width: 100%; }
+.fishing-shop [data-shop-grid-back] { display: none; }
+.fishing-shop form { margin: 0; padding-top: 8px; border-top: 1px solid #b59a61; display: flex; justify-content: end; }
+.fishing-pause[open] { display: flex; flex-direction: column; width: min(760px,calc(100% - 20px)); height: min(660px,calc(100dvh - 20px)); max-height: calc(100dvh - 20px); overflow: hidden; }
+.fishing-pause > h2 { flex: none; padding: 0 0 10px; margin: 0 0 12px; border-bottom: 1px solid #b59a61; }
+.fishing-pause [data-pause-panel]:not([hidden]) { min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 3px; }
+.fishing-pause [data-pause-panel="gear"]:not([hidden]) { display: flex; flex-direction: column; overflow: hidden; }
+.fishing-pause [data-gear-content] { min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 3px; }
+.fishing-pause [data-action="back"] { flex: none; position: sticky; bottom: 0; width: 100%; }
+.fishing-website-links { margin-top: 22px; border-top: 1px solid #8bb4c1; }
+.fishing-website-links a { display: inline-flex; align-items: center; margin-right: 18px; font-weight: 700; }
+.fishing-pause .fishing-menu-actions { grid-template-columns: repeat(2,minmax(0,1fr)); }
+.fishing-frame.collection-dialog[open] { display: flex; flex-direction: column; height: min(690px,calc(100dvh - 20px)); max-height: calc(100dvh - 20px); overflow: hidden; }
+.fishing-frame.collection-dialog [data-content] { min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 3px; }
+.fishing-frame.collection-dialog .collection-top { flex: none; margin-bottom: 10px; }
+.fishing-frame.collection-dialog a { color: #b4edf2; }
+.collection-undiscovered .collection-fish-art { opacity: .2; filter: brightness(0); }
+@media (max-width: 599px) {
+  .fishing-shop[open] { padding: 10px; gap: 6px; }
+  .fishing-shop .fishing-dialog-intro { min-height: 80px; padding: 6px; }
+  .fishing-shopkeeper img { width: 48px; }
+  .fishing-shopkeeper h2 { font-size: 1.25rem; }
+  .fishing-shopkeeper p { font-size: .75rem; }
+  .fishing-shop-ledger { gap: 5px; font-size: .8rem; }
+  .fishing-power { font-size: .8rem; padding: 2px 5px; }
+  .fishing-shop [data-shop-items] { grid-template-columns: minmax(0,1fr); }
+  .fishing-item-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .fishing-shop[data-pane="grid"] .fishing-shop-inspector, .fishing-shop[data-pane="details"] .fishing-shop-grid { display: none; }
+  .fishing-shop-inspector { padding: 0; border: 0; grid-template-rows: auto minmax(0,1fr) auto; gap: 8px; }
+  .fishing-shop [data-shop-grid-back] { display: block; }
+  .fishing-shop-categories .tackle-icon { display: none; }
+  .fishing-shop-categories button { font-size: .8rem; padding-inline: 7px; }
+}
+@media (max-height: 420px) and (min-width: 600px) {
+  .fishing-shop[open] { padding: 8px 12px; gap: 4px; grid-template-rows: auto auto minmax(0,1fr) auto; }
+  .fishing-shop .fishing-dialog-intro { min-height: 0; padding: 0; border: 0; }
+  .fishing-shop .fishing-dialog-art, .fishing-shopkeeper img, .fishing-shopkeeper p, .fishing-power { display: none; }
+  .fishing-shopkeeper h2 { font-size: 1.25rem; }
+  .fishing-shop [data-shop-message] { position: absolute; right: 110px; top: 9px; max-width: 280px; font-size: .7rem; }
+  .fishing-shop-categories button { flex-direction: row; padding: 2px 8px; }
+  .fishing-shop-categories .tackle-icon { width: 18px; height: 18px; }
+  .fishing-shop [data-shop-items] { grid-template-columns: minmax(0,1.2fr) minmax(230px,1fr); gap: 10px; }
+  .fishing-inspector-content > .tackle-icon { float: left; width: 48px; height: 48px; margin: 0 8px 0 0; }
+  .fishing-inspector-content p { margin-bottom: 8px; font-size: .8rem; }
+  .fishing-inspector-content h3 { font-size: 1rem; }
+  .fishing-shop form { padding-top: 4px; }
+  .fishing-pause[open] { padding: 8px 12px; }
+  .fishing-pause > h2 { font-size: 1.25rem; padding-bottom: 5px; margin-bottom: 5px; }
+}
+.fishing-inspector-action { display: grid; gap: 5px; }
+.fishing-frame.collection-dialog { color: #fff0ce; background: linear-gradient(135deg,#254956,#102b3a 62%); border: 5px ridge #8bb4c1; border-radius: 12px; }
+.fishing-frame.collection-dialog button { color: #fff0ce; border-color: #8bb4c1; background: #183d4d; }
+@media (max-width: 599px) {
+  .fishing-shopkeeper { gap: 6px; }
+  .fishing-shopkeeper h2 { font-size: 1.15rem; }
+  .fishing-shopkeeper img { width: 36px; }
+  .fishing-power { max-width: 66px; }
+}
+@media (max-height: 420px) and (min-width: 600px) {
+  .fishing-shop .fishing-shop-heading { display: flex; justify-content: space-between; }
+  .fishing-shop [data-shop-message] { position: static; grid-row: 2; font-size: .7rem; max-width: none; min-height: 0; }
+  .fishing-shop[open] { grid-template-rows: auto auto auto minmax(0,1fr) auto; }
+  .fishing-shop .fishing-inspector-action { padding-top: 5px; }
+}
+.fishing-frame-footer { flex: none; display: flex; justify-content: end; padding-top: 10px; margin-top: 10px; border-top: 1px solid #b59a61; }
+.fishing-frame-footer button { min-width: 150px; }
+.fishing-pause [data-pause-panel]:not([hidden]) { flex: 1; }
+.fishing-shop form { justify-content: space-between; gap: 8px; }
+.fishing-shop [data-shop-resume] { border-color: #e5bc70; }
+@media (max-width: 599px) { .fishing-shop form button { padding: 5px 8px; font-size: .8rem; } }
+@media (max-height: 420px) { .fishing-frame-footer { padding-top: 5px; margin-top: 5px; } }
+.fishing-catch-popup [data-bryan-video] { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; color: #bcebf3; }
+.fishing-catch-popup[open] { display: flex; flex-direction: column; overflow: hidden; }
+.fishing-catch-popup > header, .fishing-catch-popup > footer { flex-shrink: 0; }
+.fishing-catch-popup > footer { position: static; }
+.fishing-catch-popup [data-reward-body] { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+/* Gear uses the same inventory and inspector rhythm as Marnie's shop. */
+.fishing-pause [data-gear-content] { display: grid; grid-template-rows: auto minmax(0,1fr) auto; overflow: hidden; flex: 1; gap: 8px; }
+.fishing-gear-loadouts { max-height: 190px; overflow: auto; overscroll-behavior: contain; border-bottom: 1px solid #8bb4c1; padding-bottom: 6px; }
+.fishing-gear-loadouts summary { cursor: pointer; min-height: 44px; align-content: center; font-weight: 700; color: #f1ce8a; }
+.fishing-gear-loadouts .fishing-loadout { margin: 6px 0; gap: 6px 12px; font-size: .8rem; grid-template-columns: minmax(86px,.5fr) minmax(0,1.5fr); }
+.fishing-gear-loadouts .fishing-loadout dd { line-height: 1.45; }
+.fishing-gear-loadouts p { margin: 5px 0 0; font-size: .75rem; }
+.fishing-gear-layout { display: grid; grid-template-columns: minmax(0,1.3fr) minmax(220px,1fr); gap: 12px; min-height: 0; overflow: hidden; }
+.fishing-gear-grid { overflow: auto; overscroll-behavior: contain; min-height: 0; padding: 3px 6px 6px 3px; }
+.fishing-gear-grid section + section { margin-top: 16px; }
+.fishing-gear-grid h3 { margin: 0 0 8px; font-size: 1rem; }
+.fishing-gear-grid .fishing-item-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+.fishing-gear-grid .fishing-item-grid button { min-width: 0; }
+.fishing-gear-grid [data-gear-milestone] { margin-top: 14px; font-size: .8rem; }
+.fishing-gear-inspector { display: grid; grid-template-rows: minmax(0,1fr) auto; min-height: 0; padding-left: 12px; border-left: 1px solid #8bb4c1; }
+.fishing-gear-inspector h3 { margin: 0 0 10px; }
+.fishing-gear-actions { display: flex; flex-wrap: wrap; gap: 6px; border-top: 1px solid #8bb4c1; padding-top: 8px; }
+.fishing-gear-actions button { flex: 1; }
+.fishing-pause .fishing-gear-actions [data-item-details] { margin: 0; font-size: .875rem; }
+.fishing-gear-inspector [data-gear-grid-back] { display: none; }
+.fishing-pause [data-gear-message] { margin: 0; font-size: .8rem; }
+.fishing-pause [data-gear-message]:empty { display: none; }
+.fishing-pause [data-pause-panel="gear"] > [data-action="back"] { margin-top: 8px; }
+@media (max-width: 599px) {
+  .fishing-gear-layout { grid-template-columns: minmax(0,1fr); }
+  [data-gear-content][data-pane="grid"] .fishing-gear-inspector, [data-gear-content][data-pane="details"] .fishing-gear-grid { display: none; }
+  .fishing-gear-inspector { border: 0; padding: 0; grid-template-rows: auto minmax(0,1fr) auto; gap: 8px; }
+  .fishing-gear-inspector [data-gear-grid-back] { display: block; }
+  .fishing-gear-inspector .fishing-inspector-content > .tackle-icon { height: 60px; margin-bottom: 8px; }
+  .fishing-gear-loadouts { max-height: 160px; }
+  [data-gear-content][data-pane="details"] .fishing-gear-loadouts { display: none; }
+  .fishing-pause [data-gear-content][data-pane="details"] { grid-template-rows: minmax(0,1fr) auto; }
+}
+@media (max-height: 420px) and (min-width: 600px) {
+  .fishing-gear-loadouts { max-height: 66px; }
+  .fishing-gear-loadouts summary { min-height: 44px; font-size: .8rem; }
+  .fishing-pause [data-gear-content] { gap: 4px; }
+  .fishing-gear-inspector .fishing-inspector-content > .tackle-icon { float: left; width: 36px; height: 36px; margin: 0 8px 0 0; }
+  .fishing-gear-inspector h3 { font-size: 1rem; margin-bottom: 5px; }
+  .fishing-gear-inspector .fishing-inspector-content p { font-size: .8rem; margin-bottom: 5px; }
+  .fishing-gear-actions { padding-top: 4px; }
+}
+@media (max-height: 420px) and (min-width: 600px) {
+  .fishing-pause [data-pause-panel="gear"] > [data-action="back"] { position: absolute; left: 12px; bottom: 8px; width: calc(50% - 20px); margin: 0; }
+  .fishing-pause:has([data-pause-panel="gear"]:not([hidden])) .fishing-frame-footer button { width: calc(50% - 8px); }
+}
