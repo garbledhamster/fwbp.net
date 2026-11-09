@@ -1,0 +1,524 @@
+import { apply, lures, practiceLevelXp, practiceSkills, publicRun, skills, start } from './rules.mjs?v=12';
+
+const endpoint = document.querySelector('meta[name="fishing-api"]')?.content;
+const scenes = [...document.querySelectorAll('.dive[data-dive]')].slice(0, 6);
+const lake = document.querySelector('.lake');
+const iceCeiling = lake.querySelector('.dive-ceiling');
+const icon = id => `<svg class="tackle-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="./assets/tackle-icons.svg#${id}"/></svg>`;
+const tray = document.createElement('section');
+tray.className = 'fishing-tray';
+tray.hidden = true;
+tray.setAttribute('aria-label', 'Fishing controls');
+tray.innerHTML = `
+  <div class="fishing-tray-inner">
+    <div class="fishing-row"><img class="fishing-brand" src="./assets/fwbp-logo.jpg" alt="" width="27" height="27"><strong data-score></strong><button type="button" data-exit>Exit fishing</button></div>
+    <p class="fishing-status" role="status"></p>
+    <div class="fishing-row fishing-encounter">
+      <p class="fishing-practice-progress" hidden></p>
+      <p class="fishing-countdown" role="timer" hidden></p>
+    </div>
+    <div class="fishing-timing" aria-hidden="true" hidden><i></i></div>
+    <div class="fishing-pressure" hidden>
+      <label>Line tension <meter min="0" max="100" high="60" optimum="0"></meter></label>
+      <span data-pulls></span>
+    </div>
+    <div class="fishing-row" aria-label="Lures and action">
+      ${Object.entries(lures).map(([id, name]) => `<button type="button" data-lure="${id}">${icon(id)}<span>${name}</span></button>`).join('')}
+      <button type="button" class="fishing-action"></button>
+      <button type="button" data-loosen hidden>${icon('loosen')}<span>Loosen</span></button>
+    </div>
+    <div class="fishing-row fishing-skills" hidden aria-label="Spend one skill point">
+      ${Object.entries(skills).map(([id, name]) => `<button type="button" data-skill="${id}">${icon(id)}<span>${name}</span></button>`).join('')}
+    </div>
+    <div class="fishing-practice-choice" role="group" aria-label="Choose a skill" hidden>
+      <p>Next fish skips the choice.</p>
+      <div class="fishing-row">
+        ${Object.entries(practiceSkills).map(([id, description]) =>
+          `<button type="button" data-skill="${id}"><span>${icon(id)} ${skills[id]}</span><small>${description}</small></button>`).join('')}
+      </div>
+    </div>
+    <details hidden><summary>Catch log</summary><ul></ul></details>
+    <form hidden><label>Nickname <input name="nickname" maxlength="20" required></label> <button>Post score</button></form>
+    <ol data-board hidden></ol>
+  </div>`;
+const bobber = document.createElement('div');
+bobber.className = 'fishing-bobber';
+bobber.hidden = true;
+bobber.setAttribute('aria-hidden', 'true');
+lake.append(bobber);
+const celebration = document.createElement('div');
+celebration.className = 'fishing-celebration';
+celebration.hidden = true;
+celebration.innerHTML = `
+  <div class="fishing-splash" aria-hidden="true">
+    ${[-130, -87, -53, 53, 87, 130].map((x, i) => `
+      <svg style="--dx:${x}px;--dy:${-30 - i % 3 * 16}px;--delay:${i * 45}ms" viewBox="0 0 32 18">
+        <path d="M1 3l7 3C14 0 24 1 31 9c-7 8-17 9-23 3l-7 3 3-6z"/>
+      </svg>`).join('')}
+  </div>
+  <img src="./assets/bryan-level-up.webp" alt="" width="320" height="320">
+  <div class="fishing-ribbon"><strong data-level></strong><span>+1 skill point</span></div>`;
+const announcement = document.createElement('span');
+announcement.className = 'fishing-announcement';
+announcement.setAttribute('role', 'status');
+document.body.append(tray, celebration, announcement);
+
+let celebrationTimer;
+
+function dismissCelebration() {
+  clearTimeout(celebrationTimer);
+  celebration.hidden = true;
+  announcement.textContent = '';
+}
+
+function celebrateCatch(level, practice = false) {
+  dismissCelebration();
+  celebration.querySelector('[data-level]').textContent = `Level ${level}`;
+  celebration.querySelector('.fishing-ribbon span').textContent = practice ? 'Choose a skill' : '+1 skill point';
+  if (practice) celebration.setAttribute('aria-hidden', 'true');
+  else celebration.removeAttribute('aria-hidden');
+  celebration.hidden = false;
+  if (!practice) announcement.textContent = `Level ${level}. You earned one skill point.`;
+  celebrationTimer = setTimeout(dismissCelebration, 3600);
+}
+
+const action = tray.querySelector('.fishing-action');
+const loosen = tray.querySelector('[data-loosen]');
+const pressure = tray.querySelector('.fishing-pressure');
+const timing = tray.querySelector('.fishing-timing');
+const status = tray.querySelector('[role="status"]');
+const exit = tray.querySelector('[data-exit]');
+const form = tray.querySelector('form');
+const log = tray.querySelector('details');
+const board = tray.querySelector('[data-board]');
+const skillRow = tray.querySelector('.fishing-skills');
+const practiceChoice = tray.querySelector('.fishing-practice-choice');
+const practiceProgress = tray.querySelector('.fishing-practice-progress');
+const countdown = tray.querySelector('.fishing-countdown');
+const practiceButtons = [...practiceChoice.querySelectorAll('button')];
+const slots = [...tray.querySelectorAll('[data-lure]')];
+let launch, previousScroll, run, state, token, target, busy, failed, biteAt, frame;
+let countdownTimer, rankedSeekUntil, rankedServerSeekUntil, escapeTimer;
+let jigActivation = false;
+let lure = 'jig';
+let practiceError;
+let generation = 0;
+const scrollKeys = { ArrowUp: -1, ArrowDown: 1, PageUp: -1, PageDown: 1, Home: -1, End: 1 };
+
+async function api(action, data = {}, auth = token) {
+  const response = await fetch(endpoint, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', ...(auth && { Authorization: `Bearer ${auth}` }) },
+    body: JSON.stringify({ action, ...data }), signal: AbortSignal.timeout(6500),
+  });
+  if (!response.ok) throw Error('Ranking connection interrupted.');
+  return response.json();
+}
+
+function positionLine() {
+  const scene = scenes[state?.fish?.depth ?? state?.index];
+  if (!scene || !state.fish) {
+    bobber.hidden = true;
+    return;
+  }
+  const water = lake.getBoundingClientRect();
+  const encounter = scene.getBoundingClientRect();
+  const hole = iceCeiling.getBoundingClientRect();
+  bobber.style.setProperty('--line-start', `${hole.top - water.top + hole.height * 20 / 110}px`);
+  bobber.style.setProperty('--line-depth', `${encounter.top - water.top + encounter.height * .44}px`);
+}
+
+function setStatus(message) {
+  if (status.textContent !== message) status.textContent = message;
+}
+
+function stopCountdown() {
+  clearTimeout(countdownTimer);
+  rankedSeekUntil = rankedServerSeekUntil = undefined;
+  countdown.hidden = true;
+}
+
+function updateCountdown() {
+  const deadline = token ? rankedSeekUntil : state?.seekUntil;
+  if (tray.hidden || failed || state?.stage !== 'seek' || !Number.isFinite(deadline)) {
+    countdown.hidden = true;
+    return;
+  }
+  const remaining = deadline - (token ? performance.now() : Date.now());
+  countdown.hidden = false;
+  countdown.textContent = `Fish leaves in ${Math.max(0, Math.ceil(remaining / 1000))}s`;
+  if (remaining <= 0) {
+    if (!busy) void perform('expire');
+  } else {
+    countdownTimer = setTimeout(updateCountdown, remaining % 1000 || 1000);
+  }
+}
+
+function syncCountdown(serverNow) {
+  clearTimeout(countdownTimer);
+  if (Number.isFinite(serverNow) && Number.isFinite(state?.seekUntil)) {
+    const receivedDeadline = performance.now() + Math.max(0, state.seekUntil - serverNow);
+    // A slow response can only tighten an existing countdown, never add time to it.
+    rankedSeekUntil = state.seekUntil === rankedServerSeekUntil
+      ? Math.min(rankedSeekUntil, receivedDeadline) : receivedDeadline;
+    rankedServerSeekUntil = state.seekUntil;
+  }
+  updateCountdown();
+  updateSearch();
+}
+
+function fishInView() {
+  if (!target || target.hidden) return false;
+  const { left, top, width, height } = target.getBoundingClientRect();
+  const x = left + width / 2;
+  const y = top + height / 2;
+  const {
+    offsetLeft = 0, offsetTop = 0, width: viewWidth = innerWidth, height: viewHeight = innerHeight,
+  } = window.visualViewport ?? {};
+  return x >= offsetLeft && x < offsetLeft + viewWidth
+    && y >= offsetTop && y < Math.min(offsetTop + viewHeight, tray.getBoundingClientRect().top);
+}
+
+function updateSearch() {
+  if (tray.hidden) return;
+  const searching = !failed && state?.stage === 'seek';
+  const inView = searching && fishInView();
+  if (searching && !inView) action.setAttribute('aria-disabled', 'true');
+  else action.removeAttribute('aria-disabled');
+  bobber.hidden = !state?.fish || (searching && !inView);
+  if (searching) setStatus(inView ? practiceError ?? state.cue : 'Scroll up or down to find the fish.');
+}
+
+function showPracticeBite(elapsed) {
+  const wait = elapsed < state.window.from;
+  const passed = elapsed > state.window.until;
+  setStatus(wait ? 'Bite! Wait for gold.' : passed ? 'Window passed. Reel, then jig again.' : 'Yeah, reel it!');
+  action.classList.toggle('fishing-action-quiet', wait);
+}
+
+function clearBite() {
+  cancelAnimationFrame(frame);
+  timing.style.removeProperty('--position');
+}
+
+function animateBite() {
+  if (tray.hidden || state?.stage !== 'bite') return;
+  const elapsed = (token ? performance.now() : Date.now()) - biteAt;
+  timing.style.setProperty('--position', `${Math.min(100, elapsed / state.window.until * 100)}%`);
+  if (!token && !practiceError) showPracticeBite(elapsed);
+  if (elapsed < state.window.until || (!token && elapsed === state.window.until)) {
+    frame = requestAnimationFrame(animateBite);
+  }
+}
+
+function removeTarget() {
+  clearTimeout(escapeTimer);
+  target?.remove();
+  target = null;
+}
+
+function swimAway() {
+  if (!target || document.body.hasAttribute('data-reduced') || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    removeTarget();
+    return;
+  }
+  target.classList.remove('is-curious', 'is-biting');
+  target.classList.add('is-escaping');
+  escapeTimer = setTimeout(removeTarget, 450);
+}
+
+function placeFish() {
+  removeTarget();
+  positionLine();
+  if (!state.fish) return;
+  const { art: [file, symbol, box], x, y } = state.fish;
+  target = document.createElement('div');
+  target.className = 'fishing-target';
+  target.classList.toggle('gilded', state.fish.gilded);
+  target.setAttribute('aria-hidden', 'true');
+  target.style.setProperty('--x', `${x}%`);
+  target.style.setProperty('--y', `${y}%`);
+  target.innerHTML = `<svg viewBox="${box}" aria-hidden="true"><use href="./assets/${file}.svg#${symbol}"/></svg>`;
+  target.addEventListener('animationend', updateSearch);
+  target.addEventListener('transitionend', updateSearch);
+  scenes[state.fish.depth ?? state.index].append(target);
+}
+
+function render() {
+  tray.querySelector('[data-score]').textContent = state
+    ? `${state.lake} · ${token ? 'Ranked' : 'Practice'} · ${state.score} pts · ${Math.min(state.index + 1, state.count)}/${state.count}`
+    : 'Fishing beneath the ice';
+  const practiceFight = !token && state?.stage === 'fight';
+  const tight = practiceFight && state.fight.tension >= 60;
+  const pullUp = state?.fight?.pulls === 1;
+  const practiceBite = !token && state?.stage === 'bite';
+  let cue = state?.cue ?? 'Opening the lake…';
+  if (failed) cue = 'Ranking disconnected. You can start a practice outing.';
+  else if (practiceError) cue = practiceError;
+  else if (practiceFight) cue = tight ? 'Tight line. Loosen.' : `Line clear. ${pullUp ? 'Pull up' : 'Reel'}.`;
+  else if (state?.stage === 'landed' && cue.endsWith('points')) {
+    cue = `All right! ${cue}`;
+    if (state.practice?.xp === practiceLevelXp) {
+      if (state.skillPoints) cue += '. Level 2! Choose a skill.';
+      else cue += `. ${state.skills.control ? skills.control : skills.lift} selected.`;
+    }
+  }
+  if ((state?.stage !== 'seek' || failed) && (!practiceBite || practiceError)) setStatus(cue);
+  practiceProgress.hidden = !state?.practice || failed;
+  if (state?.practice) {
+    const { xp, level } = state.practice;
+    const progress = level === 1 ? `${xp} / ${practiceLevelXp} XP to Level 2` : `Level 2 · ${xp} XP`;
+    if (practiceProgress.textContent !== progress) practiceProgress.textContent = progress;
+  }
+  const [actionIcon, label] = failed ? ['next', 'Practice'] : ({
+    seek: ['jig', 'Jig'], bite: ['reel', 'Reel'], fight: state?.fight?.pulls === 1 ? ['lift', 'Pull up'] : ['reel', 'Reel'],
+    landed: ['next', 'Next fish'], missed: ['next', 'Next fish'], done: ['next', 'Fish again'],
+  }[state?.stage] ?? ['next', 'Wait']);
+  action.innerHTML = `${icon(actionIcon)}<span>${label}</span>`;
+  action.disabled = busy || !state;
+  action.parentElement.toggleAttribute('data-practice-fight', practiceFight);
+  action.classList.toggle('fishing-action-quiet', tight);
+  loosen.classList.toggle('fishing-recommended', tight);
+  if (practiceBite && !practiceError) showPracticeBite(Date.now() - biteAt);
+  if (bobber.dataset.lure !== lure) {
+    bobber.dataset.lure = lure;
+    bobber.innerHTML = icon(lure);
+  }
+  pressure.hidden = !state?.fight || failed;
+  loosen.hidden = pressure.hidden;
+  loosen.disabled = busy;
+  if (state?.fight) {
+    const { tension, pulls } = state.fight;
+    pressure.querySelector('meter').value = tension;
+    pressure.querySelector('[data-pulls]').textContent = practiceFight
+      ? `${pulls} ${pulls === 1 ? 'pull' : 'pulls'} left`
+      : `${tension >= 60 ? 'Tight line' : 'Line clear'} · ${pulls} to land`;
+  }
+  slots.forEach(slot => {
+    slot.hidden = !pressure.hidden;
+    slot.disabled = busy || state?.stage !== 'seek';
+    slot.setAttribute('aria-pressed', String(slot.dataset.lure === lure));
+  });
+  target?.classList.toggle('is-biting', ['bite', 'fight'].includes(state?.stage));
+  if (target) target.hidden = state?.stage === 'landed';
+  const canUpgrade = state?.stage === 'landed' && state.skillPoints && !failed;
+  skillRow.hidden = !canUpgrade || Boolean(state?.practice);
+  practiceChoice.hidden = !canUpgrade || !state?.practice;
+  for (const button of practiceButtons) button.disabled = busy;
+  for (const button of skillRow.children) {
+    const skill = button.dataset.skill;
+    const level = state?.skills[skill] ?? 0;
+    button.querySelector('span').textContent = `${skills[skill]} ${level}/2`;
+    button.disabled = busy || level === 2;
+  }
+  if (state) timing.style.setProperty('--window-start', `${state.window.from / state.window.until * 100}%`);
+  timing.hidden = state?.stage !== 'bite' || failed;
+  form.hidden = !token || state?.stage !== 'done' || state.score <= 0 || state.submitted || failed;
+  log.hidden = !state?.discoveries.length;
+  log.querySelector('ul').replaceChildren(...(state?.discoveries ?? []).map(entry => {
+    const li = document.createElement('li');
+    li.textContent = `${entry.fish} · ${lures[entry.lure]}`;
+    return li;
+  }));
+  updateSearch();
+}
+
+async function begin(practice = false) {
+  const fromAction = document.activeElement === action;
+  dismissCelebration();
+  clearBite();
+  stopCountdown();
+  jigActivation = false;
+  practiceError = undefined;
+  const current = ++generation;
+  busy = true;
+  failed = false;
+  token = null;
+  state = null;
+  board.hidden = true;
+  removeTarget();
+  render();
+  let serverNow;
+  if (endpoint && !practice) {
+    try {
+      const opened = await api('start', {}, null);
+      if (current !== generation) return;
+      ({ token, state, serverNow } = opened);
+    } catch {
+      if (current !== generation) return;
+    }
+  }
+  if (!state) {
+    lure = 'jig';
+    run = start(Date.now(), undefined, undefined, { practice: true });
+    state = publicRun(run);
+  }
+  busy = false;
+  placeFish();
+  window.scrollTo({ top: 0, behavior: 'instant' });
+  render();
+  syncCountdown(serverNow);
+  if (!token && fromAction && document.activeElement === document.body) action.focus({ preventScroll: true });
+}
+
+function enter(event) {
+  event.preventDefault();
+  launch = event.currentTarget;
+  previousScroll = window.scrollY;
+  tray.hidden = false;
+  document.body.classList.add('fishing');
+  exit.focus({ preventScroll: true });
+  begin();
+}
+
+function leave() {
+  dismissCelebration();
+  generation++;
+  clearBite();
+  stopCountdown();
+  removeTarget();
+  tray.hidden = bobber.hidden = true;
+  document.body.classList.remove('fishing');
+  window.scrollTo({ top: previousScroll, behavior: 'instant' });
+  launch.focus({ preventScroll: true });
+}
+
+document.querySelectorAll('.game-entry, .fish-entry').forEach(entry => entry.addEventListener('click', enter));
+exit.addEventListener('click', leave);
+document.addEventListener('keydown', event => {
+  if (tray.hidden) return;
+  if (event.key === 'Escape') return leave();
+  if (Object.hasOwn(scrollKeys, event.key) && !event.defaultPrevented
+    && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey
+    && !event.target.closest('input')) {
+    // Keep a page step inside the visible water and avoid a scroll that outlasts the game.
+    const step = event.key.startsWith('Arrow') ? 48
+      : event.key.startsWith('Page') ? tray.getBoundingClientRect().top * .85
+      : document.documentElement.scrollHeight;
+    event.preventDefault();
+    window.scrollBy({ top: step * scrollKeys[event.key], behavior: 'instant' });
+    updateSearch();
+  }
+  if (!token && event.repeat && ['Enter', ' '].includes(event.key) && tray.contains(event.target)) {
+    event.preventDefault();
+  }
+});
+window.addEventListener('scroll', updateSearch, { passive: true });
+window.addEventListener('resize', () => {
+  positionLine();
+  updateSearch();
+});
+window.visualViewport?.addEventListener('scroll', updateSearch, { passive: true });
+window.visualViewport?.addEventListener('resize', updateSearch);
+log.addEventListener('toggle', updateSearch);
+slots.forEach(slot => slot.addEventListener('click', () => {
+  lure = slot.dataset.lure;
+  render();
+}));
+
+async function perform(move, input = {}) {
+  const prior = state;
+  const focused = document.activeElement;
+  const current = generation;
+  if (move === 'jig') {
+    bobber.classList.remove('is-jigging');
+    void bobber.offsetWidth;
+    bobber.classList.add('is-jigging');
+    target?.classList.remove('is-curious');
+    if (target) void target.offsetWidth;
+    target?.classList.add('is-curious');
+  }
+  busy = true;
+  render();
+  const sentAt = performance.now();
+  const appliedAt = Date.now();
+  let serverNow;
+  try {
+    const result = token
+      ? await api(move, { ...input, version: state.version })
+      : { state: apply(run, { action: move, ...input }, appliedAt) };
+    if (current !== generation) return;
+    ({ state, serverNow } = result);
+    practiceError = undefined;
+    if (!token && move === 'jig' && state.stage === 'seek') {
+      state = { ...state, cue: 'It looked. Try a different lure and jig again.' };
+    }
+    if (state.stage === 'landed' && prior.stage !== 'landed') {
+      if (!state.practice) celebrateCatch(state.index + 2);
+      else if (state.practice.xp === practiceLevelXp) celebrateCatch(state.practice.level, true);
+    }
+    if (state.index !== prior.index) dismissCelebration();
+    if (state.stage === 'missed' || (state.stage === 'done' && prior.stage !== 'landed')) swimAway();
+    else if (state.index !== prior.index) placeFish();
+    if (state.stage === 'bite') {
+      biteAt = token ? sentAt : appliedAt;
+      clearBite();
+      animateBite();
+    } else if (prior.stage === 'bite') {
+      clearBite();
+    }
+  } catch (error) {
+    if (current !== generation) return;
+    if (token) failed = true;
+    else {
+      practiceError = error.message;
+      if (appliedAt >= run.expires) {
+        state = { ...state, stage: 'done', fish: null, fight: null };
+        clearBite();
+        removeTarget();
+      }
+    }
+  }
+  busy = false;
+  render();
+  syncCountdown(serverNow);
+  if (focused === action || (move === 'upgrade' && skillRow.hidden && practiceChoice.hidden)) {
+    action.focus({ preventScroll: true });
+  }
+  if (focused === loosen) (loosen.hidden ? action : loosen).focus({ preventScroll: true });
+}
+
+loosen.addEventListener('click', () => perform('loosen'));
+
+action.addEventListener('pointerdown', event => {
+  if (event.isPrimary && event.button === 0) jigActivation = state?.stage === 'seek';
+});
+action.addEventListener('pointercancel', () => { jigActivation = false; });
+action.addEventListener('keydown', event => {
+  if (!event.repeat && ['Enter', ' '].includes(event.key)) jigActivation = state?.stage === 'seek';
+});
+action.addEventListener('click', () => {
+  const startedAsJig = jigActivation;
+  jigActivation = false;
+  if (startedAsJig && ['missed', 'done'].includes(state.stage)) return;
+  if (failed || state.stage === 'done') return begin(failed);
+  if (state.stage === 'seek' && !fishInView()) return updateSearch();
+  const move = { seek: 'jig', bite: 'reel', fight: 'lift', landed: 'next', missed: 'next' }[state.stage];
+  return perform(move, move === 'jig' ? { lure } : {});
+});
+for (const button of [...skillRow.children, ...practiceButtons]) {
+  button.addEventListener('click', () => perform('upgrade', { skill: button.dataset.skill }));
+}
+
+form.addEventListener('submit', async event => {
+  event.preventDefault();
+  const current = generation;
+  const submit = form.querySelector('button');
+  submit.disabled = true;
+  try {
+    const result = await api('submit', { nickname: new FormData(form).get('nickname'), version: state.version });
+    if (current !== generation) return;
+    state = result.state;
+    board.replaceChildren(...result.board.map(row => {
+      const li = document.createElement('li');
+      li.textContent = `${row.nickname} · ${row.score} pts`;
+      return li;
+    }));
+    board.hidden = false;
+    render();
+    status.textContent = 'Score posted.';
+  } catch {
+    if (current === generation) status.textContent = 'Score could not be confirmed. Try posting again.';
+  } finally {
+    submit.disabled = false;
+  }
+});
