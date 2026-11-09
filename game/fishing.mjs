@@ -2270,8 +2270,8 @@ let skillsRelease, skillsOpener, skillsSaving = false;
 const betweenOutings = () => tray.hidden || state?.stage === 'done';
 function renderCampaignSkills(message = '') {
   const progress = campaignProgress(profile);
-  skillsDialog.innerHTML = `<h2>Campaign Skills</h2><p>Level ${progress.level} · ${progress.xp} XP${progress.nextXp ? ` / ${progress.nextXp} for the next level` : ' · Maximum level'} · ${progress.points} skill points saved</p>
-    <p>Choose line timing or lure work. Each level gained earns one point. Techniques apply to your next outing.</p>
+  skillsDialog.innerHTML = `<h2>Campaign Skills</h2><p>Level ${progress.level} · ${progress.xp} XP${progress.nextXp ? ` / ${progress.nextXp} for the next level` : ' · Maximum level'} · ${progress.points} skill point${progress.points === 1 ? '' : 's'} saved</p>
+    <p>Each level you gain earns one skill point. Changes to Drilling take effect on your next fishing day.</p>
     ${[2, 4].map(level => `<section class="fishing-skill-level"><h3>Level ${level}</h3>${campaignTechniques.filter(node => node.level === level).map(node => {
       const { status } = techniqueState(profile, node.id);
       const prerequisite = campaignTechniques.find(item => item.id === node.requires);

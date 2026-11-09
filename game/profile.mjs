@@ -22,9 +22,10 @@ export const shopItems = [
 export const campaignXpLevels = [0, 10, 40, 90, 160, 260, 400, 600, 850, 1200];
 export const campaignTechniques = [
   { id: 'line-control-1', name: 'Line Control I', level: 2, cost: 1, effect: '350 ms more to set any hook. Paid Line Control already grants this rank.', path: 'control', rank: 1 },
-  { id: 'lure-work-1', name: 'Lure Work I', level: 2, cost: 1, effect: 'Set the hook 125 ms sooner; one extra wrong-lure jig before a fish spooks.', path: 'lure', rank: 1 },
+  { id: 'lure-work-1', name: 'Lure Work I', level: 2, cost: 1, effect: 'The hook window opens 125 ms earlier after a bite.', path: 'lure', rank: 1 },
+  { id: 'drilling-1', name: 'Drilling', level: 2, cost: 1, effect: 'Open 2 new holes per day, starting the next day.', path: 'drilling', rank: 1 },
   { id: 'line-control-2', name: 'Line Control II', level: 4, cost: 2, requires: 'line-control-1', effect: '700 ms more to set any hook in total.', path: 'control', rank: 2 },
-  { id: 'lure-work-2', name: 'Lure Work II', level: 4, cost: 2, requires: 'lure-work-1', effect: 'Set the hook 250 ms sooner; two extra wrong-lure jigs.', path: 'lure', rank: 2 },
+  { id: 'lure-work-2', name: 'Lure Work II', level: 4, cost: 2, requires: 'lure-work-1', effect: 'The hook window opens 250 ms earlier after a bite.', path: 'lure', rank: 2 },
 ];
 export function campaignProgress(profile) {
   const xp = Object.values(profile?.awards ?? {}).reduce((sum, value) => sum + (Number.isSafeInteger(value) && value > 0 ? value : 0), 0);
@@ -235,8 +236,9 @@ function updateDay(profile, { type, dayId, cellId }) {
   const { day } = profile;
   if (type === 'begin-day') {
     if (day) return { profile, status: 'day-current' };
+    const allowance = techniqueState(profile, 'drilling-1').status === 'learned' ? 2 : 1;
     return {
-      profile: { ...profile, revision: profile.revision + 1, day: { id: crypto.randomUUID(), allowance: 1, opened: [] } },
+      profile: { ...profile, revision: profile.revision + 1, day: { id: crypto.randomUUID(), allowance, opened: [] } },
       status: 'day-started',
     };
   }
