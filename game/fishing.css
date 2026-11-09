@@ -976,3 +976,8 @@ body[data-reduced] .fishing-auger-scene svg { transition: none; transform: none;
 .fishing-shop [data-shop-resume] { border-color: #e5bc70; }
 @media (max-width: 599px) { .fishing-shop form button { padding: 5px 8px; font-size: .8rem; } }
 @media (max-height: 420px) { .fishing-frame-footer { padding-top: 5px; margin-top: 5px; } }
+.fishing-catch-popup [data-bryan-video] { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; color: #bcebf3; }
+.fishing-catch-popup[open] { display: flex; flex-direction: column; overflow: hidden; }
+.fishing-catch-popup > header, .fishing-catch-popup > footer { flex-shrink: 0; }
+.fishing-catch-popup > footer { position: static; }
+.fishing-catch-popup [data-reward-body] { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }

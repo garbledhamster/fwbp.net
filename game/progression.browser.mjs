@@ -29,12 +29,14 @@ await withBrowser(async browser => {
   await page.locator('[data-skill-message]').filter({ hasText: 'Technique learned' }).waitFor();
   await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');
+  const sizeRoll = viewport.width === 1200 ? .4 : viewport.width === 320 ? .75 : .95;
+  await page.evaluate(sizeRoll => { const seed = Array(6).fill(0).flatMap(() => [.05, .2, .5, sizeRoll, .1]); let i = 0; Math.random = () => seed[i++ % seed.length]; }, sizeRoll);
   await enter('Campaign');
   await findFish();
   await press(action); await tick(700); await press(action); await reelToHole(); await press(action);
   const popup = page.locator('.fishing-catch-popup');
   await popup.waitFor();
-  assert.match(await popup.textContent(), /Bronze|Silver|Gold/);
+  assert.match(await popup.locator('.fishing-reward-quality').textContent(), new RegExp(viewport.width === 1200 ? 'Bronze' : viewport.width === 320 ? 'Silver' : 'Gold'));
   assert.match(await popup.textContent(), /XP/);
   await page.screenshot({ path: `../../evidence/progression/catch-${viewport.width}x${viewport.height}.png` });
   const bounds = await popup.boundingBox();

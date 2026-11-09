@@ -55,3 +55,13 @@ test('lure work changes hook timing and forgiveness while other modes stay uncha
   rules.apply(run, { action: 'jig', lure: 'spoon' }, 2200);
   assert.equal(run.stage, 'missed');
 });
+
+test('carried bait is snapshotted and keeps the shared Ranked lure contract', () => {
+  const bait = { lure: 'jig', windowMs: 150 };
+  const run = rules.start(1000, () => .05, undefined, { campaign: { baits: [bait] } });
+  bait.windowMs = 9999;
+  assert.equal(rules.publicRun(run).window.until, 2250);
+  const ranked = rules.start(1000, () => .05);
+  assert.throws(() => rules.apply(ranked, { action: 'jig', lure: 'live-minnow' }, 1300));
+  assert.equal(rules.publicRun(ranked).window.until, 2100);
+});
