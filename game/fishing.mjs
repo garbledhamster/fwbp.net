@@ -1,7 +1,7 @@
 import { openCampaignMap, mapCells, firstShoreHole, confirmEndAttempt } from './campaign-map.mjs';
 import { createSuspensionClock } from './suspension.mjs';
-import { moveToHole, selectHoleFish, abandonHoleFish, advanceLineFight, apply, campaignAreas, campaignDepthBand, campaignPhase, lakes, lures, practiceLevelXp, practiceSkills, publicRun, skills, start, starterArea } from './rules.mjs?v=connected-rpg';
-import { applyProfile, campaignMilestone, loadProfile, shopItems } from './profile.mjs?v=connected-rpg';
+import { catchQuality, moveToHole, selectHoleFish, abandonHoleFish, advanceLineFight, apply, campaignAreas, campaignDepthBand, campaignPhase, lakes, lures, practiceLevelXp, practiceSkills, publicRun, skills, start, starterArea } from './rules.mjs?v=connected-rpg';
+import { campaignProgress, campaignTraining, campaignTechniques, techniqueState, shopAvailability, applyProfile, campaignMilestone, loadProfile, shopItems } from './profile.mjs?v=connected-rpg';
 import { lureTip } from './species-catalog.mjs';
 import { openYourLake } from './collection.mjs';
 import { renderSpeciesVideo } from './species-video.mjs';
@@ -57,6 +57,7 @@ picker.innerHTML = `
     <button type="button" data-mode="campaign" data-area="${reefArea}" aria-describedby="reef-description">${campaignAreas[reefArea].name}</button>
     <p id="reef-description">${reefRequirement}</p>
     <button type="button" data-open-shop aria-describedby="shop-description">Tackle shop</button>
+    <button type="button" data-open-skills>Skills</button><p>Spend or reset Campaign skill points between outings.</p>
     <p id="shop-description">Spend coins and choose your gear between outings.</p>
     <button type="button" data-mode="practice" aria-describedby="practice-description">Practice</button>
     <p id="practice-description">Practice with starter gear. Two catches reach Level 2: choose a longer hook window or an extra first clear pull.</p>
@@ -112,6 +113,7 @@ pause.innerHTML = `
     <p>Your fish and the outing clock will wait here.</p>
     <div class="fishing-menu-actions">
       <button type="button" data-action="resume">Resume fishing</button>
+      <button type="button" data-action="skills">Skills</button>
       <button type="button" data-action="gear">${icon('gear')} Gear</button>
       <button type="button" data-action="shop">${icon('shop')} Tackle shop</button>
       <button type="button" data-action="your-lake" data-open-your-lake>${icon('your-lake')} Your Lake</button>
@@ -206,7 +208,7 @@ line.classList.add('fishing-line');
 line.setAttribute('hidden', '');
 line.setAttribute('aria-hidden', 'true');
 line.innerHTML = `<path class="fishing-line-path"/><g class="fishing-line-rig">
-  <use width="24" height="24"/><circle class="fishing-line-eye" r="2.6"/>
+  <use width="24" height="24"/><path data-rig-bait hidden d="M3 6q8 2 3 7t5 6" fill="none" stroke="#efc389" stroke-width="3"/><circle class="fishing-line-eye" r="2.6"/>
 </g><g class="fishing-line-callout" hidden>
   <path d="M-4 -3l-13 -12h-8"/><text x="-29" y="-12" text-anchor="end"></text>
 </g>`;
@@ -433,7 +435,7 @@ function stopOutingClock() {
 }
 
 const coins = amount => `${amount} ${amount === 1 ? 'coin' : 'coins'}`;
-const shopLabels = { line: 'Fishing line', hook: 'Hooks', training: 'Training', license: 'Licenses' };
+const shopLabels = { bait: 'Bait', line: 'Fishing line', hook: 'Hooks', training: 'Training', license: 'Licenses' };
 const shopBalance = shop.querySelector('[data-shop-balance]');
 const shopMessage = shop.querySelector('[data-shop-message]');
 const shopList = shop.querySelector('[data-shop-items]');
@@ -534,14 +536,15 @@ function shopItem(item, inventory = false) {
   const equipped = profile.equipped[item.category] === item.id;
   const canEquip = Object.hasOwn(profile.equipped, item.category);
   const shortfall = item.cost - profile.coins;
+  const availability = shopAvailability(profile, item);
   const action = (type, label, disabled = false) =>
     `<button type="button" data-shop-action="${type}" aria-label="${label} ${item.name}" ${disabled ? 'disabled' : ''}>${label}</button>`;
   return `<li data-item="${item.id}" tabindex="-1">
-    <div><strong>${icon(item.category)} ${item.name}</strong><p>${item.effect}</p>
+    <div><strong>${icon(item.category)} ${item.name}</strong><p>${item.effect}</p><p>Level ${availability.level}${availability.locked ? ' · Locked' : ''}</p>
       <button type="button" data-item-details="${item.id}">Details<span class="fishing-announcement"> for ${item.name}</span></button></div>
     <div class="fishing-shop-action">
       <span>${owned ? equipped ? 'Equipped' : 'Owned' : coins(item.cost)}</span>
-      ${owned ? canEquip && !equipped ? action('equip', 'Equip') : '' : inventory ? `<button type="button" data-view-shop="${item.id}">View in shop</button>` : action('buy', 'Buy', shortfall > 0)}
+      ${owned ? canEquip && !equipped ? action('equip', 'Equip') : '' : inventory ? `<button type="button" data-view-shop="${item.id}">View in shop</button>` : action('buy', 'Buy', shortfall > 0 || availability.locked)}
     </div>
   </li>`;
 }
@@ -635,6 +638,7 @@ pause.addEventListener('click', async event => {
   if (destination === 'resume') pause.close();
   if (destination === 'back') { const parent = pausePanel; showPausePanel('menu'); pause.querySelector(`[data-action="${parent}"]`)?.focus(); }
   if (destination === 'leave') { pause.close(); leave(); }
+  if (destination === 'skills') void openCampaignSkills();
   if (destination === 'controls') showPausePanel('controls');
   if (destination === 'shop') void openShop();
   if (destination === 'your-lake') openOutingLake();
@@ -942,6 +946,9 @@ function drawFishingLine(eye, slack = 0, fight) {
   linePath.setAttribute('d', `M${x0} ${y0} Q${x0 + slack} ${y0 + (y - y0) * .72} ${x} ${y}`);
   lineRig.setAttribute('transform', `translate(${x} ${y})`);
   const [lureX, lureY] = lureEyes[lure];
+  const carriedBait = mode === 'campaign' && run?.campaign?.baits?.find(item => item.lure === lure);
+  lineRig.querySelector('[data-rig-bait]').toggleAttribute('hidden', !carriedBait || Boolean(eye));
+  lineRig.dataset.bait = carriedBait?.id ?? '';
   lineLure.setAttribute('href', `./assets/tackle-icons.svg#${lure}`);
   lineLure.setAttribute('x', -lureX);
   lineLure.setAttribute('y', -lureY);
@@ -1081,6 +1088,19 @@ function renderDialogue(linePhysics) {
   if (moving) {
     if (dialogueAction) host.append(action);
     else host.prepend(action);
+  }
+  let shopTip = speech.querySelector('[data-snap-shop]');
+  const recommendation = mode === 'campaign' && state?.snap && shopItems.filter(item => item.category === 'line' && item.strength >= state.snap.tension && item.strength > state.snap.lineStrength).sort((a, b) => a.strength - b.strength)[0];
+  if (recommendation && !shopTip) {
+    shopTip = document.createElement('button');
+    shopTip.type = 'button';
+    shopTip.dataset.snapShop = '';
+    shopTip.addEventListener('click', () => void openShop({ itemId: shopTip.dataset.itemId }));
+    speech.append(shopTip);
+  }
+  if (shopTip) {
+    shopTip.hidden = !recommendation;
+    if (recommendation) { shopTip.dataset.itemId = recommendation.id; shopTip.textContent = `See ${recommendation.name.toLowerCase()}`; }
   }
   tackleRack.hidden = outcome;
   if (restoreFocus) action.focus({ preventScroll: true });
@@ -1304,6 +1324,7 @@ function renderStudiedCue() {
 function render() {
   renderStudiedCue();
   renderCatchActions();
+  renderSavedCatch();
   const campaign = mode === 'campaign';
   const linePhysics = usesLinePhysics();
   const modeName = { campaign: 'Campaign', practice: 'Practice', ranked: 'Ranked' }[mode];
@@ -1316,7 +1337,7 @@ function render() {
   waterName.textContent = state ? `${state.lake}${areaName}` : 'Fishing beneath the ice';
   scoreProgress.hidden = !state;
   runProgress.textContent = state
-    ? `${modeName} · ${state.score} pts · ${Math.min(state.index + 1, state.count)}/${state.count}` : '';
+    ? `${modeName}${campaign && profile ? ` · Level ${campaignProgress(profile).level}` : ''} · ${state.score} pts · ${Math.min(state.index + 1, state.count)}/${state.count}` : '';
   const tight = linePhysics && state?.fight?.tight === true;
   const pullUp = linePhysics ? state?.fight?.pullUp : state?.fight?.pulls === 1;
   const practiceBite = !token && state?.stage === 'bite';
@@ -1327,11 +1348,11 @@ function render() {
   else if (practiceError) cue = practiceError;
   else if (linePhysics && state?.reaction === 'spooked') cue = 'We spooked it. There it goes.';
   else if (linePhysics && state?.reaction === 'timer') {
-    cue = 'The fish swam away.';
+    cue = 'The fish swam away. Start your jig sooner, then watch for the hook window.';
     if (state.stage === 'done') detail = 'Outing complete.';
   } else if (linePhysics && state?.snap) {
     cue = 'Ah, the line snapped.';
-    detail = `${state.snap.tension} lb on ${state.snap.lineStrength} lb line.`;
+    detail = `${state.snap.tension} lb exceeded your ${state.snap.lineStrength} lb line. Loosen when the line tightens.${state.snap.lineStrength < 12 && state.snap.tension <= 12 ? ' Stronger line holds up to 12 lb next outing.' : state.snap.lineStrength < 18 && state.snap.tension <= 18 ? ' Pro line holds up to 18 lb next outing.' : ' Ease the line before the next pull.'}`;
   } else if (state?.stage === 'landed' && cue.endsWith('points')) {
     if (campaign && Number.isFinite(catchReward)) cue += ` · +${coins(catchReward)}`;
     if (campaign && campaignMilestoneNotice) cue += '. Lake Regular! Two Campaign catches saved.';
@@ -1387,6 +1408,10 @@ function render() {
     pullsText.textContent = `${tension >= 60 ? 'Tight line' : 'Line clear'} · ${pulls} to land`;
   }
   slots.forEach(slot => {
+    const bait = mode === 'campaign' && run?.campaign?.baits?.find(item => item.lure === slot.dataset.lure);
+    slot.title = bait ? `${lures[slot.dataset.lure]} with ${bait.name}` : lures[slot.dataset.lure];
+    slot.setAttribute('aria-label', slot.title);
+    slot.querySelector('span').textContent = bait ? `${lures[slot.dataset.lure]} + bait` : lures[slot.dataset.lure];
     slot.hidden = !linePhysics && !pressure.hidden;
     slot.disabled = busy || state?.stage !== 'seek';
     slot.setAttribute('aria-pressed', String(slot.dataset.lure === lure));
@@ -1490,11 +1515,12 @@ async function begin(selectedMode = mode, selectedArea = campaignArea) {
     const line = equippedLine?.windowMs ? { lure: equippedLine.lure, windowMs: equippedLine.windowMs } : undefined;
     const equippedHook = shopItems.find(item => item.id === equipment?.equipped.hook);
     const hook = equippedHook?.windowMs ? { lure: equippedHook.lure, windowMs: equippedHook.windowMs } : undefined;
-    const lineControlRank = shopItems.find(item => item.id === 'line-control' && equipment?.owned.includes(item.id))?.rank;
+    const { lineControlRank, lureWorkRank } = campaignTraining(equipment);
+    const baits = shopItems.filter(item => item.category === 'bait' && equipment?.owned.includes(item.id));
     const elapsedMs = mode === 'campaign' ? profile?.elapsedMs ?? 0 : 0;
     run = start(outingTime.dateNow(), undefined, undefined, {
       practice: mode === 'practice',
-      campaign: mode === 'campaign' ? { hole: mapCells.find(cell => cell.id === selectedHole), area: campaignArea, lineStrength, line, hook, lineControlRank, elapsedMs } : undefined,
+      campaign: mode === 'campaign' ? { hole: mapCells.find(cell => cell.id === selectedHole), area: campaignArea, lineStrength, line, hook, lineControlRank, lureWorkRank, baits, elapsedMs } : undefined,
     });
     state = publicRun(run);
     startOutingClock(elapsedMs);
@@ -1763,6 +1789,7 @@ slots.forEach(slot => slot.addEventListener('click', () => {
   if (gameBlocked() || slot.disabled || state?.stage !== 'seek') return;
   lure = slot.dataset.lure;
   render();
+  positionLine();
 }));
 
 async function saveCatchCoins(current) {
@@ -1777,7 +1804,7 @@ async function saveCatchCoins(current) {
     if (result.milestoneReached) campaignMilestoneNotice = true;
     catchReward = mode === 'campaign' ? result.earned ?? profile.awards[key] : undefined;
     catchSaveFailed = false;
-    settledCatch = { key, speciesId };
+    settledCatch = { key, speciesId, xp: mode === 'campaign' ? profile.awards[key] : 0, level: campaignProgress(profile).level };
     document.dispatchEvent(new CustomEvent('fishing:catch-saved', { detail: { mode, key, speciesId, profile, milestoneReached: result.milestoneReached === true } }));
   } catch {
     if (current === generation) catchSaveFailed = true;
@@ -2006,3 +2033,84 @@ function renderCandidates() {
     scenes[fish.depth].append(button);
   }
 }
+
+
+// Campaign panels share the native-dialog pause stack used by Gear and Your Lake.
+const skillsDialog = document.createElement('dialog');
+skillsDialog.className = 'fishing-picker fishing-frame fishing-campaign-skills';
+skillsDialog.setAttribute('aria-label', 'Campaign Skills');
+document.body.append(skillsDialog);
+let skillsRelease, skillsOpener, skillsSaving = false;
+const betweenOutings = () => tray.hidden || state?.stage === 'done';
+function renderCampaignSkills(message = '') {
+  const progress = campaignProgress(profile);
+  skillsDialog.innerHTML = `<h2>Campaign Skills</h2><p>Level ${progress.level} · ${progress.xp} XP${progress.nextXp ? ` / ${progress.nextXp} for the next level` : ' · Maximum level'} · ${progress.points} skill points saved</p>
+    <p>Choose line timing or lure work. Each level gained earns one point. Techniques apply to your next outing.</p>
+    ${[2, 4].map(level => `<section class="fishing-skill-level"><h3>Level ${level}</h3>${campaignTechniques.filter(node => node.level === level).map(node => {
+      const { status } = techniqueState(profile, node.id);
+      const prerequisite = campaignTechniques.find(item => item.id === node.requires);
+      return `<article><h4>${node.name}</h4><p>${node.effect}</p><p>${node.cost} point${node.cost === 1 ? '' : 's'}${prerequisite ? ` · Requires ${prerequisite.name}` : ''}</p><button type="button" data-technique="${node.id}" ${status !== 'available' || !betweenOutings() ? 'disabled' : ''}>${status === 'learned' ? 'Learned' : status === 'locked' ? 'Locked' : status === 'unaffordable' ? 'Save more points' : 'Learn'}</button></article>`;
+    }).join('')}</section>`).join('')}
+    <p>${betweenOutings() ? 'Reset is free. Your level, purchases and paid Line Control stay with you.' : 'Finish or leave this outing to spend or reset points.'}</p>
+    <p data-skill-message role="status">${message}</p><footer><button type="button" data-reset-skills ${!betweenOutings() || !profile?.techniques?.length ? 'disabled' : ''}>Reset points for free</button><button type="button" data-skills-close>Back</button></footer>`;
+}
+async function openCampaignSkills() {
+  if (skillsDialog.open) return;
+  skillsOpener = document.activeElement;
+  skillsRelease = acquireSuspension();
+  skillsDialog.innerHTML = '<p>Opening your skills…</p><button data-skills-close>Back</button>';
+  skillsDialog.showModal();
+  try { profile = await loadProfile(); if (skillsDialog.open) renderCampaignSkills(); }
+  catch { skillsDialog.innerHTML = '<p>Couldn’t read your skills. Close and try again.</p><button data-skills-close>Back</button>'; }
+}
+picker.querySelector('[data-open-skills]').addEventListener('click', openCampaignSkills);
+skillsDialog.addEventListener('close', () => { skillsRelease?.(); skillsRelease = undefined; skillsOpener?.focus({ preventScroll: true }); });
+skillsDialog.addEventListener('cancel', event => { event.stopPropagation(); if (skillsSaving) event.preventDefault(); });
+skillsDialog.addEventListener('click', async event => {
+  if (skillsSaving) return;
+  if (event.target.closest('[data-skills-close]')) return skillsDialog.close();
+  const button = event.target.closest('[data-technique], [data-reset-skills]');
+  if (!button || button.disabled) return;
+  skillsSaving = true;
+  const id = button.dataset.technique;
+  skillsDialog.querySelectorAll('button').forEach(button => { button.disabled = true; });
+  try {
+    const result = await applyProfile({ type: id ? 'learn' : 'reset-skills', id, revision: profile.revision, betweenOutings: betweenOutings() });
+    profile = result.profile;
+    renderCampaignSkills(({ learned: 'Technique learned.', reset: 'Points returned. Choose a new path.', stale: 'Your skills changed in another tab. Check your points.' })[result.status] ?? 'Finish this outing before changing skills.');
+  } catch { renderCampaignSkills('Couldn’t save your skills. Try again.'); }
+  finally { skillsSaving = false; skillsDialog.querySelector(id ? `[data-technique="${id}"]` : '[data-reset-skills]')?.focus(); }
+});
+
+const catchPopup = document.createElement('dialog');
+catchPopup.className = 'fishing-picker fishing-frame fishing-catch-popup';
+catchPopup.setAttribute('aria-labelledby', 'fishing-reward-title');
+document.body.append(catchPopup);
+let catchRelease;
+function renderSavedCatch() {
+  if (mode !== 'campaign' || state?.stage !== 'landed' || busy || catchSaveFailed || !settledCatch || catchPopup.dataset.key === settledCatch.key) return;
+  const fish = state.catch;
+  const quality = catchQuality(settledCatch.speciesId, fish.length);
+  catchPopup.dataset.key = settledCatch.key;
+  catchPopup.dataset.quality = quality.toLowerCase();
+  catchPopup.innerHTML = `<header><p>Catch saved</p><h2 id="fishing-reward-title">${fish.name}</h2></header><div class="fishing-reward-art ${fish.gilded ? 'gilded' : ''}">${fishSvg(state.fish.art)}<span aria-hidden="true" class="fishing-reward-sparks">✦ ✧ ✦</span></div>
+    <p class="fishing-reward-quality">${quality} · ${fish.length} inches</p><p>${fish.rarity} species${fish.grade === 'Record' ? ' · Record' : ''}${fish.gilded ? ' · Gilded' : ''}</p>
+    <p>+${coins(catchReward)} · +${settledCatch.xp} XP · Level ${settledCatch.level}</p><p>${settledCatch.level === 2 ? 'Marnie: Your next gear and bait are available in the shop.' : settledCatch.level === 10 ? 'Marnie: Pro gear and live bait are available in the shop.' : 'Your catch is safe in Your Lake.'}</p>
+    <div data-reward-video></div><footer><button type="button" data-reward-lake>View in Your Lake</button><button type="button" data-reward-next>${state.index + 1 === state.count ? 'Finish outing' : 'Next fish'}</button><button type="button" data-reward-close>Back to catch</button></footer>`;
+  outingVideo(settledCatch.speciesId, catchPopup.querySelector('[data-reward-video]'));
+  catchRelease = acquireSuspension();
+  catchPopup.showModal();
+}
+catchPopup.addEventListener('cancel', event => event.stopPropagation());
+catchPopup.addEventListener('close', () => { catchRelease?.(); catchRelease = undefined; action.focus({ preventScroll: true }); });
+catchPopup.addEventListener('click', event => {
+  if (event.target.closest('[data-reward-lake]')) {
+    openOutingLake(settledCatch.speciesId);
+    document.querySelector('#your-lake [data-close]')?.replaceChildren(document.createTextNode('Back to catch'));
+  }
+  if (event.target.closest('[data-reward-close]')) catchPopup.close();
+  if (event.target.closest('[data-reward-next]')) {
+    catchPopup.addEventListener('close', () => { void perform('next'); }, { once: true });
+    catchPopup.close();
+  }
+});

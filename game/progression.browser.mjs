@@ -1,0 +1,53 @@
+import assert from 'node:assert/strict';
+import { withBrowser, practicePage } from './browser-qa.mjs';
+await withBrowser(async browser => {
+  for (const viewport of [{ width: 1200, height: 720 }, { width: 320, height: 720 }, { width: 720, height: 320 }]) {
+  const qa = await practicePage(browser, { viewport, mobile: viewport.width < 900 });
+  const { page, enter, findFish, press, action, tick, reelToHole } = qa;
+  const result = await page.evaluate(async () => {
+    const m = await import('./game/profile.mjs?v=connected-rpg');
+    let saved = await m.loadProfile();
+    await m.applyProfile({ type: 'award', key: 'legacy:0', outcome: 'landed', catch: { points: 100 }, speciesId: 'perch' });
+    saved = await m.loadProfile();
+    const before = m.campaignProgress(saved);
+    const learned = await m.applyProfile({ type: 'learn', id: 'line-control-1', revision: saved.revision, betweenOutings: true });
+    const stale = await m.applyProfile({ type: 'learn', id: 'lure-work-1', revision: saved.revision, betweenOutings: true });
+    const blocked = await m.applyProfile({ type: 'reset-skills', revision: learned.profile.revision, betweenOutings: false });
+    const reset = await m.applyProfile({ type: 'reset-skills', revision: learned.profile.revision, betweenOutings: true });
+    return { before, learned, stale, blocked, reset, after: m.campaignProgress(reset.profile) };
+  });
+  assert.equal(result.learned.status, 'learned');
+  assert.equal(result.stale.status, 'stale');
+  assert.equal(result.blocked.status, 'outing-active');
+  assert.equal(result.reset.profile.coins, result.learned.profile.coins);
+  assert.equal(result.after.points, result.before.points);
+  await page.getByRole('button', { name: 'Play fishing game', exact: true }).or(page.getByRole('link', { name: 'Fishing with Bryan, start fishing' })).click();
+  await page.locator('[data-open-skills]').click();
+  await page.getByRole('dialog', { name: 'Campaign Skills' }).waitFor();
+  await page.screenshot({ path: `../../evidence/progression/skills-${viewport.width}x${viewport.height}.png` });
+  await page.locator('[data-technique="lure-work-1"]').click();
+  await page.locator('[data-skill-message]').filter({ hasText: 'Technique learned' }).waitFor();
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+  await enter('Campaign');
+  await findFish();
+  await press(action); await tick(700); await press(action); await reelToHole(); await press(action);
+  const popup = page.locator('.fishing-catch-popup');
+  await popup.waitFor();
+  assert.match(await popup.textContent(), /Bronze|Silver|Gold/);
+  assert.match(await popup.textContent(), /XP/);
+  await page.screenshot({ path: `../../evidence/progression/catch-${viewport.width}x${viewport.height}.png` });
+  const bounds = await popup.boundingBox();
+  assert.ok(bounds.x >= 0 && bounds.y >= 0 && bounds.x + bounds.width <= viewport.width + 1 && bounds.y + bounds.height <= viewport.height + 1, 'catch frame fits viewport');
+  const key = await popup.getAttribute('data-key');
+  await popup.locator('[data-reward-lake]').click();
+  await page.locator('#your-lake [data-close]').click();
+  assert.equal(await popup.getAttribute('data-key'), key);
+  assert.equal(await popup.isVisible(), true);
+  await popup.locator('[data-reward-next]').click();
+  await page.waitForFunction(() => !document.querySelector('.fishing-catch-popup[open]'));
+  assert.deepEqual(qa.errors, []);
+  await page.close();
+  }
+  console.log('PASS: desktop/portrait/landscape Campaign skill transactions, saved reward popup and same-catch collection return');
+});

@@ -795,3 +795,24 @@ body[data-reduced] .fishing-auger-scene svg { transition: none; transform: none;
 .fishing-map { scroll-padding-block: 20px 100px; }
 .fishing-map-cells button { scroll-margin-block: 20px 100px; }
 .fishing-map [data-map-drill], .fishing-drill [data-drill-turn] { background: #f2bd63; color: #1d2025; border-color: #f2bd63; }
+
+/* Campaign progression and saved-catch panels use the same compact game frame. */
+.fishing-campaign-skills, .fishing-catch-popup { color: #f5ecd8; background: #142d3b; border: 5px ridge #91bbc7; border-radius: 18px; box-shadow: 0 12px 60px #000b; max-height: calc(100dvh - 24px); overflow: auto; }
+.fishing-campaign-skills h2, .fishing-campaign-skills h3, .fishing-campaign-skills h4, .fishing-catch-popup h2 { color: #fff1cc; }
+.fishing-skill-level { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.fishing-skill-level h3 { grid-column: 1 / -1; margin-bottom: 0; }
+.fishing-skill-level article { border: 1px solid #91bbc7; border-radius: 10px; padding: 12px; background: #0a1b27; }
+.fishing-skill-level h4 { margin: 0; }
+.fishing-campaign-skills footer, .fishing-catch-popup footer { position: sticky; bottom: -1px; display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 0; background: #142d3b; }
+.fishing-catch-popup { width: min(560px, calc(100vw - 20px)); text-align: center; --quality: #c48a5a; }
+.fishing-catch-popup[data-quality="silver"] { --quality: #d5e4ec; }
+.fishing-catch-popup[data-quality="gold"] { --quality: #ffd56b; }
+.fishing-reward-art { position: relative; border: 3px solid var(--quality); border-radius: 14px; background: #08212d; padding: 24px; }
+.fishing-reward-art svg { display: block; width: 100%; height: 110px; }
+.fishing-reward-quality, .fishing-reward-sparks { color: var(--quality); font-size: 1.35rem; font-weight: 800; }
+.fishing-reward-sparks { display: block; letter-spacing: 18px; animation: reward-sparks 1.6s ease-in-out 2; }
+@keyframes reward-sparks { 50% { opacity: .45; transform: translateY(-5px); } }
+@media (min-width: 900px) { .fishing-dialogue { font-size: 1.12rem; line-height: 1.45; } }
+@media (max-width: 480px) { .fishing-skill-level { grid-template-columns: 1fr; } .fishing-catch-popup { padding: 12px; } }
+@media (max-height: 420px) { .fishing-reward-art svg { height: 55px; } .fishing-reward-art { padding: 8px; } }
+@media (prefers-reduced-motion: reduce) { .fishing-reward-sparks { animation: none; } }
