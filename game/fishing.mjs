@@ -5,27 +5,47 @@ const scenes = [...document.querySelectorAll('.dive[data-dive]')].slice(0, 6);
 const lake = document.querySelector('.lake');
 const iceCeiling = lake.querySelector('.dive-ceiling');
 const icon = id => `<svg class="tackle-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="./assets/tackle-icons.svg#${id}"/></svg>`;
+const picker = document.createElement('dialog');
+picker.className = 'fishing-picker';
+picker.setAttribute('aria-labelledby', 'fishing-picker-title');
+picker.innerHTML = `
+  <h2 id="fishing-picker-title">Choose an outing</h2>
+  <div class="fishing-picker-options">
+    <button type="button" data-mode="campaign" aria-describedby="campaign-description">Campaign</button>
+    <p id="campaign-description">Fish Mille Lacs with your own tackle.</p>
+    <button type="button" data-mode="practice" aria-describedby="practice-description">Practice</button>
+    <p id="practice-description">Find fish, try lures and earn a skill for this outing.</p>
+    ${endpoint ? `<button type="button" data-mode="ranked" aria-describedby="ranked-description">Ranked</button>
+      <p id="ranked-description">Fish for a score on the public board.</p>` : ''}
+  </div>
+  <form method="dialog"><button>Back to the site</button></form>`;
 const tray = document.createElement('section');
 tray.className = 'fishing-tray';
 tray.hidden = true;
 tray.setAttribute('aria-label', 'Fishing controls');
 tray.innerHTML = `
   <div class="fishing-tray-inner">
-    <div class="fishing-row"><img class="fishing-brand" src="./assets/fwbp-logo.jpg" alt="" width="27" height="27"><strong data-score></strong><button type="button" data-exit>Exit fishing</button></div>
+    <div class="fishing-row fishing-heading"><img class="fishing-brand" src="./assets/fwbp-logo.jpg" alt="" width="27" height="27"><strong data-score></strong><button type="button" data-exit>Exit fishing</button></div>
     <p class="fishing-status" role="status"></p>
     <div class="fishing-row fishing-encounter">
       <p class="fishing-practice-progress" hidden></p>
       <p class="fishing-countdown" role="timer" hidden></p>
     </div>
     <div class="fishing-timing" aria-hidden="true" hidden><i></i></div>
-    <div class="fishing-pressure" hidden>
-      <label>Line tension <meter min="0" max="100" high="60" optimum="0"></meter></label>
-      <span data-pulls></span>
-    </div>
-    <div class="fishing-row" aria-label="Lures and action">
-      ${Object.entries(lures).map(([id, name]) => `<button type="button" data-lure="${id}">${icon(id)}<span>${name}</span></button>`).join('')}
-      <button type="button" class="fishing-action"></button>
-      <button type="button" data-loosen hidden>${icon('loosen')}<span>Loosen</span></button>
+    <div class="fishing-rack">
+      <div class="fishing-pressure" hidden>
+        <label><span>Line tension</span><meter min="0" max="100" high="60" optimum="0"></meter></label>
+        <span data-pulls></span>
+      </div>
+      <div class="fishing-row fishing-tools">
+        <div class="fishing-lures" role="group" aria-label="Lures">
+          ${Object.entries(lures).map(([id, name]) => `<button type="button" data-lure="${id}">${icon(id)}<span>${name}</span></button>`).join('')}
+        </div>
+        <div class="fishing-actions" role="group" aria-label="Fishing actions">
+          <button type="button" class="fishing-action"></button>
+          <button type="button" data-loosen hidden>${icon('loosen')}<span>Loosen</span></button>
+        </div>
+      </div>
     </div>
     <div class="fishing-row fishing-skills" hidden aria-label="Spend one skill point">
       ${Object.entries(skills).map(([id, name]) => `<button type="button" data-skill="${id}">${icon(id)}<span>${name}</span></button>`).join('')}
@@ -46,6 +66,17 @@ bobber.className = 'fishing-bobber';
 bobber.hidden = true;
 bobber.setAttribute('aria-hidden', 'true');
 lake.append(bobber);
+const line = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+line.classList.add('fishing-line');
+line.setAttribute('hidden', '');
+line.setAttribute('aria-hidden', 'true');
+line.innerHTML = `<path class="fishing-line-path"/><g class="fishing-line-rig">
+  <use width="24" height="24"/><circle class="fishing-line-eye" r="2.6"/>
+</g>`;
+lake.append(line);
+const linePath = line.querySelector('path');
+const lineRig = line.querySelector('g');
+const lineLure = line.querySelector('use');
 const celebration = document.createElement('div');
 celebration.className = 'fishing-celebration';
 celebration.hidden = true;
@@ -61,7 +92,7 @@ celebration.innerHTML = `
 const announcement = document.createElement('span');
 announcement.className = 'fishing-announcement';
 announcement.setAttribute('role', 'status');
-document.body.append(tray, celebration, announcement);
+document.body.append(picker, tray, celebration, announcement);
 
 let celebrationTimer;
 
@@ -85,6 +116,8 @@ function celebrateCatch(level, practice = false) {
 const action = tray.querySelector('.fishing-action');
 const loosen = tray.querySelector('[data-loosen]');
 const pressure = tray.querySelector('.fishing-pressure');
+const meter = pressure.querySelector('meter');
+const pullsText = pressure.querySelector('[data-pulls]');
 const timing = tray.querySelector('.fishing-timing');
 const status = tray.querySelector('[role="status"]');
 const exit = tray.querySelector('[data-exit]');
@@ -98,6 +131,7 @@ const countdown = tray.querySelector('.fishing-countdown');
 const practiceButtons = [...practiceChoice.querySelectorAll('button')];
 const slots = [...tray.querySelectorAll('[data-lure]')];
 let launch, previousScroll, run, state, token, target, busy, failed, biteAt, frame;
+let mode, rigFrame, jigAt = -Infinity;
 let countdownTimer, rankedSeekUntil, rankedServerSeekUntil, escapeTimer;
 let jigActivation = false;
 let lure = 'jig';
@@ -125,6 +159,75 @@ function positionLine() {
   const hole = iceCeiling.getBoundingClientRect();
   bobber.style.setProperty('--line-start', `${hole.top - water.top + hole.height * 20 / 110}px`);
   bobber.style.setProperty('--line-depth', `${encounter.top - water.top + encounter.height * .44}px`);
+}
+
+function campaignSearchEye(hole) {
+  const water = lake.getBoundingClientRect();
+  const top = Math.max(window.visualViewport?.offsetTop ?? 0, water.top);
+  const bottom = Math.min(tray.getBoundingClientRect().top, water.bottom);
+  return { x: hole.left + hole.width * .62, y: Math.max(water.top + 35, top + (bottom - top) * .52) };
+}
+
+// Mouth coordinates in each fish's SVG viewBox, relative to the drawn image.
+const fishMouths = {
+  perch: [16 / 172, 37 / 66], 'rock-bass': [8 / 160, 53 / 92], walleye: [14 / 172, 39 / 66],
+  pike: [7 / 230, 42 / 72], smallmouth: [8 / 172, 48 / 80], muskie: [7 / 245, 42 / 72],
+};
+const lureEyes = { jig: [8, 3], spoon: [14, 3], minnow: [4, 12] };
+
+function campaignMouth() {
+  const fish = target.getBoundingClientRect();
+  const [x, y] = fishMouths[state.fish.id];
+  return { x: fish.left + fish.width * x, y: fish.top + fish.height * y };
+}
+
+function drawCampaignLine(eye, slack = 0) {
+  const visible = !tray.hidden && mode === 'campaign' && state?.fish && !failed && state.stage !== 'landed';
+  line.toggleAttribute('hidden', !visible);
+  if (!visible) return;
+
+  // All points use the same unscaled SVG coordinate space inside the lake.
+  const water = lake.getBoundingClientRect();
+  const hole = iceCeiling.getBoundingClientRect();
+  const x0 = hole.left + hole.width * .62 - water.left;
+  const y0 = hole.top + hole.height * 20 / 110 - water.top;
+  const elapsed = (performance.now() - jigAt) / 340;
+  const bounce = elapsed < 1 ? 12 * Math.sin(Math.PI * elapsed) : 0;
+  const end = eye ?? campaignSearchEye(hole);
+  const x = end.x - water.left;
+  const y = end.y - water.top - (eye ? 0 : bounce);
+  linePath.setAttribute('d', `M${x0} ${y0} Q${x0 + slack} ${y0 + (y - y0) * .72} ${x} ${y}`);
+  lineRig.setAttribute('transform', `translate(${x} ${y})`);
+  const [lureX, lureY] = lureEyes[lure];
+  lineLure.setAttribute('href', `./assets/tackle-icons.svg#${lure}`);
+  lineLure.setAttribute('x', -lureX);
+  lineLure.setAttribute('y', -lureY);
+  lineLure.toggleAttribute('hidden', Boolean(eye));
+}
+
+function positionCampaignLine() {
+  const attached = target && ['bite', 'fight'].includes(state?.stage);
+  drawCampaignLine(attached ? campaignMouth() : undefined);
+}
+
+function jigCampaignLine() {
+  cancelAnimationFrame(rigFrame);
+  if (document.body.hasAttribute('data-reduced') || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  jigAt = performance.now();
+  const animate = () => {
+    positionCampaignLine();
+    if (performance.now() - jigAt < 340) rigFrame = requestAnimationFrame(animate);
+  };
+  rigFrame = requestAnimationFrame(animate);
+}
+
+function fishToLure() {
+  const eye = campaignSearchEye(iceCeiling.getBoundingClientRect());
+  const fish = target.getBoundingClientRect();
+  const scene = target.parentElement.getBoundingClientRect();
+  const [x, y] = fishMouths[state.fish.id];
+  target.style.setProperty('--bite-x', `calc(var(--line-x) + ${fish.width * (.5 - x)}px)`);
+  target.style.setProperty('--bite-y', `${eye.y - scene.top + fish.height * (.5 - y)}px`);
 }
 
 function setStatus(message) {
@@ -184,7 +287,8 @@ function updateSearch() {
   const inView = searching && fishInView();
   if (searching && !inView) action.setAttribute('aria-disabled', 'true');
   else action.removeAttribute('aria-disabled');
-  bobber.hidden = !state?.fish || (searching && !inView);
+  bobber.hidden = mode === 'campaign' || !state?.fish || (searching && !inView);
+  positionCampaignLine();
   if (searching) setStatus(inView ? practiceError ?? state.cue : 'Scroll up or down to find the fish.');
 }
 
@@ -205,6 +309,7 @@ function animateBite() {
   const elapsed = (token ? performance.now() : Date.now()) - biteAt;
   timing.style.setProperty('--position', `${Math.min(100, elapsed / state.window.until * 100)}%`);
   if (!token && !practiceError) showPracticeBite(elapsed);
+  if (mode === 'campaign') positionCampaignLine();
   if (elapsed < state.window.until || (!token && elapsed === state.window.until)) {
     frame = requestAnimationFrame(animateBite);
   }
@@ -244,8 +349,11 @@ function placeFish() {
 }
 
 function render() {
+  const campaign = mode === 'campaign';
+  const modeName = { campaign: 'Campaign', practice: 'Practice', ranked: 'Ranked' }[mode];
+  tray.dataset.mode = mode;
   tray.querySelector('[data-score]').textContent = state
-    ? `${state.lake} · ${token ? 'Ranked' : 'Practice'} · ${state.score} pts · ${Math.min(state.index + 1, state.count)}/${state.count}`
+    ? `${state.lake} · ${modeName} · ${state.score} pts · ${Math.min(state.index + 1, state.count)}/${state.count}`
     : 'Fishing beneath the ice';
   const practiceFight = !token && state?.stage === 'fight';
   const tight = practiceFight && state.fight.tension >= 60;
@@ -275,7 +383,7 @@ function render() {
   }[state?.stage] ?? ['next', 'Wait']);
   action.innerHTML = `${icon(actionIcon)}<span>${label}</span>`;
   action.disabled = busy || !state;
-  action.parentElement.toggleAttribute('data-practice-fight', practiceFight);
+  action.closest('.fishing-tools').toggleAttribute('data-practice-fight', practiceFight);
   action.classList.toggle('fishing-action-quiet', tight);
   loosen.classList.toggle('fishing-recommended', tight);
   if (practiceBite && !practiceError) showPracticeBite(Date.now() - biteAt);
@@ -283,25 +391,33 @@ function render() {
     bobber.dataset.lure = lure;
     bobber.innerHTML = icon(lure);
   }
-  pressure.hidden = !state?.fight || failed;
-  loosen.hidden = pressure.hidden;
-  loosen.disabled = busy;
-  if (state?.fight) {
+  pressure.hidden = (!campaign && !state?.fight) || failed;
+  loosen.hidden = !campaign && pressure.hidden;
+  loosen.disabled = busy || !state?.fight;
+  if (campaign) {
+    const load = (state?.fight?.tension ?? 0) * .08;
+    meter.max = 8;
+    meter.high = 4.8;
+    meter.value = load;
+    pullsText.textContent = `${Number(load.toFixed(1))} / ${meter.max} lb`;
+  } else if (state?.fight) {
     const { tension, pulls } = state.fight;
-    pressure.querySelector('meter').value = tension;
-    pressure.querySelector('[data-pulls]').textContent = practiceFight
+    meter.max = 100;
+    meter.high = 60;
+    meter.value = tension;
+    pullsText.textContent = practiceFight
       ? `${pulls} ${pulls === 1 ? 'pull' : 'pulls'} left`
       : `${tension >= 60 ? 'Tight line' : 'Line clear'} · ${pulls} to land`;
   }
   slots.forEach(slot => {
-    slot.hidden = !pressure.hidden;
+    slot.hidden = !campaign && !pressure.hidden;
     slot.disabled = busy || state?.stage !== 'seek';
     slot.setAttribute('aria-pressed', String(slot.dataset.lure === lure));
   });
   target?.classList.toggle('is-biting', ['bite', 'fight'].includes(state?.stage));
   if (target) target.hidden = state?.stage === 'landed';
   const canUpgrade = state?.stage === 'landed' && state.skillPoints && !failed;
-  skillRow.hidden = !canUpgrade || Boolean(state?.practice);
+  skillRow.hidden = campaign || !canUpgrade || Boolean(state?.practice);
   practiceChoice.hidden = !canUpgrade || !state?.practice;
   for (const button of practiceButtons) button.disabled = busy;
   for (const button of skillRow.children) {
@@ -322,23 +438,26 @@ function render() {
   updateSearch();
 }
 
-async function begin(practice = false) {
+async function begin(selectedMode = mode) {
   const fromAction = document.activeElement === action;
   dismissCelebration();
   clearBite();
   stopCountdown();
+  cancelAnimationFrame(rigFrame);
+  jigAt = -Infinity;
   jigActivation = false;
   practiceError = undefined;
   const current = ++generation;
   busy = true;
   failed = false;
+  mode = selectedMode;
   token = null;
   state = null;
   board.hidden = true;
   removeTarget();
   render();
   let serverNow;
-  if (endpoint && !practice) {
+  if (endpoint && mode === 'ranked') {
     try {
       const opened = await api('start', {}, null);
       if (current !== generation) return;
@@ -348,8 +467,9 @@ async function begin(practice = false) {
     }
   }
   if (!state) {
+    if (mode === 'ranked') mode = 'practice';
     lure = 'jig';
-    run = start(Date.now(), undefined, undefined, { practice: true });
+    run = start(Date.now(), undefined, undefined, { practice: mode === 'practice' });
     state = publicRun(run);
   }
   busy = false;
@@ -364,10 +484,15 @@ function enter(event) {
   event.preventDefault();
   launch = event.currentTarget;
   previousScroll = window.scrollY;
+  picker.showModal();
+}
+
+function startSelected(selectedMode) {
+  picker.close();
   tray.hidden = false;
   document.body.classList.add('fishing');
   exit.focus({ preventScroll: true });
-  begin();
+  begin(selectedMode);
 }
 
 function leave() {
@@ -375,14 +500,20 @@ function leave() {
   generation++;
   clearBite();
   stopCountdown();
+  cancelAnimationFrame(rigFrame);
   removeTarget();
   tray.hidden = bobber.hidden = true;
+  line.setAttribute('hidden', '');
   document.body.classList.remove('fishing');
   window.scrollTo({ top: previousScroll, behavior: 'instant' });
   launch.focus({ preventScroll: true });
 }
 
 document.querySelectorAll('.game-entry, .fish-entry').forEach(entry => entry.addEventListener('click', enter));
+picker.addEventListener('click', event => {
+  const choice = event.target.closest('button[data-mode]');
+  if (choice) startSelected(choice.dataset.mode);
+});
 exit.addEventListener('click', leave);
 document.addEventListener('keydown', event => {
   if (tray.hidden) return;
@@ -409,6 +540,11 @@ window.addEventListener('resize', () => {
 });
 window.visualViewport?.addEventListener('scroll', updateSearch, { passive: true });
 window.visualViewport?.addEventListener('resize', updateSearch);
+const lineResize = new ResizeObserver(() => {
+  if (mode === 'campaign') updateSearch();
+});
+lineResize.observe(lake);
+lineResize.observe(tray);
 log.addEventListener('toggle', updateSearch);
 slots.forEach(slot => slot.addEventListener('click', () => {
   lure = slot.dataset.lure;
@@ -420,9 +556,12 @@ async function perform(move, input = {}) {
   const focused = document.activeElement;
   const current = generation;
   if (move === 'jig') {
-    bobber.classList.remove('is-jigging');
-    void bobber.offsetWidth;
-    bobber.classList.add('is-jigging');
+    if (mode === 'campaign') jigCampaignLine();
+    else {
+      bobber.classList.remove('is-jigging');
+      void bobber.offsetWidth;
+      bobber.classList.add('is-jigging');
+    }
     target?.classList.remove('is-curious');
     if (target) void target.offsetWidth;
     target?.classList.add('is-curious');
@@ -442,7 +581,7 @@ async function perform(move, input = {}) {
     if (!token && move === 'jig' && state.stage === 'seek') {
       state = { ...state, cue: 'It looked. Try a different lure and jig again.' };
     }
-    if (state.stage === 'landed' && prior.stage !== 'landed') {
+    if (mode !== 'campaign' && state.stage === 'landed' && prior.stage !== 'landed') {
       if (!state.practice) celebrateCatch(state.index + 2);
       else if (state.practice.xp === practiceLevelXp) celebrateCatch(state.practice.level, true);
     }
@@ -450,6 +589,7 @@ async function perform(move, input = {}) {
     if (state.stage === 'missed' || (state.stage === 'done' && prior.stage !== 'landed')) swimAway();
     else if (state.index !== prior.index) placeFish();
     if (state.stage === 'bite') {
+      if (mode === 'campaign') fishToLure();
       biteAt = token ? sentAt : appliedAt;
       clearBite();
       animateBite();
@@ -490,7 +630,7 @@ action.addEventListener('click', () => {
   const startedAsJig = jigActivation;
   jigActivation = false;
   if (startedAsJig && ['missed', 'done'].includes(state.stage)) return;
-  if (failed || state.stage === 'done') return begin(failed);
+  if (failed || state.stage === 'done') return begin(failed ? 'practice' : mode);
   if (state.stage === 'seek' && !fishInView()) return updateSearch();
   const move = { seek: 'jig', bite: 'reel', fight: 'lift', landed: 'next', missed: 'next' }[state.stage];
   return perform(move, move === 'jig' ? { lure } : {});

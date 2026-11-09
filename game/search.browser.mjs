@@ -12,7 +12,7 @@ async function search(action, step) {
 }
 
 async function checkDesktop(browser) {
-  const { page, tray, action, launch, status, press, tick, errors } = await practicePage(browser);
+  const { chooseMode, page, tray, action, launch, status, press, tick, errors } = await practicePage(browser);
   const fish = page.locator('.fishing-target');
   const bobber = page.locator('.fishing-bobber');
   await launch.focus();
@@ -20,6 +20,7 @@ async function checkDesktop(browser) {
   const saved = await scrollY(page);
   assert.ok(saved > 0);
   await page.keyboard.press('Enter');
+  await chooseMode();
   assert.equal(await scrollY(page), 0, 'start at the ice hole');
   assert.equal(await action.isDisabled(), true, 'the first fish requires a search');
   assert.match(await status.textContent(), /scroll.*find the fish/i);
@@ -90,8 +91,8 @@ async function checkDesktop(browser) {
 }
 
 async function checkTouch(browser) {
-  const { page, launch, action, status, press, errors } = await practicePage(browser, { mobile: true });
-  await press(launch);
+  const { enter, page, action, status, press, errors } = await practicePage(browser, { mobile: true });
+  await enter();
   assert.equal(await action.isDisabled(), true, 'the first fish requires a search');
   const touch = await page.context().newCDPSession(page);
   await search(action, async () => {
@@ -102,6 +103,7 @@ async function checkTouch(browser) {
     });
     await send('touchStart', 440);
     for (const y of [380, 320, 260, 200, 140]) await send('touchMove', y);
+    await page.waitForTimeout(160); // Release a stationary finger to avoid a kinetic scroll.
     await send('touchEnd');
     await page.waitForFunction(y => window.scrollY > y, start, { polling: 25 });
   });
@@ -113,7 +115,7 @@ async function checkTouch(browser) {
 }
 
 async function checkInspectVisibility(browser) {
-  const { page, tray, launch, action, button, press, tick, errors } = await practicePage(browser);
+  const { enter, page, tray, action, button, press, tick, errors } = await practicePage(browser);
   const fish = page.locator('.fishing-target');
   await page.evaluate(() => {
     const seed = [.05, .2, .01, .4, .1];
@@ -121,13 +123,14 @@ async function checkInspectVisibility(browser) {
     Math.random = () => seed[draw++ % seed.length];
   });
 
-  await press(launch, 'Enter');
+  await enter();
   const trayTop = (await tray.boundingBox()).y;
   await fish.evaluate((el, top) => {
     const box = el.getBoundingClientRect();
     window.scrollBy({ top: box.top + box.height / 2 - top + 15, behavior: 'instant' });
   }, trayTop);
-  await tick(100);
+  await page.waitForFunction(() => document.querySelector('.fishing-action').ariaDisabled !== 'true',
+    null, { polling: 25 });
   assert.equal(await action.isEnabled(), true);
 
   await press(button('Spoon'));

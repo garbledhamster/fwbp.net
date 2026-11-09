@@ -56,6 +56,16 @@ export async function practicePage(browser, { mobile = false, configure } = {}) 
     }
   }
 
+  async function chooseMode(name = 'Practice') {
+    const picker = page.getByRole('dialog', { name: 'Choose an outing' });
+    await press(picker.getByRole('button', { name, exact: true }), 'Enter');
+  }
+
+  async function enter(name = 'Practice') {
+    await press(launch, 'Enter');
+    await chooseMode(name);
+  }
+
   async function findFish() {
     await page.locator('.fishing-target').evaluate(el => {
       const box = el.getBoundingClientRect();
@@ -68,7 +78,7 @@ export async function practicePage(browser, { mobile = false, configure } = {}) 
   }
 
   return {
-    page, tray, action, launch, button, press, errors, findFish,
+    page, tray, action, launch, button, press, errors, findFish, chooseMode, enter,
     status: tray.getByRole('status'),
     timing: tray.locator('.fishing-timing'),
     tick: ms => page.clock.runFor(ms),

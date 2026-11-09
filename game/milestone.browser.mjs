@@ -3,7 +3,7 @@ import { practicePage, withBrowser } from './browser-qa.mjs';
 
 async function checkMilestone(browser, choice) {
   const mobile = choice === 'Lift';
-  const { page, tray, action, launch, button, status, errors, press, tick, findFish } =
+  const { enter, page, tray, action, button, status, errors, press, tick, findFish } =
     await practicePage(browser, { mobile });
   const celebration = page.locator('.fishing-celebration');
   const levelOne = tray.getByText(/0\s*\/\s*20 XP to Level 2/);
@@ -16,7 +16,7 @@ async function checkMilestone(browser, choice) {
     await press(action);
   };
 
-  await press(launch, 'Enter');
+  await enter();
   await findFish();
   await press(action);
   await press(action);
@@ -97,7 +97,7 @@ async function checkMilestone(browser, choice) {
 
   if (choice === 'Line Control') {
     await press(button('Exit fishing'));
-    await press(launch, 'Enter');
+    await enter();
     await findFish();
     assert.equal(await levelOne.isVisible(), true);
     assert.match(await tray.locator('[data-score]').textContent(), /0 pts/);

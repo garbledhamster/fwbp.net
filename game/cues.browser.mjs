@@ -2,10 +2,10 @@ import assert from 'node:assert/strict';
 import { practicePage, withBrowser } from './browser-qa.mjs';
 
 async function checkBite(browser) {
-  const { page, launch, action, status, timing, press, tick, errors, findFish } = await practicePage(browser);
+  const { enter, page, launch, action, status, timing, press, tick, errors, findFish } = await practicePage(browser);
   const keyboard = page.keyboard;
   const cue = () => status.textContent();
-  await press(launch, 'Enter');
+  await enter();
   assert.equal(await page.locator(':focus').textContent(), 'Exit fishing');
   await findFish();
   await keyboard.press('Tab');
@@ -64,14 +64,14 @@ async function checkBite(browser) {
   assert.equal(await action.evaluate(el => el === document.activeElement), true);
   await keyboard.press('Escape');
   assert.equal(await launch.evaluate(el => el === document.activeElement), true);
-  await press(launch, 'Enter');
+  await enter();
   await findFish();
   await keyboard.press('Tab');
   for (let i = 0; i < 3; i++) await keyboard.press('Tab');
   await keyboard.press('Space');
   assert.match(await cue(), /wait for gold/i);
   await keyboard.press('Escape');
-  await press(launch, 'Enter');
+  await enter();
   await tick(2200);
   assert.match(await cue(), /scroll.*find the fish/i);
   assert.equal(await timing.isHidden(), true);
@@ -80,12 +80,12 @@ async function checkBite(browser) {
 }
 
 async function checkFight(browser) {
-  const { page, launch, action, status, button, tray, press, tick, errors, findFish } =
+  const { enter, page, action, status, button, tray, press, tick, errors, findFish } =
     await practicePage(browser, { mobile: true });
   const cue = () => status.textContent();
   const color = control => control.evaluate(el => getComputedStyle(el).backgroundColor);
   const loosen = button('Loosen');
-  await press(launch);
+  await enter();
   await findFish();
   const gold = await color(action);
   for (const fish of [/yellow perch.*\+10 points/i, /rock bass.*\+15 points/i]) {
