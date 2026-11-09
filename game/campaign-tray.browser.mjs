@@ -25,6 +25,10 @@ async function checkOuting(browser, mobile) {
   const viewCatch = reward.getByRole('button', { name: 'View in Your Lake', exact: true });
   const advanceInput = () => Promise.all([tick(300), page.waitForTimeout(180)]);
   const evidence = process.env.FISHING_EVIDENCE_DIR;
+  const savedDay = () => page.evaluate(async () => {
+    const { loadProfile } = await import('./game/profile.mjs');
+    return (await loadProfile()).day;
+  });
 
   async function capture(label) {
     if (!evidence) return;
@@ -76,10 +80,7 @@ async function checkOuting(browser, mobile) {
 
   try {
     await enter('Campaign');
-    const openedDay = await page.evaluate(async () => {
-      const { loadProfile } = await import('./game/profile.mjs');
-      return (await loadProfile()).day;
-    });
+    const openedDay = await savedDay();
     assert.equal(openedDay?.opened.length, 1, 'the outing starts with one saved hole');
     await assertLiveControlsHidden();
     await assertBaitTargets();
@@ -184,10 +185,13 @@ async function checkOuting(browser, mobile) {
       await advanceInput();
     }
     await tray.getByRole('status').filter({ hasText: 'Outing complete.' }).waitFor();
-    await page.waitForFunction(async () => {
-      const { loadProfile } = await import('./game/profile.mjs');
-      return (await loadProfile()).day === undefined;
-    }, undefined, { polling: 25 });
+    const deadline = Date.now() + 3000;
+    let remainingDay = await savedDay();
+    while (remainingDay && Date.now() < deadline) {
+      await page.waitForTimeout(25);
+      remainingDay = await savedDay();
+    }
+    assert.equal(remainingDay, undefined, 'Finish outing clears the saved day before Fish again');
     await press(resultButton('Fish again'), 'Enter');
     await tray.waitFor({ state: 'hidden' });
     const map = page.locator('.fishing-map');
