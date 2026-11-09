@@ -679,11 +679,17 @@ body.fishing:has(.fishing-tray[data-mode="campaign"]) .fishing-target[data-candi
     radial-gradient(ellipse 70% 1030px at 15% 40%, #36636b49, transparent 84%),
     linear-gradient(168deg, #2c4b53, #1b3946 35%, #182e3b 69%, #132530);
 }
-.fishing-encounter [data-phase] {
+.fishing-encounter :is([data-fishing-goal], [data-phase]) {
   color: #fff1cf;
   font-size: .8rem;
   font-weight: 700;
   text-shadow: 0 1px 5px #0c201b, 0 1px 5px #0c201b;
+}
+
+[data-map-goal], [data-reward-goal] {
+  color: #ffe1a1;
+  font-weight: 650;
+  margin-block: .45em;
 }
 
 /* Permit guidance shares the outing picker’s Field Comic surface. */

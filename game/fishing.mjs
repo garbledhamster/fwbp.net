@@ -1,7 +1,7 @@
 import { openCampaignMap, mapCells, firstShoreHole, confirmEndAttempt } from './campaign-map.mjs';
 import { createSuspensionClock } from './suspension.mjs';
 import { catchQuality, moveToHole, stepCampaignFish, abandonHoleFish, advanceLineFight, apply, campaignAreas, campaignDepthBand, campaignPhase, lakes, lures, practiceLevelXp, practiceSkills, publicRun, skills, start, starterArea } from './rules.mjs?v=mille-lacs-campaign';
-import { areaPermit, hasAreaAccess, campaignProgress, campaignTraining, campaignTechniques, techniqueState, shopAvailability, applyProfile, campaignMilestone, loadProfile, shopItems } from './profile.mjs?v=mille-lacs-campaign';
+import { areaPermit, hasAreaAccess, campaignGoal, campaignProgress, campaignTraining, campaignTechniques, techniqueState, shopAvailability, applyProfile, campaignMilestone, loadProfile, shopItems } from './profile.mjs?v=mille-lacs-campaign';
 import { lureTip } from './species-catalog.mjs';
 import { openYourLake } from './collection.mjs?v=mille-lacs-campaign';
 import { renderSpeciesVideo } from './species-video.mjs';
@@ -174,6 +174,7 @@ tray.innerHTML = `
     </div>
     <div class="fishing-row fishing-encounter">
       <p class="fishing-wallet" data-wallet hidden></p>
+      <p data-fishing-goal hidden></p>
       <p data-phase aria-live="polite" hidden></p>
       <p class="fishing-practice-progress" hidden></p>
       <p class="fishing-countdown" role="timer" hidden></p>
@@ -303,6 +304,7 @@ const wallet = tray.querySelector('[data-wallet]');
 const waterName = tray.querySelector('[data-water]');
 const scoreProgress = tray.querySelector('.fishing-score-progress');
 const runProgress = tray.querySelector('[data-run-progress]');
+const goalLabel = tray.querySelector('[data-fishing-goal]');
 const phaseLabel = tray.querySelector('[data-phase]');
 const countdown = tray.querySelector('.fishing-countdown');
 const practiceButtons = [...practiceChoice.querySelectorAll('button')];
@@ -1476,6 +1478,11 @@ function renderStudiedCue() {
   }
 }
 
+function bryanGoalClue(profile) {
+  const goal = campaignGoal(profile);
+  return goal ? `Bryan’s goal. ${goal.clue}` : 'Bryan’s goals complete.';
+}
+
 function render() {
   renderStudiedCue();
   renderCatchActions();
@@ -1526,6 +1533,13 @@ function render() {
   }
   if ((state?.stage !== 'seek' || failed) && (!practiceBite || practiceError)) setStatus(cue, detail);
   wallet.hidden = !campaign || !profile;
+  goalLabel.hidden = !campaign || !profile;
+  if (campaign && profile) {
+    const goal = campaignGoal(profile);
+    const fish = goal && lakes['mille-lacs'].fish.find(fish => fish.id === goal.speciesId);
+    const label = fish ? `Goal · ${fish.name}` : 'Goals complete';
+    if (goalLabel.textContent !== label) goalLabel.textContent = label;
+  }
   phaseLabel.hidden = !linePhysics || !state;
   if (linePhysics && state?.stage === 'done') {
     stopOutingClock();
@@ -2140,7 +2154,7 @@ async function showLakeMap(active, dayId = active ? campaignDayId : undefined, p
       ?? mapCells.find(cell => cell.area === preferredArea)?.id ?? firstShoreHole;
   }
   openCampaignMap({ selected: selectedHole, hasAccess: area => hasAreaAccess(profile, area),
-    day, budget: active ? state.count - state.index : undefined,
+    day, goalClue: bryanGoalClue(profile), budget: active ? state.count - state.index : undefined,
     onSelect: id => { selectedHole = id; },
     onPermit: cell => { permitReturn = () => showLakeMap(active, day.id); void showPermit(cell.area); },
     onBack: () => { releaseMap(); if (!active) showOutingPicker(preferredArea); else mapButton.focus(); },
@@ -2322,10 +2336,12 @@ function renderSavedCatch() {
   const quality = catchQuality(settledCatch.speciesId, fish.length);
   catchPopup.dataset.key = settledCatch.key;
   catchPopup.dataset.quality = quality.toLowerCase();
-  catchPopup.innerHTML = `<header><p>Catch saved</p><h2 id="fishing-reward-title">${fish.name}</h2></header><div data-reward-body><div class="fishing-reward-art ${fish.gilded ? 'gilded' : ''}">${fishSvg(state.fish.art)}<span aria-hidden="true" class="fishing-reward-sparks">✦ ✧ ✦</span></div>
+  catchPopup.innerHTML = `<header><p>Catch saved</p><h2 id="fishing-reward-title">${fish.name}</h2></header><div data-reward-body><p data-reward-goal></p><div class="fishing-reward-art ${fish.gilded ? 'gilded' : ''}">${fishSvg(state.fish.art)}<span aria-hidden="true" class="fishing-reward-sparks">✦ ✧ ✦</span></div>
     <p class="fishing-reward-quality">${quality} · ${fish.length} inches</p><p>${fish.rarity} species${fish.grade === 'Record' ? ' · Record' : ''}${fish.gilded ? ' · Gilded' : ''}</p>
     <p>+${coins(catchReward)} · +${settledCatch.xp} XP · Level ${settledCatch.level}</p><p>${settledCatch.level === 2 ? 'Marnie: Your next gear and bait are available in the shop.' : settledCatch.level === 10 ? 'Marnie: Pro gear and live bait are available in the shop.' : 'Your catch is safe in Your Lake.'}</p>
     <div data-reward-video></div></div><footer><button type="button" data-reward-lake>View in Your Lake</button><button type="button" data-reward-next>${state.index + 1 === state.count ? 'Finish outing' : 'Next fish'}</button><button type="button" data-reward-close>Back to catch</button></footer>`;
+  const completed = profile.goalCatches?.includes(settledCatch.key);
+  catchPopup.querySelector('[data-reward-goal]').textContent = `${completed ? 'Goal complete. ' : ''}${bryanGoalClue(profile)}`;
   outingVideo(settledCatch.speciesId, catchPopup.querySelector('[data-reward-video]'));
   catchRelease = acquireSuspension();
   catchPopup.showModal();

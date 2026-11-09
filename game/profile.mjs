@@ -1,4 +1,4 @@
-import { lakes } from './rules.mjs?v=mille-lacs-campaign';
+import { campaignGoals, lakes } from './rules.mjs?v=mille-lacs-campaign';
 import lakeMap from './lake-map-data.mjs';
 
 const speciesIds = new Set(lakes['mille-lacs'].fish.map(fish => fish.id));
@@ -64,6 +64,11 @@ export function areaPermit(area) {
 export function hasAreaAccess(profile, area) {
   const permit = areaPermit(area);
   return Boolean(permit && profile?.owned.includes(permit.id));
+}
+
+// Each goal receipt is the catch key, in the same order as the goals. Old saves begin at the first.
+export function campaignGoal(profile) {
+  return campaignGoals[profile?.goalCatches?.length ?? 0];
 }
 
 // The payout ledger holds Campaign awards only; Practice collection credit lives separately.
@@ -161,20 +166,23 @@ export function loadProfile() {
 }
 
 function award(profile, { key, outcome, catch: fish, speciesId, mode = 'campaign' }) {
-  const earned = fish?.points;
+  const points = fish?.points;
   const localMode = mode === 'campaign' || mode === 'practice';
   // An omitted species remains compatible with already-open older releases.
   const validSpecies = speciesIds.has(speciesId);
   if (!localMode || outcome !== 'landed' || typeof key !== 'string' || !/^.+:\d+$/.test(key)
     || (speciesId !== undefined && !validSpecies) || (mode === 'practice' && !validSpecies)
-    || !Number.isSafeInteger(earned) || earned <= 0
-    || (mode === 'campaign' && !Number.isSafeInteger(profile.coins + earned))) {
+    || !Number.isSafeInteger(points) || points <= 0) {
     return { profile, status: 'no-award' };
   }
   // Old numeric payout keys cannot be replayed to invent collection history.
   if (Object.hasOwn(profile.awards, key) || Object.hasOwn(profile.collectionAwards, key)) {
     return { profile, status: 'duplicate-award' };
   }
+  const goal = mode === 'campaign' && validSpecies ? campaignGoal(profile) : undefined;
+  const completesGoal = goal && goal.speciesId === speciesId;
+  const earned = goal && !completesGoal ? Math.max(1, Math.floor(points / 2)) : points;
+  if (mode === 'campaign' && !Number.isSafeInteger(profile.coins + earned)) return { profile, status: 'no-award' };
   const caughtSpecies = validSpecies && !profile.caughtSpecies.includes(speciesId)
     ? [...profile.caughtSpecies, speciesId] : profile.caughtSpecies;
   return {
@@ -185,6 +193,7 @@ function award(profile, { key, outcome, catch: fish, speciesId, mode = 'campaign
       awards: mode === 'campaign' ? { ...profile.awards, [key]: earned } : profile.awards,
       collectionAwards: mode === 'practice' ? { ...profile.collectionAwards, [key]: speciesId } : profile.collectionAwards,
       caughtSpecies,
+      ...(completesGoal && { goalCatches: [...(profile.goalCatches ?? []), key] }),
     },
     status: 'awarded',
     earned: mode === 'campaign' ? earned : 0,

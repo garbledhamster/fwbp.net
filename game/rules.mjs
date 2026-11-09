@@ -31,6 +31,9 @@ export const campaignAreas = {
     weightBonus: { 'rock-bass': 4, walleye: 2, pike: 3, smallmouth: 2, muskie: 2 },
   },
 };
+export const campaignGoals = [
+  { speciesId: 'perch', holeId: 'A3', clue: 'Look for yellow perch near the weeds on Starter Shore. Try a jig at A3.' },
+];
 const seekWindows = { Common: 30000, Uncommon: 25000, Rare: 20000 };
 const phaseWeights = {
   dusk: { perch: 2, 'rock-bass': 2, walleye: 8, pike: 2, smallmouth: 2, muskie: 1 },
@@ -430,6 +433,11 @@ function prepareHoleFish(run, elapsedMs = 0) {
       return { ...seed, species: pool[Math.floor(roll * pool.length)],
         depth: Math.max(0, maxBand - (slot % 3)), x: [27, 50, 73][slot], y: 35 + slot * 10 };
     });
+    const goal = campaignGoals.find(goal => goal.holeId === hole.id);
+    if (goal) {
+      const species = lakes[run.lake].fish.findIndex(fish => fish.id === goal.speciesId);
+      if (!saved.candidates.some(fish => fish.species === species)) saved.candidates.at(-1).species = species;
+    }
     saved.generation++;
   }
   run.swimming = run.waterJig = undefined;

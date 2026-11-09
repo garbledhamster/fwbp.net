@@ -12,7 +12,7 @@ map.innerHTML = `<h2 id="lake-map-title">Campaign · Mille Lacs</h2>
   <div class="fishing-map-layout"><div class="fishing-map-water" role="group" aria-label="Mille Lacs water cells">
     <img src="./assets/maps/mille-lacs.svg" alt="Mille Lacs shoreline and depth contours, north at the top" width="500" height="500">
     <div class="fishing-map-cells">${mapCells.map((cell) => `<button type="button" data-map-cell="${cell.id}" style="left:${cell.x / 5}%;top:${cell.y / 5}%"></button>`).join('')}</div></div>
-    <section class="fishing-map-inspector" aria-labelledby="map-hole-title"><h3 id="map-hole-title"></h3><p data-map-info></p><p data-map-permit></p><p data-map-fish></p><p data-map-budget></p></section></div>
+    <section class="fishing-map-inspector" aria-labelledby="map-hole-title"><h3 id="map-hole-title"></h3><p data-map-goal></p><p data-map-info></p><p data-map-permit></p><p data-map-fish></p><p data-map-budget></p></section></div>
   <p data-map-legend>Depth in feet: light cells 5–15 ft; medium 20–25 ft; dark 30–35 ft.</p>
   <p class="fishing-map-note">Depths rounded from Minnesota DNR contours. Temperature and likely fish are gameplay estimates.</p>
   <p data-map-message role="status"></p>
@@ -85,6 +85,7 @@ function drawMap() {
     context.budget === undefined
       ? 'Six encounters in this outing.'
       : `${context.budget} of 6 encounters remain. Your rig and clock carry across holes.`;
+  map.querySelector('[data-map-goal]').textContent = context.goalClue;
   map.querySelector('[data-map-allowance]').textContent = `${remaining} of ${allowance} new holes available today.`;
   const open = map.querySelector('[data-map-drill]');
   open.disabled = accessible && !alreadyOpen && !remaining;
