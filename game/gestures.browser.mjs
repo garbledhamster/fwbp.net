@@ -18,7 +18,8 @@ async function checkGestures(browser, layout) {
     Math.random = () => rolls[draw++ % rolls.length];
   });
 
-  const scrollY = () => page.evaluate(() => window.scrollY);
+  const scrollY = () => page.evaluate(() => document.body.hasAttribute('data-campaign-camera')
+    ? document.querySelector('.fishing-route').scrollTop : window.scrollY);
   const depth = () => page.locator('.fishing-line-path').evaluate(path => {
     const end = path.getPointAtLength(path.getTotalLength());
     return end.y - path.getPointAtLength(0).y;
@@ -72,7 +73,8 @@ async function checkGestures(browser, layout) {
   // End the browse swipe with the finger held still so a native fling cannot swallow the next tap.
   await gesture(await waterPoint(), 0, touch ? -65 : 115, { hold: true });
   await settleInput();
-  assert.ok(await scrollY() > originalScroll + 5, 'native depth browsing works outside the line marker');
+  assert.ok(await scrollY() > originalScroll + 5, 'depth browsing works outside the lure');
+  await tick(600);
   assert.equal(await action.textContent(), 'Jig');
   await findFish({ species: 'muskie' });
   await marker.waitFor();
@@ -107,6 +109,7 @@ async function checkGestures(browser, layout) {
   await settleInput();
   assert.ok(await scrollY() > beforeScroll, 'a wheel or swipe over the lure still browses depth');
   assert.notEqual(await fish.getAttribute('data-swim'), 'approach', 'scrolling does not jig');
+  await tick(600);
   await findFish({ species: 'muskie' });
   const preJigScroll = await scrollY();
   await tapLure();
@@ -230,9 +233,10 @@ async function checkKeyboard(browser) {
     Math.random = () => .98;
   });
   await enter('Campaign');
-  const startingDepth = await page.evaluate(() => scrollY);
+  const startingDepth = await page.locator('.fishing-route').evaluate(el => el.scrollTop);
   await page.keyboard.press('ArrowDown');
-  assert.ok(await page.evaluate(() => scrollY) > startingDepth, 'Arrow Down lowers the lure');
+  await tick(620);
+  assert.ok(await page.locator('.fishing-route').evaluate(el => el.scrollTop) > startingDepth, 'Arrow Down lowers the lure');
   await findFish({ species: 'muskie' });
   const fish = page.locator('.fishing-swimmer[data-species="muskie"]');
   const pause = page.getByRole('dialog', { name: 'Paused' });

@@ -1,9 +1,9 @@
-import { openCampaignMap, mapCells, firstShoreHole, confirmEndAttempt } from './campaign-map.mjs?v=campaign-tap-jig';
+import { openCampaignMap, mapCells, firstShoreHole, confirmEndAttempt } from './campaign-map.mjs?v=campaign-smooth-swim';
 import { createSuspensionClock } from './suspension.mjs';
-import { catchQuality, moveToHole, stepCampaignFish, abandonHoleFish, advanceLineFight, apply, campaignAreas, campaignDepthBand, campaignPhase, lakes, lures, practiceLevelXp, practiceSkills, publicRun, skills, start, starterArea } from './rules.mjs?v=campaign-tap-jig';
-import { areaPermit, hasAreaAccess, campaignGoal, campaignProgress, campaignTraining, campaignTechniques, techniqueState, shopAvailability, applyProfile, campaignMilestone, loadProfile, shopItems } from './profile.mjs?v=campaign-tap-jig';
+import { catchQuality, moveToHole, stepCampaignFish, abandonHoleFish, advanceLineFight, apply, campaignAreas, campaignDepthBand, campaignPhase, lakes, lures, practiceLevelXp, practiceSkills, publicRun, skills, start, starterArea } from './rules.mjs?v=campaign-smooth-swim';
+import { areaPermit, hasAreaAccess, campaignGoal, campaignProgress, campaignTraining, campaignTechniques, techniqueState, shopAvailability, applyProfile, campaignMilestone, loadProfile, shopItems } from './profile.mjs?v=campaign-smooth-swim';
 import { lureTip } from './species-catalog.mjs';
-import { openYourLake } from './collection.mjs?v=campaign-tap-jig';
+import { openYourLake } from './collection.mjs?v=campaign-smooth-swim';
 import { renderSpeciesVideo } from './species-video.mjs';
 import { spriteHref } from './lake-sprites.mjs';
 
@@ -41,6 +41,7 @@ for (const band of water) {
   }
 }
 const iceCeiling = lake.querySelector('.dive-ceiling');
+const campaignViewport = lake.closest('.fishing-route');
 const icon = id => `<svg class="tackle-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="./assets/tackle-icons.svg#${id}"/></svg>`;
 const reefArea = 'deep-reef';
 const reefLicense = shopItems.find(item => item.area === reefArea);
@@ -313,6 +314,7 @@ let launch, previousScroll, run, state, token, target, busy, failed, biteAt, fra
 let mode, rigFrame, fightFrame, jigAt = -Infinity;
 let retractTimer, retractFrame, retractAt;
 let lastTouchY, lineTouch, wheelBurst, lurePress;
+let depthFrame, depthGoal, depthPosition, depthAt;
 let profile, outingId, catchReward, catchSaveFailed, settledCatch;
 const catchActions = tray.querySelector('.fishing-catch-actions');
 const catchLake = tray.querySelector('[data-catch-lake]');
@@ -354,6 +356,7 @@ export function acquireSuspension() {
   const releaseTime = outingTime.acquire();
   if (first) {
     lineTouch = lurePress = undefined;
+    stopDepthMotion();
     clearLineGestureMarker();
     pausedAnimations = [...lake.getAnimations({ subtree: true }), ...celebration.getAnimations({ subtree: true })]
       .filter(animation => animation.playState === 'running');
@@ -1030,7 +1033,7 @@ function searchRig(water, hole, start = iceHole(hole)) {
   const elapsed = (outingTime.now() - jigAt) / 340;
   const bounce = elapsed < 1 ? 12 * Math.sin(Math.PI * elapsed) : 0;
   const end = searchEye(hole);
-  if (retractAt !== undefined && window.scrollY <= 2) {
+  if (retractAt !== undefined && currentDepth() <= 2) {
     const progress = Math.min(1, (outingTime.now() - retractAt) / 240);
     end.y = start.y + 11 + (end.y - start.y - 11) * (1 - progress) ** 2;
   }
@@ -1129,12 +1132,16 @@ function positionFishingLine(search, water = lake.getBoundingClientRect()) {
   drawFishingLine(eye, curve, fight || undefined, search, water, cue);
 }
 
-function reframeHookedFish() {
+function reframeHookedFish(immediate = false) {
   const fish = target.getBoundingClientRect();
   const waterTop = window.visualViewport?.offsetTop ?? 0;
   const waterBottom = tray.getBoundingClientRect().top;
   if (waterBottom - waterTop <= fish.height || (fish.top >= waterTop && fish.bottom < waterBottom)) return;
-  window.scrollBy({ top: fish.top + fish.height / 2 - (waterTop + waterBottom) / 2, behavior: 'instant' });
+  const delta = fish.top + fish.height / 2 - (waterTop + waterBottom) / 2;
+  if (mode === 'campaign') {
+    if (immediate) setDepth(currentDepth() + delta);
+    else aimDepth(currentDepth() + delta);
+  } else window.scrollBy({ top: delta, behavior: 'instant' });
   updateSearch();
 }
 
@@ -1257,13 +1264,57 @@ function resetRetraction() {
   retractTimer = retractAt = undefined;
 }
 
+function currentDepth() {
+  return mode === 'campaign' ? campaignViewport.scrollTop : window.scrollY;
+}
+
+function stopDepthMotion() {
+  outingTime.cancel(depthFrame);
+  depthFrame = undefined;
+}
+
+function setDepth(top) {
+  stopDepthMotion();
+  if (mode === 'campaign') campaignViewport.scrollTop = top;
+  else window.scrollTo({ top, behavior: 'instant' });
+}
+
+function advanceDepth(now) {
+  const elapsed = Math.min(32, Math.max(0, now - depthAt));
+  depthAt = now;
+  const remaining = depthGoal - depthPosition;
+  if (Math.abs(remaining) < 1) {
+    setDepth(depthGoal);
+  } else {
+    const step = remaining * (1 - Math.exp(-elapsed / 115));
+    depthPosition += Math.max(-elapsed * .82, Math.min(elapsed * .82, step));
+    campaignViewport.scrollTop = depthPosition;
+    depthFrame = outingTime.frame(advanceDepth);
+  }
+  updateSearch();
+}
+
+function aimDepth(top) {
+  const max = campaignViewport.scrollHeight - campaignViewport.clientHeight;
+  depthGoal = Math.max(0, Math.min(max, top));
+  if (depthFrame) return;
+  depthPosition = currentDepth();
+  if (Math.abs(depthGoal - depthPosition) < 1) return;
+  depthAt = outingTime.now();
+  depthFrame = outingTime.frame(advanceDepth);
+}
+
+function nudgeDepth(delta) {
+  aimDepth((depthFrame ? depthGoal : currentDepth()) + delta);
+}
+
 function retractAtHole() {
-  if (tray.hidden || outingTime.suspended || !usesLinePhysics() || state?.stage !== 'seek' || window.scrollY > 2
+  if (tray.hidden || outingTime.suspended || !usesLinePhysics() || state?.stage !== 'seek' || currentDepth() > 2
     || retractAt !== undefined) return;
   outingTime.cancel(retractTimer);
   retractTimer = outingTime.timeout(() => {
     retractTimer = undefined;
-    if (tray.hidden || state?.stage !== 'seek' || window.scrollY > 2) return;
+    if (tray.hidden || state?.stage !== 'seek' || currentDepth() > 2) return;
     retractAt = outingTime.now() - (reducedMotion() ? 240 : 0);
     const settle = () => {
       positionFishingLine();
@@ -1424,14 +1475,14 @@ function setCampaignWater(hole) {
 }
 
 function placeFish() {
-  removeCampaignSwimmers();
   removeTarget();
   setCampaignWater(state.hole);
   positionLine();
-  if (state.hole) {
-    if (state.stage !== 'done') startCampaignSwimmers();
+  if (state.hole && state.stage !== 'done') {
+    startCampaignSwimmers();
     return;
   }
+  removeCampaignSwimmers();
   if (!state.fish) return;
   const { art, x, y } = state.fish;
   target = document.createElement('div');
@@ -1655,6 +1706,7 @@ async function begin(selectedMode = mode, hole, savedProfile) {
   busy = true;
   failed = false;
   mode = selectedMode;
+  document.body.toggleAttribute('data-campaign-camera', mode === 'campaign');
   token = null;
   state = null;
   removeCampaignSwimmers();
@@ -1698,7 +1750,7 @@ async function begin(selectedMode = mode, hole, savedProfile) {
   }
   busy = false;
   placeFish();
-  window.scrollTo({ top: 0, behavior: 'instant' });
+  setDepth(0);
   render();
   syncCountdown(serverNow);
   if (!token && fromAction && document.activeElement === document.body) action.focus({ preventScroll: true });
@@ -1746,6 +1798,8 @@ function leave() {
   line.setAttribute('hidden', '');
   clearLineGestureMarker();
   lineTouch = wheelBurst = lurePress = undefined;
+  stopDepthMotion();
+  document.body.removeAttribute('data-campaign-camera');
   document.body.classList.remove('fishing');
   window.scrollTo({ top: previousScroll, behavior: 'instant' });
   launch.focus({ preventScroll: true });
@@ -1797,16 +1851,20 @@ document.addEventListener('keydown', event => {
       : document.documentElement.scrollHeight;
     event.preventDefault();
     if (scrollKeys[event.key] < 0) retractAtHole();
-    window.scrollBy({ top: step * scrollKeys[event.key], behavior: 'instant' });
+    const delta = step * scrollKeys[event.key];
+    if (mode === 'campaign') nudgeDepth(delta);
+    else window.scrollBy({ top: delta, behavior: 'instant' });
     updateSearch();
   }
   if (!token && event.repeat && ['Enter', ' '].includes(event.key) && (tray.contains(event.target) || event.target === lureAction)) event.preventDefault();
 });
-window.addEventListener('scroll', () => {
+function updateDepthView() {
   if (outingTime.suspended) return;
-  if (window.scrollY > 2 && (retractTimer !== undefined || retractAt !== undefined)) resetRetraction();
+  if (currentDepth() > 2 && (retractTimer !== undefined || retractAt !== undefined)) resetRetraction();
   updateSearch();
-}, { passive: true });
+}
+window.addEventListener('scroll', () => { if (mode !== 'campaign') updateDepthView(); }, { passive: true });
+campaignViewport.addEventListener('scroll', () => { if (mode === 'campaign') updateDepthView(); }, { passive: true });
 const wheelQuietMs = 145;
 const wheelThreshold = 24;
 const wheelLinePx = 16;
@@ -1916,24 +1974,40 @@ lake.addEventListener('touchcancel', () => { lineTouch = lurePress = undefined; 
 window.addEventListener('wheel', event => {
   if (event.defaultPrevented || outingTime.suspended || dialogOpen()) return;
   if (event.deltaY < 0 && !event.target.closest('.fishing-tray')) retractAtHole();
-}, { passive: true });
+  if (mode !== 'campaign' || tray.hidden || !lake.contains(event.target) ||
+    event.ctrlKey || event.metaKey || event.altKey || event.shiftKey ||
+    Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+  event.preventDefault();
+  const scale = event.deltaMode === 1 ? wheelLinePx : event.deltaMode === 2 ? innerHeight : 1;
+  nudgeDepth(event.deltaY * scale * .54);
+}, { passive: false });
 lake.addEventListener('touchstart', event => {
   if (outingTime.suspended || dialogOpen()) return;
   lastTouchY = event.touches.length === 1 ? event.touches[0].clientY : undefined;
 }, { passive: true });
 lake.addEventListener('touchmove', event => {
-  if (event.defaultPrevented || outingTime.suspended || dialogOpen()) return;
+  if (event.defaultPrevented || outingTime.suspended || dialogOpen()) {
+    lastTouchY = undefined;
+    return;
+  }
   const y = event.touches.length === 1 ? event.touches[0].clientY : undefined;
-  if (y !== undefined && lastTouchY !== undefined && y > lastTouchY + 2) retractAtHole();
+  if (y !== undefined && lastTouchY !== undefined) {
+    const delta = lastTouchY - y;
+    if (delta < -2) retractAtHole();
+    if (mode === 'campaign' && !tray.hidden && event.cancelable) {
+      event.preventDefault();
+      nudgeDepth(delta * .68);
+    }
+  }
   lastTouchY = y;
-}, { passive: true });
+}, { passive: false });
 window.addEventListener('resize', () => {
   if (outingTime.suspended) return;
   positionLine();
   updateSearch();
   if (!shortLandscape.matches || !usesLinePhysics() || state?.stage !== 'fight' || !target) return;
 
-  reframeHookedFish();
+  reframeHookedFish(true);
 });
 window.visualViewport?.addEventListener('scroll', updateSearch, { passive: true });
 window.visualViewport?.addEventListener('resize', updateSearch);
@@ -2051,8 +2125,9 @@ async function perform(move, input = {}, reelEffort) {
   syncCountdown(serverNow);
   const reeledIn = move === 'reel' && state.fight && state.fight.remaining < prior.fight?.remaining;
   if (usesLinePhysics() && target && prior.fight && (reeledIn || state.stage === 'landed')) {
-    if (state.fight?.pullUp || state.stage === 'landed') {
-      window.scrollTo({ top: 0, behavior: 'instant' });
+    if (state.stage === 'landed' || state.fight?.pullUp) {
+      if (mode === 'campaign' && state.stage !== 'landed') aimDepth(0);
+      else setDepth(0);
       updateSearch();
     } else {
       reframeHookedFish();
@@ -2207,7 +2282,7 @@ async function showLakeMap(active, dayId = active ? campaignDayId : undefined, p
       else {
         state = moveToHole(run, cell, outingTime.dateNow(), outingElapsed());
         clearBite(); stopCountdown(); placeFish(); render(); syncCountdown();
-        window.scrollTo({ top: 0, behavior: 'instant' }); mapButton.focus();
+        setDepth(0); mapButton.focus({ preventScroll: true });
       }
     },
   });
@@ -2231,20 +2306,31 @@ function removeCampaignSwimmers() {
 }
 
 function startCampaignSwimmers() {
+  outingTime.cancel(swimFrame);
+  swimPositions = campaignBiteAnchor = undefined;
+  const previous = new Map([...campaignSwimmers.values()].map(swimmer => [swimmer.dataset.swimmerKey, swimmer]));
+  campaignSwimmers.clear();
   for (const fish of state.candidates) {
-    const swimmer = document.createElement('div');
-    swimmer.className = 'fishing-swimmer';
-    swimmer.dataset.species = fish.id;
+    let swimmer = previous.get(fish.key);
+    if (swimmer) previous.delete(fish.key);
+    else {
+      swimmer = document.createElement('div');
+      swimmer.className = 'fishing-swimmer';
+      swimmer.dataset.species = fish.id;
+      swimmer.dataset.swimmerKey = fish.key;
+      swimmer.setAttribute('aria-hidden', 'true');
+      const [x, y] = fishMouths[fish.id];
+      swimmer.style.setProperty('--mouth-x', x);
+      swimmer.style.setProperty('--mouth-y', y);
+      swimmer.innerHTML = fishSvg(fish.art);
+      lake.append(swimmer);
+      if (!reducedMotion()) swimmer.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 320, easing: 'ease-out' });
+    }
     swimmer.dataset.candidate = fish.slot;
     swimmer.toggleAttribute('data-studied', profile?.studiedSpecies?.includes(fish.id));
-    swimmer.setAttribute('aria-hidden', 'true');
-    const [x, y] = fishMouths[fish.id];
-    swimmer.style.setProperty('--mouth-x', x);
-    swimmer.style.setProperty('--mouth-y', y);
-    swimmer.innerHTML = fishSvg(fish.art);
     campaignSwimmers.set(fish.slot, swimmer);
-    lake.append(swimmer);
   }
+  for (const swimmer of previous.values()) swimmer.remove();
   animateCampaignFish();
 }
 
@@ -2275,11 +2361,12 @@ function animateCampaignFish() {
   });
   const now = outingTime.dateNow();
   swimPositions = stepCampaignFish(run, now, { width: water.width, bands, lure, eye, reducedMotion: reducedMotion() });
-  for (const { slot, x, y, right, mood } of swimPositions.fish) {
+  for (const { slot, x, y, right, facing, mood } of swimPositions.fish) {
     const fish = campaignSwimmers.get(slot);
     if (!fish) continue;
     fish.style.setProperty('--x', `${x}px`);
     fish.style.setProperty('--y', `${y}px`);
+    fish.style.setProperty('--facing', facing);
     fish.toggleAttribute('data-facing-right', right);
     if (mood) fish.dataset.swim = mood;
     else if (fish.dataset.swim) delete fish.dataset.swim;

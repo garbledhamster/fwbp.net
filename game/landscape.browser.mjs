@@ -98,10 +98,20 @@ async function checkLandscape(browser, mode) {
   assert.match(await status.textContent(), /reel it up toward the hole/i);
   assert.ok(await load.evaluate(el => el.value) < beforeRotation);
   const beforeScroll = await fightView(page);
-  await page.evaluate(() => scrollBy(0, 24));
+  const shift = await page.evaluate(() => {
+    if (!document.body.hasAttribute('data-campaign-camera')) {
+      scrollBy(0, 24);
+      return 24;
+    }
+    const viewport = document.querySelector('.fishing-route');
+    const before = viewport.scrollTop;
+    const roomBelow = viewport.scrollHeight - viewport.clientHeight - before;
+    viewport.scrollTop += roomBelow >= 24 ? 24 : -24;
+    return viewport.scrollTop - before;
+  });
   await tick(32);
   const afterScroll = await fightView(page);
-  assert.ok(afterScroll.fishTop < beforeScroll.fishTop - 15 && afterScroll.gap < 1,
+  assert.ok(Math.abs(shift) >= 23 && Math.abs(afterScroll.fishTop - beforeScroll.fishTop + shift) < 10 && afterScroll.gap < 1,
     'manual scrolling still moves the view with the hook attached');
 
   await leave();
