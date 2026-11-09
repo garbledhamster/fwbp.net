@@ -412,6 +412,26 @@ body.fishing:has(.fishing-tray[data-mode="campaign"]) .fishing-target:is(.is-bit
   .fishing-tray[data-mode="campaign"] [data-exit] { padding-inline: 6px; font-size: .8rem; }
 }
 
+@media (min-width: 480px) and (max-height: 420px) and (orientation: landscape) {
+  .fishing-tray[data-mode="campaign"] {
+    width: calc(100% - 16px);
+    padding-bottom: max(6px, env(safe-area-inset-bottom));
+  }
+  [data-mode="campaign"] .fishing-tray-inner { gap: 3px; }
+  [data-mode="campaign"] .fishing-rack {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, .95fr) minmax(0, 1fr);
+    grid-template-areas: "lures tension actions";
+    gap: 6px;
+    padding: 6px 8px;
+  }
+  [data-mode="campaign"] .fishing-pressure { padding-inline: 7px; }
+  .fishing-tray[data-mode="campaign"] :is([data-lure], .fishing-action, [data-loosen]) {
+    min-height: 44px;
+    font-size: .72rem;
+  }
+  .fishing-tray[data-mode="campaign"] :is([data-lure], .fishing-action, [data-loosen]) .tackle-icon { width: 18px; }
+}
+
 .lake[data-fishing-light="dusk"] {
   background-image:
     radial-gradient(ellipse 94% 760px at 62% 0%, #c2a56b66, transparent 83%),

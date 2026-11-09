@@ -177,6 +177,7 @@ let fightActivation = false;
 let lure = 'jig';
 let practiceError;
 let generation = 0;
+const shortLandscape = window.matchMedia('(min-width: 480px) and (max-height: 420px) and (orientation: landscape)');
 const scrollKeys = { ArrowUp: -1, ArrowDown: 1, PageUp: -1, PageDown: 1, Home: -1, End: 1 };
 
 const phaseNames = { day: 'Day', dusk: 'Dusk', night: 'Night' };
@@ -859,6 +860,15 @@ document.addEventListener('keydown', event => {
 window.addEventListener('scroll', updateSearch, { passive: true });
 window.addEventListener('resize', () => {
   positionLine();
+  updateSearch();
+  if (!shortLandscape.matches || mode !== 'campaign' || state?.stage !== 'fight' || !target) return;
+
+  // Rotation can put the hooked fish under the tray. Move the view once and leave the fight alone.
+  const fish = target.getBoundingClientRect();
+  const waterTop = window.visualViewport?.offsetTop ?? 0;
+  const waterBottom = tray.getBoundingClientRect().top;
+  if (waterBottom - waterTop <= fish.height || (fish.top >= waterTop && fish.bottom < waterBottom)) return;
+  window.scrollBy({ top: fish.top + fish.height / 2 - (waterTop + waterBottom) / 2, behavior: 'instant' });
   updateSearch();
 });
 window.visualViewport?.addEventListener('scroll', updateSearch, { passive: true });
