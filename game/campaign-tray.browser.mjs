@@ -20,8 +20,9 @@ async function checkOuting(browser, mobile) {
   const lureButton = name => lures.getByRole('button', { name, exact: true });
   const pause = page.locator('.fishing-pause');
   const resultButton = name => tray.getByRole('button', { name, exact: true });
-  const nextFish = resultButton('Next fish');
-  const viewCatch = resultButton('View in Your Lake');
+  const reward = page.locator('.fishing-catch-popup');
+  const nextFish = reward.locator('[data-reward-next]');
+  const viewCatch = reward.getByRole('button', { name: 'View in Your Lake', exact: true });
   const advanceInput = () => Promise.all([tick(300), page.waitForTimeout(180)]);
   const evidence = process.env.FISHING_EVIDENCE_DIR;
 
@@ -157,6 +158,7 @@ async function checkOuting(browser, mobile) {
         await press(save, 'Enter');
       }
       await nextFish.waitFor();
+      assert.equal(await nextFish.textContent(), attempt === 6 ? 'Finish outing' : 'Next fish');
       const savedKeys = await saves();
       assert.equal(savedKeys.length, attempt, 'each landed fish saves once');
       assert.equal(new Set(savedKeys).size, attempt, 'each landed fish has its own catch key');
@@ -165,7 +167,7 @@ async function checkOuting(browser, mobile) {
         await press(viewCatch, 'Enter');
         const lake = page.getByRole('dialog', { name: 'Your Lake', exact: true });
         await lake.waitFor();
-        await closeDialog(lake, lake.getByRole('button', { name: 'Return to outing', exact: true }));
+        await closeDialog(lake, lake.getByRole('button', { name: 'Back to catch', exact: true }));
         await nextFish.waitFor();
         assert.equal(await viewCatch.evaluate(el => el === document.activeElement), true,
           'Your Lake returns to the same catch');
