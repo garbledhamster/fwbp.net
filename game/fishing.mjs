@@ -47,7 +47,7 @@ picker.innerHTML = `
   <div class="fishing-picker-options">
     <button type="button" data-mode="campaign" data-area="${starterArea}" aria-describedby="campaign-description">Campaign</button>
     <p id="campaign-description">Fish ${campaignAreas[starterArea].name} on Mille Lacs with your own tackle.</p>
-    <button type="button" data-mode="campaign" data-area="${reefArea}" aria-describedby="reef-description" aria-disabled="true">${campaignAreas[reefArea].name}</button>
+    <button type="button" data-mode="campaign" data-area="${reefArea}" aria-describedby="reef-description">${campaignAreas[reefArea].name}</button>
     <p id="reef-description">${reefRequirement}</p>
     <button type="button" data-open-shop aria-describedby="shop-description">Tackle shop</button>
     <p id="shop-description">Spend coins and choose your gear between outings.</p>
@@ -77,6 +77,24 @@ shop.innerHTML = `
   <p data-shop-message role="status"></p>
   <div data-shop-items></div>
   <form method="dialog"><button>Back to outings</button></form>`;
+const permitDialog = document.createElement('dialog');
+permitDialog.className = 'fishing-picker fishing-permit';
+permitDialog.setAttribute('aria-labelledby', 'fishing-permit-title');
+permitDialog.innerHTML = `
+  <div class="fishing-permit-guide">
+    <img src="./assets/fishing/conservation-officer.webp" alt="" width="160" height="160" loading="lazy">
+    <div><h2 id="fishing-permit-title" tabindex="-1">Check your permit</h2>
+      <p><strong>Officer Rowan</strong> · Fictional conservation guide</p></div>
+  </div>
+  <p data-permit-message role="status"></p>
+  <div class="fishing-permit-actions">
+    <button type="button" data-permit-shop>Get this permit</button>
+    <button type="button" data-permit-starter hidden>Choose Starter Shore</button>
+    <button type="button" data-permit-back>Back to areas</button>
+  </div>
+  <p class="fishing-permit-note">These permits unlock game areas with game coins. For real fishing, check
+    <a href="https://www.dnr.state.mn.us/regulations/fishing/index.html" target="_blank" rel="noopener">Minnesota DNR requirements</a>
+    and <a href="https://www.dnr.state.mn.us/fishing/millelacs.html" target="_blank" rel="noopener">Mille Lacs rules</a>.</p>`;
 const tray = document.createElement('section');
 tray.className = 'fishing-tray';
 tray.hidden = true;
@@ -165,7 +183,7 @@ celebration.innerHTML = `
 const announcement = document.createElement('span');
 announcement.className = 'fishing-announcement';
 announcement.setAttribute('role', 'status');
-document.body.append(picker, shop, tray, celebration, announcement);
+document.body.append(picker, shop, permitDialog, tray, celebration, announcement);
 
 let celebrationTimer;
 
@@ -222,6 +240,9 @@ let lastTouchY;
 let profile, outingId, catchReward, catchSaveFailed;
 let biteDepth;
 let campaignArea = starterArea;
+let permitArea = starterArea;
+let permitGeneration = 0;
+let campaignMilestoneNotice = false;
 let pickerGeneration = 0;
 let clock, clockWrite, suspendedClock;
 let shopBusy = false;
@@ -310,29 +331,96 @@ const shopLabels = { line: 'Fishing line', hook: 'Hooks', training: 'Training', 
 const shopBalance = shop.querySelector('[data-shop-balance]');
 const shopMessage = shop.querySelector('[data-shop-message]');
 const shopList = shop.querySelector('[data-shop-items]');
-const reefEntry = picker.querySelector(`[data-area="${reefArea}"]`);
 const reefDescription = picker.querySelector('#reef-description');
 
-function hasAreaAccess(savedProfile, area) {
-  const license = shopItems.find(item => item.area === area);
-  return Boolean(license && savedProfile.owned.includes(license.id));
+function areaPermit(area) {
+  if (!Object.hasOwn(campaignAreas, area)) return undefined;
+  return shopItems.find(item => item.category === 'license' && item.area === area);
 }
 
-function showOutingPicker() {
+function hasAreaAccess(savedProfile, area) {
+  const permit = areaPermit(area);
+  return Boolean(permit && savedProfile?.owned.includes(permit.id));
+}
+
+function showOutingPicker(focusArea) {
   const current = ++pickerGeneration;
-  picker.showModal();
+  if (!picker.open) picker.showModal();
+  if (focusArea) picker.querySelector(`[data-area="${focusArea}"]`)?.focus();
   void loadProfile().then(savedProfile => {
     if (current !== pickerGeneration || !picker.open) return;
+    for (const entry of picker.querySelectorAll('[data-area]')) {
+      const owned = hasAreaAccess(savedProfile, entry.dataset.area);
+      // Locked areas remain actionable so keyboard and touch can reach the guide.
+      entry.toggleAttribute('data-permit-required', !owned);
+      entry.removeAttribute('aria-disabled');
+    }
     const unlocked = hasAreaAccess(savedProfile, reefArea);
-    if (unlocked) reefEntry.removeAttribute('aria-disabled');
-    else reefEntry.setAttribute('aria-disabled', 'true');
     reefDescription.textContent = unlocked ? 'Look for fish around a deeper reef on Mille Lacs.' : reefRequirement;
+    picker.querySelector('#campaign-description').textContent = hasAreaAccess(savedProfile, starterArea)
+      ? `Fish ${campaignAreas[starterArea].name} on Mille Lacs with your own tackle.`
+      : 'Claim the free Starter Shore permit before your first Campaign outing.';
   }).catch(() => {
     if (current !== pickerGeneration || !picker.open) return;
-    reefEntry.setAttribute('aria-disabled', 'true');
-    reefDescription.textContent = 'Couldn’t read your license. Close the picker and try again.';
+    reefDescription.textContent = 'Couldn’t read your permits. Choose an area to try again.';
   });
 }
+
+const permitMessage = permitDialog.querySelector('[data-permit-message]');
+const permitShop = permitDialog.querySelector('[data-permit-shop]');
+const permitStarter = permitDialog.querySelector('[data-permit-starter]');
+
+async function showPermit(area) {
+  const permit = areaPermit(area);
+  if (!permit) return showOutingPicker();
+  permitArea = area;
+  const current = ++permitGeneration;
+  picker.close();
+  if (!permitDialog.open) permitDialog.showModal();
+  permitDialog.querySelector('h2').textContent = `${campaignAreas[area].name} permit`;
+  permitMessage.textContent = 'Checking your saved permits…';
+  permitShop.disabled = true;
+  permitStarter.hidden = area === starterArea;
+  permitDialog.querySelector('h2').focus();
+  try {
+    const saved = await loadProfile();
+    if (current !== permitGeneration || !permitDialog.open) return;
+    const shortfall = Math.max(0, permit.cost - saved.coins);
+    permitMessage.textContent = hasAreaAccess(saved, area)
+      ? `You own the ${permit.name}. Return to the areas and choose ${campaignAreas[area].name} when you’re ready.`
+      : `${campaignAreas[area].name} needs the ${permit.name}. ${permit.cost === 0 ? 'It’s free' : `It costs ${coins(permit.cost)}`}. You have ${coins(saved.coins)}.${shortfall ? ` You need ${coins(shortfall)} more. Starter Shore has a free permit.` : ''}`;
+    permitShop.textContent = hasAreaAccess(saved, area) ? 'View this permit' : 'Get this permit';
+    permitShop.disabled = false;
+  } catch {
+    if (current !== permitGeneration || !permitDialog.open) return;
+    permitMessage.textContent = 'Couldn’t read your saved permits. Open the shop to try again, or go back to the areas.';
+    permitShop.disabled = false;
+  }
+}
+
+function returnToAreas() {
+  permitGeneration++;
+  permitDialog.close();
+  showOutingPicker(permitArea);
+}
+
+permitDialog.addEventListener('cancel', event => {
+  event.preventDefault();
+  returnToAreas();
+});
+permitDialog.querySelector('[data-permit-back]').addEventListener('click', returnToAreas);
+permitShop.addEventListener('click', () => {
+  const area = permitArea;
+  const permit = areaPermit(area);
+  permitGeneration++;
+  permitDialog.close();
+  void openShop({ itemId: permit.id, onClose: () => showOutingPicker(area) });
+});
+permitStarter.addEventListener('click', () => {
+  permitGeneration++;
+  permitDialog.close();
+  showOutingPicker(starterArea);
+});
 
 function shopItem(item) {
   const owned = profile.owned.includes(item.id);
@@ -830,6 +918,7 @@ function render() {
     detail = `${state.snap.tension} lb on ${state.snap.lineStrength} lb line.`;
   } else if (state?.stage === 'landed' && cue.endsWith('points')) {
     if (campaign && Number.isFinite(catchReward)) cue += ` · +${coins(catchReward)}`;
+    if (campaign && campaignMilestoneNotice) cue += '. Lake Regular! Two Campaign catches saved.';
     if (state.practice?.xp === practiceLevelXp) {
       if (state.skillPoints) cue += '. Level 2! Choose a skill.';
       else cue += `. ${state.skills.control ? skills.control : skills.lift} selected.`;
@@ -923,6 +1012,7 @@ async function begin(selectedMode = mode, selectedArea = campaignArea) {
   jigActivation = fightActivation = false;
   practiceError = undefined;
   profile = outingId = catchReward = undefined;
+  campaignMilestoneNotice = false;
   catchSaveFailed = false;
   lure = 'jig';
   const current = ++generation;
@@ -941,7 +1031,13 @@ async function begin(selectedMode = mode, selectedArea = campaignArea) {
       const loaded = await loadProfile();
       if (current !== generation) return;
       profile = loaded;
-      campaignArea = hasAreaAccess(loaded, selectedArea) ? selectedArea : starterArea;
+      if (!hasAreaAccess(loaded, selectedArea)) {
+        busy = false;
+        leave();
+        await showPermit(selectedArea);
+        return;
+      }
+      campaignArea = selectedArea;
       outingId = crypto.randomUUID();
     } catch {
       if (current !== generation) return;
@@ -961,14 +1057,16 @@ async function begin(selectedMode = mode, selectedArea = campaignArea) {
   }
   if (!state) {
     if (mode === 'ranked') mode = 'practice';
-    const lineStrength = shopItems.find(item => item.id === profile?.equipped.line)?.strength;
+    const equippedLine = shopItems.find(item => item.id === profile?.equipped.line);
+    const lineStrength = equippedLine?.strength;
+    const line = equippedLine?.windowMs ? { lure: equippedLine.lure, windowMs: equippedLine.windowMs } : undefined;
     const equippedHook = shopItems.find(item => item.id === profile?.equipped.hook);
     const hook = equippedHook?.windowMs ? { lure: equippedHook.lure, windowMs: equippedHook.windowMs } : undefined;
     const lineControlRank = shopItems.find(item => item.id === 'line-control' && profile?.owned.includes(item.id))?.rank;
     const elapsedMs = profile?.elapsedMs ?? 0;
     run = start(Date.now(), undefined, undefined, {
       practice: mode === 'practice',
-      campaign: mode === 'campaign' ? { area: campaignArea, lineStrength, hook, lineControlRank, elapsedMs } : undefined,
+      campaign: mode === 'campaign' ? { area: campaignArea, lineStrength, line, hook, lineControlRank, elapsedMs } : undefined,
     });
     state = publicRun(run);
     startOutingClock(elapsedMs);
@@ -988,7 +1086,19 @@ function enter(event) {
   showOutingPicker();
 }
 
-function startSelected(selectedMode, selectedArea) {
+async function startSelected(selectedMode, selectedArea) {
+  if (selectedMode === 'campaign') {
+    if (!areaPermit(selectedArea)) return;
+    const current = ++pickerGeneration;
+    try {
+      const saved = await loadProfile();
+      if (current !== pickerGeneration || !picker.open) return;
+      if (!hasAreaAccess(saved, selectedArea)) return showPermit(selectedArea);
+    } catch {
+      if (current === pickerGeneration && picker.open) await showPermit(selectedArea);
+      return;
+    }
+  }
   picker.close();
   tray.hidden = false;
   document.body.classList.add('fishing');
@@ -1018,7 +1128,7 @@ function leave() {
 document.querySelectorAll('.game-entry, .fish-entry').forEach(entry => entry.addEventListener('click', enter));
 picker.addEventListener('click', event => {
   if (event.target.closest('[data-open-shop]')) return openShop();
-  const choice = event.target.closest('button[data-mode]:not([aria-disabled="true"])');
+  const choice = event.target.closest('button[data-mode]');
   if (choice) startSelected(choice.dataset.mode, choice.dataset.area);
 });
 exit.addEventListener('click', leave);
@@ -1092,6 +1202,7 @@ async function saveCatchCoins(current) {
     const result = await applyProfile({ type: 'award', key, outcome: state.stage, catch: state.catch });
     if (current !== generation) return;
     profile = result.profile;
+    if (result.milestoneReached) campaignMilestoneNotice = true;
     catchReward = result.earned ?? profile.awards[key];
     catchSaveFailed = false;
   } catch {
@@ -1111,6 +1222,7 @@ async function retryCatchCoins() {
 }
 
 async function perform(move, input = {}) {
+  if (move === 'next') campaignMilestoneNotice = false;
   const prior = state;
   const focused = document.activeElement;
   const current = generation;

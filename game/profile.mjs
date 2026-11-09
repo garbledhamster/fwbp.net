@@ -1,12 +1,22 @@
 export const shopItems = [
-  { id: 'starter-line', category: 'line', name: 'Starter line', cost: 0, effect: '8 lb breaking strength.', strength: 8 },
+  { id: 'starter-line', category: 'line', name: 'Starter line', cost: 0, effect: '8 lb breaking strength; 100 ms more to set the hook with Jig.', strength: 8, lure: 'jig', windowMs: 100 },
   { id: 'stronger-line', category: 'line', name: 'Stronger line', cost: 10, effect: '12 lb breaking strength.', strength: 12 },
-  { id: 'starter-hook', category: 'hook', name: 'Starter hook', cost: 0, effect: 'Works with Jig, Spoon, and Minnow.' },
-  { id: 'finesse-hook', category: 'hook', name: 'Fine-wire hook', cost: 15, effect: '200 ms more to set the hook with Jig.', lure: 'jig', windowMs: 200 },
+  { id: 'starter-hook', category: 'hook', name: 'Standard hooks', cost: 0, effect: 'Stock hooks for Jig, Spoon, and Minnow. Standard timing.' },
+  { id: 'finesse-hook', category: 'hook', name: 'Fine-wire jig setup', cost: 15, effect: '200 ms more with Jig; stock hooks and timing with Spoon or Minnow.', lure: 'jig', windowMs: 200 },
+  { id: 'octopus-hook', category: 'hook', name: 'Octopus minnow setup', cost: 15, effect: '200 ms more with Minnow; stock hooks and timing with Jig or Spoon.', lure: 'minnow', windowMs: 200 },
   { id: 'line-control', category: 'training', name: 'Line Control', cost: 20, effect: 'Rank 1 gives you 350 ms more to set the hook with any lure.', rank: 1 },
-  { id: 'starter-license', category: 'license', name: 'Starter license', cost: 0, effect: 'Covers Starter Shore on Mille Lacs.', area: 'starter-shore' },
-  { id: 'deep-reef-license', category: 'license', name: 'Deep Reef license', cost: 25, effect: 'Opens Deep Reef on Mille Lacs.', area: 'deep-reef' },
+  { id: 'starter-license', category: 'license', name: 'Starter Shore permit', cost: 0, effect: 'Free game access to Starter Shore on Mille Lacs.', area: 'starter-shore' },
+  { id: 'deep-reef-license', category: 'license', name: 'Deep Reef permit', cost: 25, effect: 'Game access to Deep Reef on Mille Lacs.', area: 'deep-reef' },
 ];
+
+// The payout ledger holds Campaign awards only; Practice collection credit lives separately.
+export function campaignMilestone(profile) {
+  const catches = Object.values(profile?.awards ?? {}).filter(value => Number.isSafeInteger(value) && value > 0).length;
+  return {
+    id: 'lake-regular', name: 'Lake Regular', catches, goal: 2, earned: catches >= 2,
+    description: 'Land and save two Campaign catches. A badge with no tackle or coin bonus.',
+  };
+}
 
 const storeName = 'profile';
 const profileKey = 'campaign';
@@ -17,7 +27,7 @@ function starterProfile() {
     version: 1,
     revision: 0,
     coins: 0,
-    owned: ['starter-line', 'starter-hook', 'starter-license'],
+    owned: ['starter-line', 'starter-hook'],
     equipped: { line: 'starter-line', hook: 'starter-hook' },
     awards: {},
     elapsedMs: 0,

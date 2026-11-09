@@ -624,3 +624,25 @@ body.fishing:has(.fishing-tray[data-line-physics]) .fishing-target:is(.is-biting
   font-weight: 700;
   text-shadow: 0 1px 5px #0c201b, 0 1px 5px #0c201b;
 }
+
+/* Permit guidance shares the outing picker’s Field Comic surface. */
+.fishing-permit-guide {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.fishing-permit-guide img {
+  width: clamp(76px, 22vw, 140px);
+  height: auto;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+.fishing-permit-guide h2 { margin-bottom: .5rem; }
+.fishing-permit-guide p { margin: 0; }
+.fishing-permit-actions { display: flex; flex-wrap: wrap; gap: .65rem; }
+.fishing-permit-note { font-size: .85rem; line-height: 1.5; margin-top: 1.5rem; }
+.fishing-permit-note a { color: inherit; text-decoration: underline; }
+@media (max-width: 380px) {
+  .fishing-permit-guide { align-items: flex-start; gap: .6rem; }
+  .fishing-permit-actions button { width: 100%; }
+}

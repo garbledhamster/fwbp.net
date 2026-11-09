@@ -61,9 +61,10 @@ export function reelWindow(levels) {
 
 function hookWindow(run, fish) {
   if (!run.campaign) return reelWindow(run.skills);
-  const { hook, lineControlRank = 0 } = run.campaign;
+  const { hook, line, lineControlRank = 0 } = run.campaign;
   const window = reelWindow({ ...run.skills, control: lineControlRank });
   if (hook && hook.lure === fish?.lure) window.until += hook.windowMs;
+  if (line && line.lure === fish?.lure) window.until += line.windowMs;
   return window;
 }
 export const runLifetime = 20 * 60 * 1000;
@@ -190,7 +191,7 @@ export function start(now, random = Math.random, lake = 'mille-lacs', { practice
     ...(practice && { practice: true, landed: 0 }),
     ...(usesLineFight && { snap: null, wrongLures: 0, reaction: null }),
     ...(campaign && {
-      campaign: { ...campaign, area, hook: campaign.hook && { ...campaign.hook }, lineStrength: campaign.lineStrength ?? starterLineStrength },
+      campaign: { ...campaign, area, line: campaign.line && { ...campaign.line }, hook: campaign.hook && { ...campaign.hook }, lineStrength: campaign.lineStrength ?? starterLineStrength },
     }),
   };
   chooseOutingSpecies(run, campaign?.elapsedMs);
