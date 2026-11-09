@@ -14,8 +14,7 @@
 .intro h1 { color: #f5e0af; font-weight: 800; font-size: clamp(49px,9vw,113px); }
 .hero-cover { border: 6px solid #d1b680; outline: 1px solid #fff2d2; outline-offset: 4px; border-radius: 46px 6px 46px 6px; aspect-ratio: 1.32; }
 .ice-art, .episode-art .artwork { filter: sepia(.48) saturate(.82); }
-.about-inner { border-left: 3px solid #d8ad66; padding-left: clamp(13px,3vw,34px); }
-.episode-art, .guide-cover { border: 2px solid #b39b6c; border-radius: 16px 3px; }
+.episode-art { border: 2px solid #b39b6c; border-radius: 16px 3px; }
 .lake .field-notes, .lake .merch { background: transparent; }
 .field-notes > .wrap {
   padding: clamp(18px, 4vw, 42px);
@@ -48,7 +47,7 @@
     radial-gradient(ellipse 83% 990px at 15% 40%, #72946a38, transparent 85%),
     linear-gradient(168deg, #355d54, #25463d 34%, #1a3734 70%, #142c2b);
 }
-.dive, .lake > .library { position: relative; }
+.lake [data-dive] { position: relative; }
 .dive { min-height: clamp(245px, 42svh, 450px); }
 .dive-expanse { min-height: clamp(400px, 62svh, 640px); }
 .dive-water { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
@@ -60,6 +59,9 @@
   width: clamp(32px, var(--size), 440px);
 }
 .dive-actor svg { display: block; width: 100%; height: auto; }
+.dive-actor[data-water-edge] { max-width: 128px; }
+.dive-actor[data-water-edge="start"] { top: var(--water-start); }
+.dive-actor[data-water-edge="end"] { bottom: var(--water-end); translate: -50% 50%; }
 .dive-facing-right { transform: scaleX(-1); }
 .dive-actor[data-layer="far"] { z-index: 1; opacity: .35; }
 .dive-actor[data-layer="middle"] { z-index: 2; opacity: .77; }
@@ -82,22 +84,26 @@
 .ice-art, .ice-light { position: relative; z-index: -1; }
 .ice-light { position: absolute; }
 .dive[data-dive="weeds"] {
+  --water-start: clamp(35px, 5vw, 52px);
   display: grid;
   align-content: center;
   min-height: clamp(385px, 52svh, 560px);
-  padding-block: clamp(34px, 6vw, 68px);
+  padding-block: clamp(70px, 7vw, 86px) clamp(34px, 6vw, 68px);
 }
-.dive-panel {
-  position: relative; max-width: 660px; margin-left: auto; padding: clamp(15px, 2.5vw, 28px);
-  border: 1px solid #a9a78178; border-radius: 5px;
-  background: #142923c9; box-shadow: 0 12px 42px #0c211e45;
-}
-.dive-panel h2 { margin: 0 0 12px; font: 500 clamp(24px, 4vw, 37px)/1.1 Georgia, serif; }
-.dive-panel.about-inner { max-width: 490px; border-left: 3px solid var(--lamp); }
-.dive-panel.about-inner > p:not(.content-note) { max-width: 42ch; }
-.dive-panel .channel-banner { margin-top: 14px; }
 .library .episode-trigger { background: #192d27f5; border-radius: 14px 4px 4px; padding-bottom: 10px; }
 .library .episode-meta, .library .episode-name { padding-inline: 8px; }
+/* Keep these swimmers in the open water even as cards change height. */
+.lake > :is(.library, .field-notes, .merch), .lakebed-feature {
+  --water-space-start: clamp(58px, 7vw, 85px);
+  --water-space-end: clamp(58px, 9vw, 100px);
+  --water-start: calc(var(--water-space-start) / 2);
+  --water-end: calc(var(--water-space-end) / 2);
+  padding-block: var(--water-space-start) var(--water-space-end);
+}
+.library-water {
+  --water-start: 50%;
+  height: clamp(62px, 8vw, 84px);
+}
 
 /* Shoreline growth and stones appear only when the dive reaches the footer. */
 .footer.lakebed {
@@ -113,7 +119,7 @@
 .lakebed-art .dive-actors { z-index: 1; }
 .lakebed-ground { bottom: 0; height: 70%; z-index: 2; }
 .lakebed-growth { bottom: 0; height: 75%; z-index: 3; }
-.lakebed-feature { position: relative; padding: clamp(33px, 6vw, 69px) 0 clamp(21px, 4vw, 50px); }
+.lakebed-feature { position: relative; --water-space-end: clamp(21px, 4vw, 50px); }
 .lakebed-feature::before { background: linear-gradient(#e9d6a355, #d9cea1); }
 .lakebed-videos { position: relative; width: min(830px, 100% - var(--space) * 2); }
 .lakebed-videos h2 {
@@ -160,7 +166,6 @@
 
 @media (max-width: 560px) {
   .dive[data-dive="weeds"] { padding-block-start: 115px; }
-  .dive-content .dive-panel { margin-left: 0; }
   .lakebed-videos .episode-name, .library .episode-name { font-size: .92rem; }
   .lakebed-growth { height: 62%; }
 }
@@ -319,19 +324,6 @@ body[data-fish-mode] .fish-target:enabled:focus-visible { border-radius: 6px; }
   object-fit: contain;
   object-position: center top;
 }
-.guide-camera { border-block-start: 0; }
-.guide-camera summary {
-  grid-template-columns: minmax(0, 1fr) clamp(74px, 18vw, 120px) 22px;
-  padding: 14px clamp(12px, 3vw, 24px);
-  margin-top: 30px;
-  border: 1px solid #c3ac74;
-  border-radius: 12px 4px 12px 4px;
-  background: #f5edda;
-}
-.guide-camera summary:hover { background: #faf2df; }
-.guide-camera .guide-avatar { display: block; width: 100%; height: auto; margin-block: -23px -19px; }
-.guide-camera .guide-body { margin-top: 12px; }
-
 @media (max-width: 740px) {
   .channel-showcase {
     grid-template-columns: minmax(0, 1fr) minmax(0, .95fr);

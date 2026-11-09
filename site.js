@@ -52,6 +52,12 @@ const episodes = [
   }
 ];
 
+const duckHunterShort = {
+  id: "Qo7FSZc9S7I",
+  title: "I THOUGHT I GOT SHOT!",
+  description: "Duck hunters startled Bryan while he was out in his kayak. This clip contains sudden gunfire."
+};
+
 function watchUrl(id) {
   return "https://www.youtube.com/watch?v=" + id;
 }
@@ -59,8 +65,9 @@ function watchUrl(id) {
 const library = document.querySelector("#video-grid");
 const featured = document.querySelector("#featured-grid");
 const filters = document.querySelector(".filters");
+const filterButtons = new Map();
 const libraryStatus = document.querySelector("#library-status");
-const byId = new Map(episodes.map((episode) => [episode.id, episode]));
+const byId = new Map([...episodes, duckHunterShort].map((episode) => [episode.id, episode]));
 
 function makeEpisode(episode) {
   const article = document.createElement("article");
@@ -100,8 +107,8 @@ function makeEpisode(episode) {
 function setFilter(category) {
   const matches = category === "All" ? episodes : episodes.filter((episode) => episode.category === category);
   library.replaceChildren(...matches.map(makeEpisode));
-  for (const button of filters.querySelectorAll("button")) {
-    button.setAttribute("aria-pressed", String(button.textContent === category));
+  for (const [name, button] of filterButtons) {
+    button.setAttribute("aria-pressed", String(name === category));
   }
   libraryStatus.textContent = matches.length + (matches.length === 1 ? " video" : " videos");
 }
@@ -111,7 +118,16 @@ for (const category of ["All", ...new Set(episodes.map((episode) => episode.cate
   button.type = "button";
   button.textContent = category;
   button.addEventListener("click", () => setFilter(category));
+  filterButtons.set(category, button);
   filters.append(button);
+}
+for (const shortcut of document.querySelectorAll(".trip-picks button")) {
+  shortcut.addEventListener("click", () => {
+    const category = shortcut.dataset.category;
+    setFilter(category);
+    filterButtons.get(category).focus({ preventScroll: true });
+    filters.scrollIntoView({ block: "start" });
+  });
 }
 featured.replaceChildren(...episodes.filter((episode) => episode.featured).map(makeEpisode));
 setFilter("All");
@@ -132,7 +148,7 @@ document.addEventListener("click", (event) => {
   opener = trigger;
   playerTitle.textContent = episode.title;
   playerDescription.textContent = episode.description;
-  source.href = watchUrl(episode.id);
+  source.href = trigger.href;
   const frame = document.createElement("iframe");
   frame.title = episode.title;
   frame.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";

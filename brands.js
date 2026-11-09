@@ -36,24 +36,17 @@ const scenes = {
   pike: [
     ["silt", 42, 40, 83, -16, -28, "far"],
     ["muskie", 31, 30, 54, 85, -19, "middle"],
-    ["perch", 75, 52, 14, -172, 28, "middle"],
     ["sprig", 15, 77, 15, 56, -31, "middle"],
     ["pike", 62, 68, 75, -145, 95, "near"]
   ],
   perch: [
     ["silt", 50, 36, 80, -9, -44, "far"],
-    ["white-bass", 20, 24, 24, 78, -19, "middle"],
     ["white-bass", 36, 34, 20, 96, -2, "near"],
-    ["white-bass", 53, 27, 18, 115, 17, "middle"],
-    ["perch", 23, 62, 19, 144, 4, "middle"],
-    ["perch", 46, 60, 23, 130, -7, "near"],
     ["perch", 72, 55, 21, 124, 23, "near"],
-    ["perch", 31, 69, 16, 170, 36, "middle"],
     ["bubbles", 86, 71, 26, -13, -58, "middle"]
   ],
   midwater: [
     ["silt", 45, 42, 72, 12, -33, "far"],
-    ["largemouth", 35, 24, 49, 92, -18, "near"],
     ["walleye", 22, 57, 26, 80, 14, "far"],
     ["smallmouth", 67, 49, 41, -113, 27, "near"],
     ["bowfin", 70, 74, 45, -95, 64, "middle"],
@@ -63,19 +56,17 @@ const scenes = {
   weeds: [
     ["silt", 45, 40, 73, -5, -36, "far"],
     ["sprig", 61, 31, 19, -46, -22, "far"],
-    ["largemouth", 68, 62, 60, -107, 24, "near"],
-    ["bluegill", 25, 27, 23, 92, -23, "middle"],
-    ["pumpkinseed", 43, 23, 25, 76, 17, "near"],
+    ["largemouth", 73, "start", 29, -42, 5, "near"],
+    ["bluegill", 20, 43, 23, 52, -12, "middle"],
+    ["pumpkinseed", 34, 71, 21, 64, 12, "near"],
     ["sprig", 12, 69, 19, 47, -36, "near"],
     ["bubbles", 87, 66, 26, -18, -53, "middle"]
   ],
   camera: [
     ["silt", 48, 40, 82, -38, -65, "middle"],
     ["silt", 61, 59, 89, 28, -26, "near"],
-    ["walleye", 66, 55, 51, -142, 45, "near"],
     ["rock-bass", 26, 24, 26, 105, 10, "near"],
-    ["black-crappie", 31, 62, 27, 138, 31, "near"],
-    ["black-crappie", 53, 73, 19, 140, 23, "middle"],
+    ["black-crappie", 65, 64, 27, -95, 23, "near"],
     ["sprig", 76, 71, 19, 19, -56, "middle"]
   ],
   coldwater: [
@@ -84,29 +75,37 @@ const scenes = {
     ["brown-trout", 24, 41, 37, 94, -14, "middle"],
     ["brook-trout", 43, 51, 33, 120, 11, "near"],
     ["lake-trout", 74, 65, 47, -89, 37, "middle"],
-    ["chinook", 49, 79, 60, 114, 28, "near"],
     ["bubbles", 87, 57, 28, 8, -55, "far"]
   ],
   library: [
-    ["walleye", 79, 30, 37, -93, 32, "far"],
-    ["perch", 16, 50, 14, 117, 29, "far"],
-    ["perch", 30, 56, 11, 146, 15, "far"],
+    ["chinook", 74, "start", 29, -42, 4, "near"],
+    ["walleye", 26, "end", 23, 36, 4, "middle"],
     ["silt", 53, 64, 80, -12, -30, "far"]
+  ],
+  "library-water": [
+    ["perch", 28, "start", 22, 34, 4, "near"]
+  ],
+  "field-notes": [
+    ["perch", 74, "start", 22, -35, 4, "near"],
+    ["black-crappie", 26, "end", 21, 34, -4, "middle"]
+  ],
+  merch: [
+    ["quillback", 75, "start", 24, -36, -4, "near"],
+    ["redhorse", 37, "end", 23, 36, 4, "middle"]
   ],
   bottomfish: [
     ["silt", 48, 34, 92, 15, -43, "far"],
-    ["sturgeon", 64, 25, 74, -108, 17, "near"],
-    ["quillback", 23, 44, 31, 109, 11, "middle"],
-    ["redhorse", 44, 55, 38, 111, 21, "near"],
+    ["sturgeon", 58, 25, 66, -64, 17, "near"],
     ["carp", 71, 69, 47, -102, 28, "middle"],
     ["catfish", 35, 81, 45, 105, 35, "near"],
     ["bubbles", 86, 41, 27, -13, -38, "far"]
   ],
   lakebed: [
-    ["walleye", 84, 22, 32, -94, 29, "far"],
-    ["bullhead", 17, 43, 29, 68, 18, "middle"],
     ["silt", 48, 48, 80, 12, -52, "middle"],
     ["bubbles", 88, 54, 24, 12, -60, "far"]
+  ],
+  "lakebed-feature": [
+    ["bullhead", 74, "start", 24, -35, 4, "near"]
   ]
 };
 
@@ -119,7 +118,11 @@ function makeActor([kind, x, y, size, travelX, travelY, layer]) {
   actor.className = "dive-actor";
   actor.dataset.layer = layer;
   actor.style.left = x + "%";
-  actor.style.top = y + "%";
+  if (typeof y === "number") {
+    actor.style.top = y + "%";
+  } else {
+    actor.dataset.waterEdge = y;
+  }
   actor.style.setProperty("--size", size + "%");
   actor.style.setProperty("--swim-x", travelX + "%");
   actor.style.setProperty("--swim-y", travelY + "px");
