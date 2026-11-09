@@ -66,7 +66,7 @@ picker.innerHTML = `
   </div>
   <form method="dialog"><button>Back to the site</button></form>`;
 const shop = document.createElement('dialog');
-shop.className = 'fishing-picker fishing-shop';
+shop.className = 'fishing-picker fishing-frame fishing-shop';
 shop.setAttribute('aria-labelledby', 'fishing-shop-title');
 shop.innerHTML = `
   <div class="fishing-dialog-intro">
@@ -78,13 +78,14 @@ shop.innerHTML = `
           <p><strong>Marnie</strong> · Shopkeeper</p>
         </div>
       </div>
-      <strong data-shop-balance></strong>
+      <div class="fishing-shop-ledger"><strong data-shop-balance></strong><span class="fishing-power">Power <small>Provisional mark</small></span></div>
     </div>
     <img class="fishing-dialog-art" src="./assets/fishing/tackle-shop.webp" alt="" width="1104" height="460" loading="lazy">
   </div>
   <p data-shop-message role="status"></p>
+  <nav class="fishing-shop-categories" aria-label="Shop categories" data-shop-categories></nav>
   <div data-shop-items></div>
-  <form method="dialog"><button data-shop-back>Back to outings</button></form>`;
+  <form method="dialog"><button type="button" data-shop-resume hidden>Resume fishing</button><button data-shop-back>Back to outings</button></form>`;
 const permitDialog = document.createElement('dialog');
 permitDialog.className = 'fishing-picker fishing-permit';
 permitDialog.setAttribute('aria-labelledby', 'fishing-permit-title');
@@ -105,20 +106,24 @@ permitDialog.innerHTML = `
     and <a href="https://www.dnr.state.mn.us/fishing/millelacs.html" target="_blank" rel="noopener">Mille Lacs rules</a>.</p>`;
 
 const pause = document.createElement('dialog');
-pause.className = 'fishing-picker fishing-pause';
+pause.className = 'fishing-picker fishing-frame fishing-pause';
 pause.setAttribute('aria-labelledby', 'fishing-pause-title');
 pause.innerHTML = `
   <h2 id="fishing-pause-title" tabindex="-1">Paused</h2>
   <section data-pause-panel="menu">
     <p>Your fish and the outing clock will wait here.</p>
     <div class="fishing-menu-actions">
-      <button type="button" data-action="resume">Resume fishing</button>
       <button type="button" data-action="skills">Skills</button>
       <button type="button" data-action="gear">${icon('gear')} Gear</button>
       <button type="button" data-action="shop">${icon('shop')} Tackle shop</button>
       <button type="button" data-action="your-lake" data-open-your-lake>${icon('your-lake')} Your Lake</button>
       <button type="button" data-action="controls">${icon('controls')} Controls</button>
       <button type="button" data-action="leave">Leave outing</button>
+    </div>
+    <div class="fishing-website-links"><h3>On the website</h3>
+      <a href="./#quick-reference" target="_blank" rel="noopener" data-website="reference">Quick Reference ↗</a>
+      <a href="./#merch-heading" target="_blank" rel="noopener" data-website="merch">FWBP Merch ↗</a>
+      <p>Opens separately. Your outing stays paused.</p>
     </div>
   </section>
   <section data-pause-panel="gear" hidden>
@@ -138,9 +143,9 @@ pause.innerHTML = `
     <p data-campaign-gestures hidden>In Campaign, scroll or swipe up on the marker to jig or set the hook. Once hooked, scroll or swipe up anywhere in the water to reel or pull up. Go down to loosen.</p>
     <p>Touch uses the labeled fishing buttons. Details shows each item’s effect. Campaign tackle changes apply to the next outing. Practice uses starter tackle and its own Level 2 skill choice. Ranked uses server timing and an Exit button.</p>
     <button type="button" data-action="back">Back to Pause</button>
-  </section>`;
+  </section><div class="fishing-frame-footer"><button type="button" data-action="resume">Resume fishing</button></div>`;
 const itemDetails = document.createElement('dialog');
-itemDetails.className = 'fishing-picker fishing-item-details';
+itemDetails.className = 'fishing-picker fishing-frame fishing-item-details';
 itemDetails.setAttribute('aria-labelledby', 'fishing-item-title');
 itemDetails.innerHTML = '<h2 id="fishing-item-title"></h2><div data-item-description></div><form method="dialog"><button>Back to item</button></form>';
 const tray = document.createElement('section');
@@ -318,6 +323,7 @@ let campaignMilestoneNotice = false;
 let pickerGeneration = 0;
 let clock, clockWrite, suspendedClock;
 let shopBusy = false;
+let shopResumeRequested = false;
 let shopGeneration = 0;
 let shopReturn, shopRelease, pauseRelease, pauseOpener, detailsOpener;
 let outingEquipment;
@@ -531,20 +537,30 @@ permitStarter.addEventListener('click', () => {
   if (permitReturn) { selectedHole = firstShoreHole; const back = permitReturn; permitReturn = undefined; void back(); } else showOutingPicker(starterArea);
 });
 
-function shopItem(item, inventory = false) {
-  const owned = profile.owned.includes(item.id);
-  const equipped = profile.equipped[item.category] === item.id;
-  const canEquip = Object.hasOwn(profile.equipped, item.category);
-  const shortfall = item.cost - profile.coins;
+function shopItemState(item) {
   const availability = shopAvailability(profile, item);
+  const { owned, equipped, shortfall, locked, level } = availability;
+  const canEquip = Object.hasOwn(profile.equipped, item.category);
+  const active = mode === 'campaign' && !tray.hidden && outingEquipment?.[item.category] === item.id;
+  const statuses = {
+    equipped: active ? 'Equipped this outing and next' : 'Equipped for next outing',
+    owned: active ? 'Equipped this outing' : 'Owned',
+    locked: `Level ${level} required`,
+    unaffordable: `Need ${coins(shortfall)}`,
+    available: 'Available',
+  };
+  return { owned, equipped, canEquip, shortfall, locked, level, status: statuses[availability.status] };
+}
+function shopItem(item, inventory = false) {
+  const { owned, equipped, canEquip, shortfall, locked, level } = shopItemState(item);
   const action = (type, label, disabled = false) =>
     `<button type="button" data-shop-action="${type}" aria-label="${label} ${item.name}" ${disabled ? 'disabled' : ''}>${label}</button>`;
   return `<li data-item="${item.id}" tabindex="-1">
-    <div><strong>${icon(item.category)} ${item.name}</strong><p>${item.effect}</p><p>Level ${availability.level}${availability.locked ? ' · Locked' : ''}</p>
+    <div><strong>${icon(item.category)} ${item.name}</strong><p>${item.effect}</p><p>Level ${level}${locked ? ' · Locked' : ''}</p>
       <button type="button" data-item-details="${item.id}">Details<span class="fishing-announcement"> for ${item.name}</span></button></div>
     <div class="fishing-shop-action">
       <span>${owned ? equipped ? 'Equipped' : 'Owned' : coins(item.cost)}</span>
-      ${owned ? canEquip && !equipped ? action('equip', 'Equip') : '' : inventory ? `<button type="button" data-view-shop="${item.id}">View in shop</button>` : action('buy', 'Buy', shortfall > 0 || availability.locked)}
+      ${owned ? canEquip && !equipped ? action('equip', 'Equip') : '' : inventory ? `<button type="button" data-view-shop="${item.id}">View in shop</button>` : action('buy', 'Buy', shortfall > 0 || locked)}
     </div>
   </li>`;
 }
@@ -565,19 +581,58 @@ function hookCarousel(inventory = false) {
   </div>`;
 }
 
+let shopSelection = 'stronger-line';
+let shopPane = 'grid';
+let shopGridScroll = 0;
 function renderShop() {
+  const selected = shopItems.find(item => item.id === shopSelection) ?? shopItems[0];
+  shopSelection = selected.id;
+  const previousGrid = shopList.querySelector('[data-shop-grid]');
+  if (previousGrid?.offsetHeight) shopGridScroll = previousGrid.scrollTop;
   shopBalance.textContent = coins(profile.coins);
-  shopList.innerHTML = `<nav class="fishing-shop-categories" aria-label="Shop categories">${Object.entries(shopLabels).map(([id, label]) =>
-    `<button type="button" data-shop-category="${id}">${icon(id)} ${label}</button>`).join('')}</nav>` +
+  shop.dataset.pane = shopPane;
+  shop.querySelector('[data-shop-categories]').innerHTML = Object.entries(shopLabels).map(([id, label]) =>
+    `<button type="button" data-shop-category="${id}">${icon(id)} ${label}</button>`).join('');
+  shopList.innerHTML = `<div class="fishing-shop-grid" data-shop-grid>` +
     Object.entries(shopLabels).map(([category, label]) => {
       const items = shopItems.filter(item => item.category === category);
       if (!items.length) return '';
-      return `<section aria-labelledby="shop-${category}" data-category="${category}">
-        <h3 id="shop-${category}" tabindex="-1">${label}</h3>
-        ${category === 'hook' ? hookCarousel() : `<ul>${items.map(item => shopItem(item)).join('')}</ul>`}
-      </section>`;
-    }).join('');
+      return `<section aria-labelledby="shop-${category}" data-category="${category}"><h3 id="shop-${category}" tabindex="-1">${label}</h3>
+        <div class="fishing-item-grid">${items.map(item => {
+          const state = shopItemState(item);
+          return `<button type="button" data-shop-select="${item.id}" aria-pressed="${item.id === shopSelection}">
+            ${icon(item.category === 'line' ? 'line' : item.lure ?? item.category)}<strong>${item.name}</strong><span>${state.owned ? state.equipped ? 'Equipped' : 'Owned' : coins(item.cost)}</span><small>${state.status}</small></button>`;
+        }).join('')}</div></section>`;
+    }).join('') + `</div><section class="fishing-shop-inspector" data-shop-inspector data-item="${selected.id}" tabindex="-1" aria-label="Selected tackle">
+      <button type="button" data-shop-grid-back>Back to tackle</button>
+      <div class="fishing-inspector-content">${icon(selected.category === 'line' ? 'line' : selected.lure ?? selected.category)}<h3 tabindex="-1" data-selected-title>${selected.name}</h3><p>${selected.effect}</p>
+      <p>Status: ${shopItemState(selected).status}</p><p>Equipment changes apply to your next Campaign outing.</p></div>
+      <div class="fishing-inspector-action">${shopPurchase(selected)}</div></section>`;
+  shopList.querySelector('[data-shop-grid]').scrollTop = shopGridScroll;
 }
+function shopPurchase(item) {
+  const { owned, equipped, canEquip, shortfall, locked } = shopItemState(item);
+  if (owned) return equipped ? '<strong>Equipped for next outing</strong>' : canEquip
+    ? `<span>Owned</span><button type="button" data-shop-action="equip" aria-label="Equip ${item.name}">Equip</button>` : '<strong>Owned</strong>';
+  return `<button type="button" data-shop-action="buy" aria-label="Buy ${item.name}" ${shortfall || locked ? 'disabled' : ''}>Buy · ${coins(item.cost)}</button>`;
+}
+function selectShopItem(id) {
+  if (shopBusy) return;
+  shopSelection = id;
+  shopPane = 'details';
+  renderShop();
+  if (matchMedia('(max-width: 599px)').matches) shopList.querySelector('[data-selected-title]').focus({ preventScroll: true });
+  else shopList.querySelector(`[data-shop-select="${id}"]`)?.focus({ preventScroll: true });
+}
+shop.addEventListener('click', event => {
+  const tile = event.target.closest('[data-shop-select]');
+  if (tile) selectShopItem(tile.dataset.shopSelect);
+  if (event.target.closest('[data-shop-grid-back]') && !shopBusy) {
+    shopPane = 'grid';
+    renderShop();
+    shopList.querySelector(`[data-shop-select="${shopSelection}"]`)?.focus({ preventScroll: true });
+  }
+});
 
 function equipmentName(id) { return shopItems.find(item => item.id === id)?.name ?? 'Starter tackle'; }
 function renderGear() {
@@ -656,6 +711,7 @@ pause.addEventListener('click', async event => {
 function setShopBusy(value) {
   shopBusy = value;
   shop.querySelector('[data-shop-back]').disabled = value;
+  shop.querySelector('[data-shop-resume]').disabled = value;
 }
 
 export async function openShop({ itemId, onClose } = {}) {
@@ -664,9 +720,11 @@ export async function openShop({ itemId, onClose } = {}) {
   if (shopBusy || shop.open) return;
   const current = ++shopGeneration;
   const returnToPause = !tray.hidden && usesLinePhysics();
+  shopResumeRequested = false;
+  shop.querySelector('[data-shop-resume]').hidden = !returnToPause || Boolean(onClose);
   const opener = document.activeElement;
   const parentHook = hookSelection;
-  const parentScroll = pause.scrollTop;
+  const parentScroll = pause.querySelector('[data-gear-content]').scrollTop;
   const parentItem = opener?.closest('[data-item]')?.dataset.item;
   shopReturn = onClose ?? (() => {
     if (returnToPause) {
@@ -674,7 +732,7 @@ export async function openShop({ itemId, onClose } = {}) {
       else if (pausePanel === 'gear') {
         hookSelection = parentHook;
         renderGear();
-        pause.scrollTop = parentScroll;
+        pause.querySelector('[data-gear-content]').scrollTop = parentScroll;
         const row = [...pause.querySelectorAll('[data-item]')].find(row => row.dataset.item === parentItem);
         (row?.querySelector('[data-view-shop], [data-shop-action]') ?? row)?.focus({ preventScroll: true });
       }
@@ -699,13 +757,13 @@ export async function openShop({ itemId, onClose } = {}) {
     if (current !== shopGeneration || !shop.open) return;
     profile = loaded;
     const targeted = shopItems.find(item => item.id === itemId);
-    if (targeted?.category === 'hook') hookSelection = itemId;
+    shopSelection = targeted?.id ?? 'stronger-line';
+    shopPane = targeted ? 'details' : 'grid';
+    shopGridScroll = 0;
     renderShop();
     shopMessage.textContent = returnToPause ? 'Equipment changes apply to your next Campaign outing.' : '';
     if (targeted) {
-      const row = [...shopList.querySelectorAll('[data-item]')].find(row => row.dataset.item === itemId);
-      row?.scrollIntoView({ block: 'nearest' });
-      row?.focus({ preventScroll: true });
+      shopList.querySelector('[data-item]')?.focus({ preventScroll: true });
     }
   } catch {
     if (current === shopGeneration) shopMessage.textContent = 'Couldn’t open your saved tackle. Close the shop and try again.';
@@ -719,13 +777,19 @@ shop.addEventListener('close', () => {
   const returnTo = shopReturn;
   shopReturn = undefined;
   // Establish the parent hold before releasing this child.
-  try { returnTo?.(); } finally {
+  try { returnTo?.(); if (shopResumeRequested && pause.open) pause.close(); } finally {
     shopRelease?.();
     shopRelease = undefined;
   }
 });
-shop.addEventListener('cancel', event => { if (shopBusy) event.preventDefault(); });
+shop.addEventListener('cancel', event => {
+  if (shopBusy) { event.preventDefault(); return; }
+  if (shopPane === 'details' && matchMedia('(max-width: 599px)').matches) {
+    event.preventDefault(); shop.querySelector('[data-shop-grid-back]').click();
+  }
+});
 shop.addEventListener('submit', event => { if (shopBusy) event.preventDefault(); });
+shop.querySelector('[data-shop-resume]').addEventListener('click', () => { if (!shopBusy) { shopResumeRequested = true; shop.close(); } });
 
 async function changeShopItem(event) {
   const control = event.target.closest('[data-shop-action]');
@@ -737,7 +801,7 @@ async function changeShopItem(event) {
   const message = source === shop ? shopMessage : pause.querySelector('[data-gear-message]');
   setShopBusy(true);
   message.textContent = 'Saving tackle…';
-  source.querySelectorAll('[data-shop-action], [data-hook-step], [data-item-details], [data-view-shop], [data-shop-category]')
+  source.querySelectorAll('[data-shop-action], [data-hook-step], [data-item-details], [data-view-shop], [data-shop-category], [data-shop-select], [data-shop-grid-back]')
     .forEach(button => { button.disabled = true; });
   try {
     const result = await applyProfile({ type, id, revision: profile.revision });
@@ -792,6 +856,7 @@ for (const surface of [shop, pause]) {
     if (view) void openShop({ itemId: view.dataset.viewShop });
     const category = event.target.closest('[data-shop-category]');
     if (category) {
+      shopPane = 'grid'; shop.dataset.pane = 'grid';
       const heading = shopList.querySelector(`#shop-${category.dataset.shopCategory}`);
       heading.scrollIntoView({ block: 'start' }); heading.focus({ preventScroll: true });
     }

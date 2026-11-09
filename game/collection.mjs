@@ -72,7 +72,7 @@ export function openYourLake({ onClose, onVideo, initialSpecies } = {}) {
   const opener = document.activeElement;
   const dialog = document.createElement('dialog');
   dialog.id = 'your-lake';
-  dialog.className = 'collection-dialog';
+  dialog.className = 'collection-dialog fishing-frame';
   dialog.setAttribute('aria-label', 'Your Lake');
   dialog.innerHTML = '<div class="collection-top"><button type="button" data-back hidden>Back to Your Lake</button><button type="button" data-close>Return to outing</button></div><div data-content></div>';
   const content = dialog.querySelector('[data-content]');
@@ -92,13 +92,16 @@ export function openYourLake({ onClose, onVideo, initialSpecies } = {}) {
     content.querySelector('[data-legacy]').textContent = profile.caughtSpecies.length ? ''
       : 'Your tackle and coins stay with you. Species tracking starts with a saved landing in this version.';
     const grid = content.querySelector('.collection-grid');
-    for (const fish of collectibleSpecies.filter(fish => profile.caughtSpecies.includes(fish.id))) {
+    for (const fish of collectibleSpecies) {
       const button = document.createElement('button');
       button.type = 'button';
+      const caught = profile.caughtSpecies.includes(fish.id);
       button.dataset.species = fish.id;
+      button.disabled = !caught;
+      button.classList.toggle('collection-undiscovered', !caught);
       button.innerHTML = svg(fish.id);
       const name = document.createElement('span');
-      name.textContent = fishProfiles[fish.id].name;
+      name.textContent = caught ? fishProfiles[fish.id].name : 'Undiscovered species';
       button.append(name);
       button.addEventListener('click', () => card(fish.id));
       grid.append(button);

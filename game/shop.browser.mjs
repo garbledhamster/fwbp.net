@@ -64,6 +64,7 @@ async function checkShop(browser, mobile) {
     const entry = picker.getByRole('button', { name: 'Tackle shop', exact: true });
     assert.equal(await entry.isVisible(), true, 'the outing chooser gives access to the shop');
     await press(entry);
+    await press(shop.locator('[data-shop-select="stronger-line"]'));
     await stronger.waitFor({ state: 'visible' });
     assert.equal(await shop.evaluate(el => el.scrollTop), 0, 'the shop opens at the title and balance');
   }
@@ -84,7 +85,7 @@ async function checkShop(browser, mobile) {
 
   await openShop();
   assert.match(await balance.textContent(), /0 coins/);
-  assert.match(await starter.textContent(), /8 lb.*equipped/is);
+  assert.match(await shop.locator('[data-shop-select="starter-line"]').textContent(), /Equipped/is);
   assert.match(await stronger.textContent(), /12 lb.*10 coins/is);
   assert.equal(await buy.isDisabled(), true, 'a new profile cannot spend coins it has yet to earn');
   await press(shop.getByRole('button', { name: 'Back to outings' }));
@@ -124,11 +125,15 @@ async function checkShop(browser, mobile) {
   await textVisible(stronger, /^Owned$/i);
   assert.match(await balance.textContent(), /0 coins/);
   await press(equip(stronger));
-  await textVisible(stronger, /^Equipped$/i);
+  await textVisible(stronger, /^Equipped for next outing$/i);
+  await press(shop.locator('[data-shop-category="line"]'));
+  await press(shop.locator('[data-shop-select="starter-line"]'));
   await press(equip(starter));
-  await textVisible(starter, /^Equipped$/i);
+  await textVisible(starter, /^Equipped for next outing$/i);
+  await press(shop.locator('[data-shop-category="line"]'));
+  await press(shop.locator('[data-shop-select="stronger-line"]'));
   await press(equip(stronger));
-  await textVisible(stronger, /^Equipped$/i);
+  await textVisible(stronger, /^Equipped for next outing$/i);
 
   await page.reload({ waitUntil: 'domcontentloaded' });
   await openShop();

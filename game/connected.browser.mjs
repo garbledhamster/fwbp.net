@@ -137,6 +137,7 @@ async function connected(browser, viewport, mobile) {
   assert.equal(await tray.getByRole('timer').textContent(), timer, 'parent Pause still owns its hold');
   await press(pause.getByRole('button', { name: 'Tackle shop', exact: true }));
   const shop = page.locator('.fishing-shop');
+  await press(shop.locator('[data-shop-select="stronger-line"]'));
   const stronger = shop.locator('[data-item="stronger-line"]');
   await press(stronger.getByRole('button', { name: 'Buy Stronger line', exact: true }));
   await press(stronger.getByRole('button', { name: 'Equip Stronger line', exact: true }));
