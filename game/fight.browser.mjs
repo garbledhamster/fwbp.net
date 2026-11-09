@@ -20,7 +20,7 @@ async function fightGeometry(page) {
 
 async function checkFight(browser, mobile, mode) {
   const { leave, page, tray, action, button, status, press, enter, tick, findFish, reelToHole, errors } =
-    await practicePage(browser, { mobile });
+    await practicePage(browser, { mobile, campaignLiveButtons: mode === 'Campaign' });
   // Seed the first encounter with a standard muskie.
   await page.evaluate(() => {
     const rolls = [.98, .2, .5, .4, .1];

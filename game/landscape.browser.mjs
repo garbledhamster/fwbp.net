@@ -28,12 +28,27 @@ async function checkLandscape(browser, mode) {
     Math.random = () => rolls[draw++ % rolls.length];
   });
 
+  const campaign = mode === 'Campaign';
+  const marker = page.locator('[data-line-gesture-marker]');
+  const touch = campaign && await page.context().newCDPSession(page);
+  async function swipe(direction, atMarker = false) {
+    const box = await (atMarker ? marker : tray).boundingBox();
+    const x = atMarker ? box.x + box.width / 2 : 30;
+    const y = atMarker ? box.y + box.height / 2 : Math.max(75, box.y / 2);
+    const send = (type, touchPoints) => touch.send('Input.dispatchTouchEvent', { type, touchPoints });
+    await send('touchStart', [{ x, y }]);
+    for (let step = 1; step <= 4; step++) await send('touchMove', [{ x, y: y + direction * 16 * step }]);
+    await send('touchEnd', []);
+  }
+
   await enter(mode);
   await findFish();
   await press(button('Spoon'));
-  await press(action);
+  if (campaign) await swipe(-1, true);
+  else await press(action);
   await tick(700);
-  await press(action);
+  if (campaign) await swipe(-1, true);
+  else await press(action);
   await tick(800);
   assert.match(await status.textContent(), /line’s tight/i);
   const portrait = await fightView(page);
@@ -50,13 +65,20 @@ async function checkLandscape(browser, mode) {
   const landscape = await fightView(page);
   assert.ok(landscape.fishTop >= 0 && landscape.fishBottom < landscape.trayTop,
     `rotation keeps the fish above the tray: ${JSON.stringify(landscape)}`);
-  assert.ok(landscape.trayTop >= 160, 'leave at least half of the short screen for water');
+  assert.ok(landscape.trayTop >= 160, `leave at least half of the short screen for water: ${JSON.stringify(landscape)}`);
   assert.ok(landscape.gap < 1, 'the line stays attached across rotation');
   assert.equal(await load.evaluate(el => el.value), beforeRotation, 'rotation preserves the load');
-  for (const control of [action, loosen]) {
+  if (campaign) {
+    assert.equal(await action.isVisible(), false);
+    assert.equal(await loosen.isVisible(), false);
+    const cue = await marker.locator('[data-line-gesture-down]').boundingBox();
+    assert.ok(cue?.y >= 0 && cue.y + cue.height <= landscape.trayTop, 'Loosen guide stays in the visible water');
+  }
+  const touchTargets = campaign ? [button('Menu'), ...['Jig', 'Spoon', 'Minnow'].map(button)] : [action, loosen];
+  for (const control of touchTargets) {
     const bounds = await control.boundingBox();
     assert.ok(bounds?.width >= 44 && bounds.height >= 44 && bounds.y + bounds.height <= 320,
-      'Reel and Loosen remain on-screen touch targets');
+      'the tray retains on-screen touch targets');
   }
 
   if (process.env.FISHING_EVIDENCE_DIR && mode === 'Campaign') {
@@ -67,7 +89,8 @@ async function checkLandscape(browser, mode) {
     });
   }
 
-  await press(loosen);
+  if (campaign) await swipe(1);
+  else await press(loosen);
   assert.match(await status.textContent(), /reel it up toward the hole/i);
   assert.ok(await load.evaluate(el => el.value) < beforeRotation);
   const beforeScroll = await fightView(page);

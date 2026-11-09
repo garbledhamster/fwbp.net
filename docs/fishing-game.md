@@ -108,3 +108,9 @@ Move hole opens the map during a Campaign outing. Opened holes skip drilling and
 `campaign-map.mjs` owns the map, drilling and confirmation dialogs. Its callbacks use the existing suspension and permit/shop return contracts. `rules.mjs` accepts a small `campaign.hole` object from the browser and remains self-contained for the Ranked function deployment. `moveToHole`, `selectHoleFish` and `abandonHoleFish` mutate the same run. Hole records store candidate rolls and selection until the outing ends. `lake-map-data.mjs` and `assets/maps/mille-lacs.svg` share one coordinate transform. See the packaged map attribution and rebuild notes in `assets/maps/README.md`.
 
 Run `node game/map.browser.mjs` for normal-entry free permits, locked permit return, target commitment, abandonment and revisits at desktop, 320 × 720 touch and 720 × 320 touch. Run `node game/map-drill.browser.mjs` for drill/skip parity, a purchased reef permit, distinct hole profiles, retained candidates and active-versus-next-outing line equipment. The shared browser helper now enters Campaign through its map and drilling screen; Practice still uses the original path.
+
+### Campaign line gestures
+
+Scroll or swipe up on the line marker to jig or set the hook. After hooking a fish, scroll or swipe anywhere in the water. Up reels or pulls up at the hole, and down loosens. The bottom tray keeps bait and the line tension meter. Controls in Pause lists the keyboard equivalents. Add `?campaign-live-buttons=1` to the page URL to restore the live action buttons for a comparison. The save, Next fish and Your Lake actions are available in either view.
+
+Run `node game/campaign-tray.browser.mjs` for six catches by desktop wheel or phone swipe, including a failed save and retry, Your Lake return and the end of the outing. `node game/gestures.browser.mjs` covers input guards and landscape touch.

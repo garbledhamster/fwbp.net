@@ -22,15 +22,15 @@ await withBrowser(async browser => {
   const daylight = await color();
   await tick(29200);
   await findFish();
-  await press(action);
+  await page.keyboard.press('j');
   await tick(900);
   await expectPhase('Dusk');
   const dusk = await color();
   assert.notEqual(dusk, daylight);
   assert.match(await status.textContent(), /yeah, reel it/i, 'the phase change keeps the active bite window');
-  await press(action);
-  await reelToHole();
-  await press(action);
+  await page.keyboard.press('r');
+  await reelToHole({ keyboard: true });
+  await page.keyboard.press('r');
   await status.filter({ hasText: /yellow perch.*10 coins/i }).waitFor();
   await leave();
 
@@ -75,6 +75,11 @@ await withBrowser(async browser => {
   }, beforePractice.elapsedMs);
   assert.equal(afterStaleWrite.elapsedMs, beforePractice.elapsedMs, 'older clock writes do not roll back the phase');
   await enter('Campaign');
+  await tick(31000);
+  assert.equal(await tray.getByRole('timer').isVisible(), false, 'an uncommitted hole has no fish deadline');
+  await findFish();
+  await page.keyboard.press('j');
+  await page.keyboard.press('r'); // An early hook attempt returns to searching after committing the fish.
   await tick(31000);
   await action.getByText('Next fish', { exact: true }).waitFor();
   await page.clock.fastForward(20 * 60 * 1000);

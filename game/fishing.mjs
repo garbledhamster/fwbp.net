@@ -8,6 +8,8 @@ import { renderSpeciesVideo } from './species-video.mjs';
 import { spriteHref } from './lake-sprites.mjs';
 
 const outingTime = createSuspensionClock();
+// Keep the previous Campaign controls available while trying the bait-only tray.
+const restoreCampaignLiveButtons = new URLSearchParams(location.search).get('campaign-live-buttons') === '1';
 const endpoint = document.querySelector('meta[name="fishing-api"]')?.content;
 const lake = document.querySelector('.lake');
 const water = [...lake.querySelectorAll(':scope > .dive')];
@@ -131,17 +133,17 @@ pause.innerHTML = `
     <button type="button" data-action="back">Back to Pause</button>
   </section>
   <section data-pause-panel="controls" hidden>
-    <p>Scroll the lake to find the larger fish. Choose a lure, then jig. Reel in the gold window. Loosen a tight line; reel when it clears.</p>
+    <p>Scroll the lake to find fish. Choose a lure, then jig. Wait for gold to set the hook. Loosen a tight line, then reel when it clears.</p>
     <dl class="fishing-controls-list">
       <dt><kbd>J</kbd></dt><dd>Jig while searching</dd>
-      <dt><kbd>R</kbd></dt><dd>Reel at the bite or in a fight; pull up at the hole</dd>
+      <dt><kbd>R</kbd></dt><dd>Set the hook at the bite, reel in a fight, or pull up at the hole</dd>
       <dt><kbd>L</kbd></dt><dd>Loosen during a fight</dd>
       <dt><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></dt><dd>Jig, Spoon, Minnow while searching</dd>
       <dt><kbd>Esc</kbd></dt><dd>Menu / Back / Resume</dd>
       <dt>Arrows / Page keys</dt><dd>Scroll the lake; Left / Right browse a focused hook carousel</dd>
     </dl>
-    <p data-campaign-gestures hidden>In Campaign, scroll or swipe up on the marker to jig or set the hook. Once hooked, scroll or swipe up anywhere in the water to reel or pull up. Go down to loosen.</p>
-    <p>Touch uses the labeled fishing buttons. Details shows each item’s effect. Campaign tackle changes apply to the next outing. Practice uses starter tackle and its own Level 2 skill choice. Ranked uses server timing and an Exit button.</p>
+    <p data-campaign-gestures hidden>In Campaign, scroll or swipe up on the marker to jig or set the hook. Once hooked, scroll or swipe anywhere in the water. Go up to reel or pull up and down to loosen.</p>
+    <p>In Practice and Ranked, tap the labeled fishing buttons. Details shows each item’s effect. Campaign tackle changes apply to the next outing. Practice uses starter tackle and its own Level 2 skill choice. Ranked uses server timing and an Exit button.</p>
     <button type="button" data-action="back">Back to Pause</button>
   </section><div class="fishing-frame-footer"><button type="button" data-action="resume">Resume fishing</button></div>`;
 const itemDetails = document.createElement('dialog');
@@ -226,10 +228,11 @@ const lineGestureMarker = document.createElement('div');
 lineGestureMarker.className = 'fishing-line-gesture';
 lineGestureMarker.setAttribute('data-line-gesture-marker', '');
 lineGestureMarker.hidden = true;
-lineGestureMarker.innerHTML = '<span data-line-gesture-up></span><span data-line-gesture-down hidden>↓ Loosen</span>';
+lineGestureMarker.innerHTML = '<span data-line-gesture-up></span><span data-line-gesture-down hidden>↓ Loosen</span><span data-line-gesture-wait hidden>Wait for gold</span>';
 lake.append(lineGestureMarker);
 const lineGestureUp = lineGestureMarker.querySelector('[data-line-gesture-up]');
 const lineGestureDown = lineGestureMarker.querySelector('[data-line-gesture-down]');
+const lineGestureWait = lineGestureMarker.querySelector('[data-line-gesture-wait]');
 const celebration = document.createElement('div');
 celebration.className = 'fishing-celebration';
 celebration.hidden = true;
@@ -973,18 +976,27 @@ function clearLineGestureMarker() {
 function positionLineGestureMarker(water, x, y) {
   const phase = lineGesturePhase();
   if (!phase) return clearLineGestureMarker();
-  if (lake.dataset.lineGesture !== phase) {
-    lake.dataset.lineGesture = phase;
-    lineGestureUp.textContent = lineGestureLabels[phase];
-    lineGestureDown.hidden = !hookedGesture(phase);
-  }
+  if (lake.dataset.lineGesture !== phase) lake.dataset.lineGesture = phase;
+  const elapsed = phase === 'hook' ? outingTime.dateNow() - biteAt : 0;
+  const waiting = phase === 'hook' && elapsed < state.window.from;
+  const missedWindow = phase === 'hook' && elapsed > state.window.until;
+  const upLabel = missedWindow ? '↑ Try again' : lineGestureLabels[phase];
+  if (lineGestureUp.textContent !== upLabel) lineGestureUp.textContent = upLabel;
+  lineGestureUp.hidden = waiting || state.fight?.tight === true;
+  lineGestureWait.hidden = !waiting;
+  lineGestureDown.hidden = !hookedGesture(phase);
   lineGestureMarker.hidden = false;
-  const top = Math.max(water.top, window.visualViewport?.offsetTop ?? 0);
+  const { offsetLeft = 0, offsetTop = 0, width = innerWidth } = window.visualViewport ?? {};
+  const left = Math.max(water.left, offsetLeft);
+  const right = Math.min(water.right, offsetLeft + width);
+  const top = Math.max(water.top, offsetTop);
   const bottom = Math.min(water.bottom, tray.getBoundingClientRect().top);
-  // Keep the whole target reachable even when the rig is at the ice hole.
-  const center = Math.max(top + 39, Math.min(water.top + y, bottom - 39));
-  lineGestureMarker.style.left = `${x + 18}px`;
-  lineGestureMarker.style.top = `${center - water.top}px`;
+  // Keep the whole target reachable even when the rig is at the ice hole or the screen edge.
+  const guideOffset = hookedGesture(phase) ? -62 : 18;
+  const markerX = Math.max(left + 54, Math.min(water.left + x + guideOffset, right - 54));
+  const markerY = Math.max(top + 39, Math.min(water.top + y, bottom - 39));
+  lineGestureMarker.style.left = `${markerX - water.left}px`;
+  lineGestureMarker.style.top = `${markerY - water.top}px`;
 }
 
 function drawFishingLine(eye, slack = 0, fight) {
@@ -1130,7 +1142,7 @@ function setStatus(message, detail = '') {
   result.hidden = !detail;
 }
 
-function renderDialogue(linePhysics) {
+function renderDialogue(linePhysics, baitOnly) {
   portrait.hidden = speaker.hidden = !linePhysics;
   if (linePhysics) status.setAttribute('aria-label', 'Bryan');
   else status.removeAttribute('aria-label');
@@ -1146,7 +1158,7 @@ function renderDialogue(linePhysics) {
     }
   }
   const outcome = linePhysics && ['landed', 'missed', 'done'].includes(state?.stage);
-  const dialogueAction = outcome || (linePhysics && state?.reaction === 'slipped-hook');
+  const dialogueAction = outcome || (linePhysics && !baitOnly && state?.reaction === 'slipped-hook');
   const host = dialogueAction ? speech : actionRack;
   const moving = action.parentElement !== host;
   const restoreFocus = moving && document.activeElement === action;
@@ -1168,7 +1180,13 @@ function renderDialogue(linePhysics) {
     if (recommendation) { shopTip.dataset.itemId = recommendation.id; shopTip.textContent = `See ${recommendation.name.toLowerCase()}`; }
   }
   tackleRack.hidden = outcome;
-  if (restoreFocus) action.focus({ preventScroll: true });
+  action.hidden = baitOnly && !outcome;
+  if (restoreFocus) focusPrimaryControl();
+}
+
+function focusPrimaryControl() {
+  const control = action.hidden ? slots.find(slot => slot.dataset.lure === lure) : action;
+  control?.focus({ preventScroll: true });
 }
 
 function resetRetraction() {
@@ -1391,6 +1409,7 @@ function render() {
   renderCatchActions();
   renderSavedCatch();
   const campaign = mode === 'campaign';
+  const baitOnly = campaign && !restoreCampaignLiveButtons;
   const linePhysics = usesLinePhysics();
   const modeName = { campaign: 'Campaign', practice: 'Practice', ranked: 'Ranked' }[mode];
   const areaName = state?.hole ? ` · ${state.hole.id} · ${state.hole.depthFt} ft · ${state.hole.habitat}` : state?.area ? ` · ${state.area}` : '';
@@ -1399,6 +1418,8 @@ function render() {
   renderCandidates();
   tray.dataset.mode = mode;
   tray.toggleAttribute('data-line-physics', linePhysics);
+  tray.toggleAttribute('data-campaign-bait-only', baitOnly);
+  actionRack.hidden = baitOnly;
   waterName.textContent = state ? `${state.lake}${areaName}` : 'Fishing beneath the ice';
   scoreProgress.hidden = !state;
   runProgress.textContent = state
@@ -1449,7 +1470,7 @@ function render() {
     missed: ['next', 'Next fish'], done: ['next', 'Fish again'],
   }[state?.stage] ?? ['next', 'Wait']);
   setAction(actionIcon, label);
-  renderDialogue(linePhysics);
+  renderDialogue(linePhysics, baitOnly);
   action.disabled = busy || !state;
   exit.disabled = usesLinePhysics() && (busy || !state || catchSaveFailed);
   exit.innerHTML = usesLinePhysics() ? `${icon('pause')}<span>${busy ? state ? 'Saving…' : 'Opening…' : 'Menu'}</span>` : 'Exit fishing';
@@ -1461,7 +1482,7 @@ function render() {
     bobber.innerHTML = icon(lure);
   }
   pressure.hidden = !(state?.fight || state?.snap) || failed;
-  loosen.hidden = !linePhysics && pressure.hidden;
+  loosen.hidden = baitOnly || (!linePhysics && pressure.hidden);
   loosen.disabled = busy || !state?.fight;
   if (linePhysics) {
     renderLineLoad();
@@ -1963,9 +1984,7 @@ async function perform(move, input = {}, reelEffort) {
       reframeHookedFish();
     }
   }
-  if (focused === action || (move === 'upgrade' && skillRow.hidden && practiceChoice.hidden)) {
-    action.focus({ preventScroll: true });
-  }
+  if (focused === action || (move === 'upgrade' && skillRow.hidden && practiceChoice.hidden)) focusPrimaryControl();
   if (focused === loosen) (loosen.disabled || loosen.hidden ? action : loosen).focus({ preventScroll: true });
 }
 
@@ -2092,7 +2111,7 @@ function renderCandidates() {
       endAttemptIfNeeded(() => {
         const slot = wasCommitted && previousSlot < fish.slot ? fish.slot - 1 : fish.slot;
         state = selectHoleFish(run, slot); placeFish(); render(); syncCountdown();
-        target?.scrollIntoView({ block: 'center', behavior: 'instant' }); action.focus({ preventScroll: true });
+        target?.scrollIntoView({ block: 'center', behavior: 'instant' }); focusPrimaryControl();
       });
     });
     scenes[fish.depth].append(button);

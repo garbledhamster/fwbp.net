@@ -32,7 +32,7 @@ async function search(page, tray, action, mobile) {
 
 async function checkShop(browser, mobile) {
   const { leave, page, launch, tray, action, status, button, enter, press, tick, errors, reelToHole } =
-    await practicePage(browser, { mobile });
+    await practicePage(browser, { mobile, campaignLiveButtons: true });
   const picker = page.getByRole('dialog', { name: 'Choose an outing' });
   const shop = page.getByRole('dialog', { name: 'Tackle shop' });
   const stronger = shop.locator('[data-item="stronger-line"]');

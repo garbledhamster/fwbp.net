@@ -5,7 +5,7 @@ import { practicePage, withBrowser } from './browser-qa.mjs';
 
 async function campaign(browser, { mobile = false, seeded = true } = {}) {
   const qa = await practicePage(browser, { mobile, seeded });
-  const { page, tray, tick, press, action, status, findFish } = qa;
+  const { page, tray, tick, press, status, findFish } = qa;
   const touch = mobile && await page.context().newCDPSession(page);
   const wait = ms => Promise.all([tick(ms), page.waitForTimeout(ms)]);
   const marker = page.locator('[data-line-gesture-marker]');
@@ -52,13 +52,14 @@ async function campaign(browser, { mobile = false, seeded = true } = {}) {
     await findFish();
     await press(tray.getByRole('group', { name: 'Lures' }).getByRole('button', { name: lure, exact: true }));
     await gesture(mobile ? -60 : -100, await markerPoint());
-    assert.equal(await action.textContent(), 'Reel');
+    assert.equal(await marker.locator('[data-line-gesture-wait]').isVisible(), true);
     await wait(700);
     await gesture(mobile ? -60 : -100, await markerPoint());
     assert.match(await status.textContent(), /reel it up toward the hole/i);
   }
 
-  return { ...qa, depth, gesture, hook, load, mobile, target, wait, wheelPackets };
+  const phase = () => page.locator('.lake').getAttribute('data-line-gesture');
+  return { ...qa, depth, gesture, hook, load, mobile, phase, target, wait, wheelPackets };
 }
 
 async function controlledReel(browser, input, mobile = false) {
@@ -87,7 +88,7 @@ const luresBySymbol = {
 
 async function randomFights(browser, mobile) {
   const qa = await campaign(browser, { mobile, seeded: false });
-  const { page, target, status, action, tray, depth, load, tick, gesture, wait } = qa;
+  const { page, target, status, phase, tray, depth, load, tick, gesture, wait } = qa;
   const input = dy => gesture(dy * (mobile ? 60 : 100));
   const movements = {};
   const evidence = process.env.FISHING_EVIDENCE_DIR;
@@ -121,12 +122,12 @@ async function randomFights(browser, mobile) {
           await input(1);
           assert.ok(await load() < tight, 'downward input relieves the measured load');
           await capture('eased');
-          for (let pull = 0; pull < 24 && await action.textContent() !== 'Pull up'; pull++) {
+          for (let pull = 0; pull < 24 && await phase() !== 'lift'; pull++) {
             await wait(300);
-            assert.equal(await action.textContent(), 'Reel', 'the fish stays on the line');
+            assert.equal(await phase(), 'reel', 'the fish stays on the line');
             await input(/line’s tight/i.test(await status.textContent()) ? 1 : -1);
           }
-          assert.equal(await action.textContent(), 'Pull up');
+          assert.equal(await phase(), 'lift');
           await wait(300);
           await input(-1);
           await tray.getByText(/(?:Northern pike|Muskie).*points/i).waitFor();
