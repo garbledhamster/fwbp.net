@@ -16,6 +16,7 @@ html:has(body[data-campaign-camera]), body[data-campaign-camera] {
   background: #263e38;
   touch-action: pinch-zoom;
 }
+.fishing[data-campaign-camera] .fishing-tray { touch-action: pinch-zoom; }
 .fishing[data-campaign-camera] .lake {
   translate: var(--camera-x, 0px) var(--camera-y, 0px);
   overflow: visible;

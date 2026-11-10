@@ -147,7 +147,7 @@ pause.innerHTML = `
       <dt><kbd>Esc</kbd></dt><dd>Menu / Back / Resume</dd>
       <dt>Arrows / Page keys</dt><dd>Scroll the lake. In Gear, use arrow keys to browse focused item tiles.</dd>
     </dl>
-    <p data-campaign-gestures hidden>In Campaign, click or tap the jig to work the bait. When a fish bites, wait for gold, then click or tap the jig again to set the hook. Once hooked, scroll or swipe up anywhere in the water to reel or pull up. Go down to loosen.</p>
+    <p data-campaign-gestures hidden>In Campaign, scroll or swipe up to raise and jig the lure. Go down to lower it. You can also click or tap the jig. When a fish bites, wait for gold, then click or tap the jig to set the hook. Once hooked, go up to reel or pull up, and down to loosen.</p>
     <p>In Practice and Ranked, tap the labeled fishing buttons. Details shows each item’s effect. Campaign tackle changes apply to the next outing. Practice uses starter tackle and its own Level 2 skill choice. Ranked uses server timing and an Exit button.</p>
     <button type="button" data-action="back">Back to Pause</button>
   </section><div class="fishing-frame-footer"><button type="button" data-action="resume">Resume fishing</button></div>`;
@@ -371,6 +371,10 @@ export function acquireSuspension() {
   const releaseTime = outingTime.acquire();
   if (first) {
     lineTouch = lurePress = undefined;
+    if (wheelBurst) {
+      wheelBurst.phase = undefined;
+      wheelBurst.browsing = false;
+    }
     stopDepthMotion();
     clearLineGestureMarker();
     pausedAnimations = [...lake.getAnimations({ subtree: true }), ...celebration.getAnimations({ subtree: true })]
@@ -2017,12 +2021,17 @@ const wheelQuietMs = 145;
 const wheelThreshold = 24;
 const wheelLinePx = 16;
 const swipeThreshold = 34;
-const lineControl = 'button, a, input, select, textarea, label, summary, dialog, [contenteditable], [role="button"], [role="link"], [data-line-gesture-ignore]';
+const touchSlop = 12;
 
-function gestureSurface(target, phase) {
-  if (phase === 'hook') return lineGestureMarker.contains(target);
-  return hookedGesture(phase) && campaignViewport.contains(target) && !target.closest(lineControl);
+function campaignInputPhase(target) {
+  if (!campaignViewport.contains(target) && !tray.contains(target)) return;
+  if (tray.hidden || outingTime.suspended || dialogOpen() || failed) return;
+  const phase = lineGesturePhase();
+  if (phase === 'hook' && !lureAction.contains(target)) return;
+  return phase ?? (state?.stage === 'seek' ? 'browse' : undefined);
 }
+
+const browsingDepth = phase => phase === 'jig' || phase === 'browse';
 
 function effortFromSpeed(distance, duration) {
   // A normal stroke covers about two thirds of a CSS pixel per millisecond.
@@ -2033,6 +2042,8 @@ function workLine(phase, direction, effort) {
   if (phase !== lineGesturePhase()) return;
   if (direction > 0) {
     if (hookedGesture(phase)) loosenLine(effort);
+  } else if (phase === 'jig') {
+    if (!gameBlocked()) void perform('jig', { lure }, { keepDepth: true });
   } else {
     activatePrimary(phase === 'reel' ? effort : undefined);
   }
@@ -2040,7 +2051,7 @@ function workLine(phase, direction, effort) {
 
 window.addEventListener('wheel', event => {
   if (mode !== 'campaign' || tray.hidden || event.defaultPrevented) return;
-  const phase = lineGesturePhase();
+  const phase = campaignInputPhase(event.target);
   const deltaMode = event.deltaMode;
   const scale = deltaMode === 1 ? wheelLinePx : deltaMode === 2 ? innerHeight : 1;
   const x = event.deltaX * scale;
@@ -2048,13 +2059,14 @@ window.addEventListener('wheel', event => {
   const direction = Math.sign(y);
   const deliberate = direction && Math.abs(y) > Math.abs(x) * 1.3
     && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey;
-  const captured = gestureSurface(event.target, phase) && !event.ctrlKey && !event.metaKey;
+  const captured = phase && !event.ctrlKey && !event.metaKey;
   if (!wheelBurst || event.timeStamp - wheelBurst.last >= wheelQuietMs) {
     wheelBurst = { phase: captured && !busy ? phase : undefined, direction, version: state?.version,
-      distance: 0, started: event.timeStamp };
+      browsing: browsingDepth(phase), distance: 0, started: event.timeStamp };
   }
   wheelBurst.last = event.timeStamp;
   if (captured) event.preventDefault();
+  if (captured && deliberate && wheelBurst.browsing && browsingDepth(phase)) nudgeDepth(y * .54);
   if (!captured || !deliberate || busy || !event.cancelable
     || wheelBurst.phase !== phase || wheelBurst.direction !== direction || wheelBurst.version !== state?.version) {
     wheelBurst.phase = undefined;
@@ -2077,38 +2089,44 @@ window.addEventListener('wheel', event => {
 }, { capture: true, passive: false });
 
 window.addEventListener('touchstart', event => {
-  // The second finger can start outside the lake or over the tray.
-  if (event.touches.length !== 1) lineTouch = lurePress = undefined;
+  if (mode !== 'campaign') return;
+  if (event.touches.length !== 1) {
+    lineTouch = lurePress = undefined;
+    return;
+  }
+  const phase = campaignInputPhase(event.target);
+  const point = event.touches[0];
+  lineTouch = phase && { phase, version: state.version, id: point.identifier, x: point.clientX, y: point.clientY,
+    lastY: point.clientY, started: event.timeStamp, moved: false };
 }, { capture: true, passive: true });
-campaignViewport.addEventListener('touchstart', event => {
-  const phase = lineGesturePhase();
+window.addEventListener('touchmove', event => {
+  const touch = lineTouch;
+  if (!touch) return;
   const point = event.touches[0];
-  if (event.touches.length !== 1 || busy || !gestureSurface(event.target, phase)) {
+  if (event.touches.length !== 1 || !event.cancelable || point.identifier !== touch.id) {
     lineTouch = undefined;
     return;
   }
-  lineTouch = { phase, version: state.version, id: point.identifier, x: point.clientX, y: point.clientY,
-    started: event.timeStamp, held: false };
-}, { passive: true });
-campaignViewport.addEventListener('touchmove', event => {
-  if (!lineTouch) return;
-  if (event.touches.length !== 1 || !event.cancelable || !lineGesturePhase()) {
-    lineTouch = undefined;
-    return;
-  }
-  const point = event.touches[0];
-  if (point.identifier !== lineTouch.id) {
+  const x = point.clientX - touch.x;
+  const y = point.clientY - touch.y;
+  if (!touch.moved && Math.hypot(x, y) < touchSlop) return;
+  if (!touch.moved && Math.abs(y) <= Math.abs(x) * 1.3) {
     lineTouch = undefined;
     return;
   }
   event.preventDefault();
-  lineTouch.held = true;
-}, { passive: false });
-campaignViewport.addEventListener('touchend', event => {
+  touch.moved = true;
+  lurePress = undefined;
+  if (browsingDepth(touch.phase) && browsingDepth(campaignInputPhase(event.target))) {
+    nudgeDepth((point.clientY - touch.lastY) * .68);
+  }
+  touch.lastY = point.clientY;
+}, { capture: true, passive: false });
+window.addEventListener('touchend', event => {
   const touch = lineTouch;
   lineTouch = undefined;
   const point = event.changedTouches[0];
-  if (!touch?.held || event.touches.length || point?.identifier !== touch.id) return;
+  if (!touch?.moved || event.touches.length || point?.identifier !== touch.id) return;
   event.preventDefault();
   if (touch.version !== state?.version || touch.phase !== lineGesturePhase()) return;
   const x = point.clientX - touch.x;
@@ -2116,25 +2134,19 @@ campaignViewport.addEventListener('touchend', event => {
   if (Math.abs(y) < swipeThreshold || Math.abs(y) <= Math.abs(x) * 1.3) return;
   const effort = effortFromSpeed(Math.abs(y), Math.max(80, event.timeStamp - touch.started));
   workLine(touch.phase, Math.sign(y), effort);
-}, { passive: false });
-campaignViewport.addEventListener('touchcancel', () => { lineTouch = lurePress = undefined; });
+}, { capture: true, passive: false });
+window.addEventListener('touchcancel', () => { lineTouch = lurePress = undefined; }, { capture: true });
 
 window.addEventListener('wheel', event => {
-  if (event.defaultPrevented || outingTime.suspended || dialogOpen()) return;
+  if (mode === 'campaign' || event.defaultPrevented || outingTime.suspended || dialogOpen()) return;
   if (event.deltaY < 0 && !event.target.closest('.fishing-tray')) retractAtHole();
-  if (mode !== 'campaign' || tray.hidden || !campaignViewport.contains(event.target) ||
-    event.ctrlKey || event.metaKey || event.altKey || event.shiftKey ||
-    Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
-  event.preventDefault();
-  const scale = event.deltaMode === 1 ? wheelLinePx : event.deltaMode === 2 ? innerHeight : 1;
-  nudgeDepth(event.deltaY * scale * .54);
 }, { passive: false });
 campaignViewport.addEventListener('touchstart', event => {
-  if (outingTime.suspended || dialogOpen()) return;
+  if (mode === 'campaign' || outingTime.suspended || dialogOpen()) return;
   lastTouchY = event.touches.length === 1 ? event.touches[0].clientY : undefined;
 }, { passive: true });
 campaignViewport.addEventListener('touchmove', event => {
-  if (event.defaultPrevented || outingTime.suspended || dialogOpen()) {
+  if (mode === 'campaign' || event.defaultPrevented || outingTime.suspended || dialogOpen()) {
     lastTouchY = undefined;
     return;
   }
@@ -2142,10 +2154,6 @@ campaignViewport.addEventListener('touchmove', event => {
   if (y !== undefined && lastTouchY !== undefined) {
     const delta = lastTouchY - y;
     if (delta < -2) retractAtHole();
-    if (mode === 'campaign' && !tray.hidden && event.cancelable) {
-      event.preventDefault();
-      nudgeDepth(delta * .68);
-    }
   }
   lastTouchY = y;
 }, { passive: false });
@@ -2211,14 +2219,14 @@ async function retryCatchCoins() {
   action.focus({ preventScroll: true });
 }
 
-async function perform(move, input = {}, reelEffort) {
+async function perform(move, input = {}, { reelEffort, keepDepth } = {}) {
   if (busy || outingTime.suspended || !state) return;
   if (move === 'next') { campaignMilestoneNotice = false; settledCatch = undefined; }
   const prior = state;
   const focused = document.activeElement;
   const current = generation;
   if (move === 'jig') {
-    if (mode === 'campaign' && depthFrame) {
+    if (mode === 'campaign' && depthFrame && !keepDepth) {
       depthGoal = depthPosition;
       cameraPanAt = outingTime.now();
     }
@@ -2307,7 +2315,7 @@ async function perform(move, input = {}, reelEffort) {
 }
 
 function loosenLine(effort) {
-  if (!gameBlocked() && !loosen.disabled && state?.stage === 'fight') void perform('loosen', {}, effort);
+  if (!gameBlocked() && !loosen.disabled && state?.stage === 'fight') void perform('loosen', {}, { reelEffort: effort });
 }
 loosen.addEventListener('click', () => loosenLine());
 
@@ -2341,7 +2349,7 @@ async function activatePrimary(reelEffort) {
   if (state.stage === 'seek' && !state.hole && !fishInView()) return updateSearch();
   const fightMove = usesLinePhysics() && !state.fight?.pullUp ? 'reel' : 'lift';
   const move = { seek: 'jig', bite: 'reel', fight: fightMove, landed: 'next', missed: 'next' }[state.stage];
-  return perform(move, move === 'jig' ? { lure } : {}, reelEffort);
+  return perform(move, move === 'jig' ? { lure } : {}, { reelEffort });
 }
 action.addEventListener('click', () => { void activatePrimary(); });
 lureAction.addEventListener('pointerdown', event => {
@@ -2511,10 +2519,12 @@ function startCampaignSwimmers() {
 function renderCampaignSearch() {
   if (quietHole()) return setStatus('This hole is quiet for today. Try another spot.');
   const fish = swimPositions?.fish ?? [];
+  const jigInput = coarsePointer.matches ? 'Swipe up' : 'Scroll up';
+  const depthInput = coarsePointer.matches ? 'Swipe' : 'Scroll';
   const message = fish.some(swimmer => swimmer.mood === 'approach') ? 'It’s coming to the jig.'
     : fish.some(swimmer => swimmer.mood === 'away') ? 'It backed off. Try a different lure.'
-      : state.reaction === 'slipped-hook' ? 'It slipped the hook. Click or tap to jig again.'
-        : fish.some(swimmer => swimmer.near) ? 'Click or tap the jig.' : 'Scroll to a fish’s depth, then click or tap the jig.';
+      : state.reaction === 'slipped-hook' ? `It slipped the hook. ${jigInput} to jig again.`
+        : fish.some(swimmer => swimmer.near) ? `${jigInput} or click or tap the jig.` : `${depthInput} to a fish’s depth. ${jigInput} to jig.`;
   setStatus(practiceError ?? message);
 }
 
