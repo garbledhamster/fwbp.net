@@ -75,6 +75,7 @@ function hookWindow(run, fish) {
   if (!run.campaign) return reelWindow(run.skills);
   const { hook, line, lineControlRank = 0 } = run.campaign;
   const window = reelWindow({ ...run.skills, control: lineControlRank, quick: run.campaign.lureWorkRank ?? 0 });
+  if (run.campaign.tutorial) window.until += 3000;
   if (hook && hook.lure === fish?.lure) window.until += hook.windowMs;
   if (line && line.lure === fish?.lure) window.until += line.windowMs;
   const bait = run.campaign.baits?.find(item => item.lure === fish?.lure);
@@ -101,9 +102,11 @@ function startLineFight(run, fish, encounter, now) {
     lineStrength: run.campaign?.lineStrength ?? starterLineStrength, startDepth, pull, hookedAt: now, elapsed: 0,
     distance: startDepth, remaining: startDepth, paidOut: startDepth, tension: restingLoad,
     x: 0, y: 0, slack: 0, tight: false, pullUp: false,
+    ...(run.campaign?.tutorial && { tutorialTug: true }),
   };
   run.stage = 'fight';
   run.last = now;
+  if (run.fight.tutorialTug) sampleFight(run);
 }
 
 function sampleFight(run) {
@@ -111,7 +114,7 @@ function sampleFight(run) {
   const phase = fight.elapsed % surgeCycleMs;
   const surge = Math.max(0, Math.min(phase / 600, 1, (1800 - phase) / 700));
   const roomToRun = Math.min(1, fight.remaining / reelLength);
-  fight.y = fight.pull * surge * roomToRun;
+  fight.y = (fight.tutorialTug ? fight.pull + 1.6 : fight.pull * surge) * roomToRun;
   fight.distance = fight.remaining + fight.y;
   fight.x = Math.sin(phase * 2 * Math.PI / surgeCycleMs) * (fight.pull / 2.8) * roomToRun;
   fight.slack = Math.max(0, fight.paidOut - fight.distance);
@@ -119,6 +122,12 @@ function sampleFight(run) {
   fight.tight = fight.tension >= tightLoad;
   fight.pullUp = fight.remaining === 0;
   if (fight.tension > fight.lineStrength) {
+    if (run.campaign?.tutorial) {
+      const encounter = run.encounters[run.index];
+      startLineFight(run, lakes[run.lake].fish[encounter.species], encounter, fight.hookedAt + fight.elapsed);
+      run.reaction = 'snapped';
+      return;
+    }
     run.snap = { tension: fight.tension, lineStrength: fight.lineStrength };
     miss(run, 'snapped');
     run.cue = `Line snapped at ${fight.tension} lb on ${fight.lineStrength} lb line.`;
@@ -128,10 +137,11 @@ function sampleFight(run) {
 // Advance through the same samples even if the browser misses a frame.
 export function advanceLineFight(run, now) {
   if ((!run.campaign && !run.practice) || run.stage !== 'fight') return false;
-  const elapsed = Math.floor((Math.min(now, run.expires) - run.fight.hookedAt) / fightStepMs) * fightStepMs;
+  const fight = run.fight;
+  const elapsed = Math.floor((Math.min(now, run.expires) - fight.hookedAt) / fightStepMs) * fightStepMs;
   let changed = false;
-  while (run.fight && run.fight.elapsed < elapsed) {
-    run.fight.elapsed += fightStepMs;
+  while (run.fight === fight && fight.elapsed < elapsed) {
+    fight.elapsed += fightStepMs;
     sampleFight(run);
     changed = true;
   }
@@ -155,6 +165,10 @@ function moveLineFight(run, action, target, reelEffort) {
   if (action === 'loosen') {
     const room = Math.max(0, fight.distance + reelLength - fight.paidOut);
     fight.paidOut += Math.min(room, stroke);
+    if (fight.tutorialTug) {
+      fight.tutorialTug = false;
+      run.reaction = null;
+    }
   } else if (action === 'lift') {
     if (!fight.pullUp) throw Error('Reel the fish to the ice hole first.');
     if (fight.tight) throw Error('Loosen the line before pulling up.');
@@ -236,6 +250,16 @@ export function start(now, random = Math.random, lake = 'mille-lacs', { practice
   chooseOutingSpecies(run, campaign?.elapsedMs);
   run.seekUntil = seekDeadline(run, now);
   return run;
+}
+
+export function startTutorial(now) {
+  return start(now, () => .5, 'mille-lacs', {
+    campaign: {
+      tutorial: true,
+      hole: { id: 'tutorial', area: starterArea, depthFt: 10, habitat: 'Weed edge' },
+      roster: [{ key: 'tutorial:perch', speciesId: 'perch', lane: 1, sizeRoll: .4, colorRoll: 0 }],
+    },
+  });
 }
 
 export function publicRun(run) {
@@ -538,7 +562,7 @@ export function stepCampaignFish(run, now, { width, bands, lure, eye, reducedMot
       y: Math.min(100, Math.max(0, (eye.y - band.top) / band.height * 100)) };
     if (!run.committed) {
       run.committed = true;
-      run.seekUntil = seekDeadline(run, now);
+      if (!run.campaign.tutorial) run.seekUntil = seekDeadline(run, now);
     }
     run.waterJig = undefined;
     startBite(run, now);
