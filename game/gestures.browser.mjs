@@ -44,6 +44,10 @@ async function checkGestures(browser, layout) {
     await (touch ? page.touchscreen.tap(x, y) : page.mouse.click(x, y));
   };
   const waterPoint = async () => ({ x: 30, y: Math.max(75, (await tray.boundingBox()).y * .57) });
+  const controlPoint = async name => {
+    const box = await button(name).boundingBox();
+    return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  };
   const fingers = (type, points) => touch.send('Input.dispatchTouchEvent', {
     type, touchPoints: points.map(({ x, y }, id) => ({ x, y, id })),
   });
@@ -67,10 +71,10 @@ async function checkGestures(browser, layout) {
 
   await enter('Campaign');
   const originalDepth = await depth();
-  // End the browse swipe with the finger held still so a native fling cannot swallow the next tap.
-  await gesture(await waterPoint(), 0, touch ? -65 : 115, { hold: true });
+  await gesture(await controlPoint('Menu'), 0, touch ? 55 : 115);
   await settleInput();
-  assert.ok(await depth() > originalDepth + 5, 'depth browsing works outside the lure');
+  assert.ok(await depth() > originalDepth + 5, 'depth browsing works over the Menu button');
+  assert.equal(await page.getByRole('dialog', { name: 'Paused' }).isVisible(), false, 'a swipe does not press Menu');
   await tick(600);
   assert.equal(await action.textContent(), 'Jig');
   await findFish({ species: 'muskie' });
@@ -94,7 +98,12 @@ async function checkGestures(browser, layout) {
     assert.ok(reachedLure, 'Tab reaches the jig');
     assert.deepEqual([...visited], ['jig', 'spoon', 'minnow'], 'Tab reaches every bait slot');
   }
-  await press(button('Spoon'));
+  if (touch) {
+    const { x, y } = await controlPoint('Spoon');
+    await fingers('touchStart', [{ x, y }]);
+    await fingers('touchMove', [{ x: x + 3, y: y - 4 }]);
+    await fingers('touchEnd', []);
+  } else await press(button('Spoon'));
   await findFish({ species: 'muskie' });
   await marker.waitFor();
   assert.equal(await button('Spoon').getAttribute('aria-pressed'), 'true', 'the bait tap selects Spoon');
@@ -102,19 +111,22 @@ async function checkGestures(browser, layout) {
   const biteRipple = page.locator('.fishing-bite-ripple');
   const pause = page.getByRole('dialog', { name: 'Paused' });
   const beforeDepth = await depth();
-  await gesture(await markerPoint(), 0, touch ? -45 : 60, { hold: true });
+  await gesture(await markerPoint(), 0, touch ? 45 : 60, { hold: true });
   await settleInput();
   assert.ok(await depth() > beforeDepth, 'a wheel or swipe over the lure still browses depth');
-  assert.notEqual(await fish.getAttribute('data-swim'), 'approach', 'scrolling does not jig');
+  assert.notEqual(await fish.getAttribute('data-swim'), 'approach', 'a downward stroke only lowers the hook');
   await tick(600);
   await findFish({ species: 'muskie' });
   const preJigScroll = await scrollY();
-  await tapLure();
+  const preJigDepth = await depth();
+  await settleInput();
+  await gesture(await controlPoint('Spoon'), 0, touch ? -40 : -32);
   assert.equal(await biteRipple.isVisible(), false, 'the fish has to reach the jig before gold starts');
-  assert.equal(await scrollY(), preJigScroll, 'jigging holds the current depth');
+  assert.equal(await scrollY(), preJigScroll, 'pan and jig keep the page fixed');
   assert.equal(await button('Spoon').getAttribute('aria-pressed'), 'true', 'jigging keeps the bait selected');
-  await tick(32);
-  assert.equal(await fish.getAttribute('data-swim'), 'approach');
+  await tick(75);
+  assert.ok(await depth() < preJigDepth, 'an upstroke over a bait button raises the hook');
+  assert.equal(await fish.getAttribute('data-swim'), 'approach', 'the same upstroke jigs the lure');
   await press(button('Menu'), 'Enter');
   const pausedFish = await fish.getAttribute('style');
   await tick(1700);
@@ -145,7 +157,8 @@ async function checkGestures(browser, layout) {
   await settleInput();
   for (const [dx, dy, options] of [[44, -8], [0, -7], [0, 65], ...(touch ? [[0, -42, { pinch: true }], [0, -70, { cancel: true }]] : [])]) {
     await gesture(await markerPoint(), dx, dy, options);
-    assert.match(await status.textContent(), /yeah, reel it/i, 'horizontal, small, down, pinch and cancelled input do not hook');
+    assert.match(await status.textContent(), /yeah, reel it/i,
+      `${layout.name} ${JSON.stringify([dx, dy, options])} cannot set the hook`);
     await settleInput();
   }
   assert.equal(await lureAction.getAttribute('aria-disabled'), 'false');
@@ -178,8 +191,9 @@ async function checkGestures(browser, layout) {
   await assertGuideGap();
   await settleInput();
   const tightScroll = await scrollY();
-  await gesture(await waterPoint(), 0, 65);
-  assert.ok(await load() < tightLoad, 'a downward gesture away from the marker pays out line');
+  await gesture(await controlPoint('Menu'), 0, 65);
+  assert.ok(await load() < tightLoad, 'a downward gesture over Menu pays out line');
+  assert.equal(await pause.isVisible(), false, 'paying out line does not press Menu');
   assert.doesNotMatch(await balance.getAttribute('aria-valuetext'), /Tight/);
   assert.match(await up.innerText(), new RegExp(`↑ ${inputLabel} up`));
   assert.equal(await scrollY(), tightScroll, 'paying out line does not scroll the page');

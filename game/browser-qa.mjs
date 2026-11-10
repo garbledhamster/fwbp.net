@@ -170,9 +170,11 @@ export async function practicePage(browser, { mobile = false, viewport, configur
             ?? positions.sort((a, b) => Math.abs(a.x - lure.x) - Math.abs(b.x - lure.x))[0];
           const depthGap = nearest.y - lure.y;
           if (Math.abs(depthGap) > tolerance) {
-            document.querySelector('.fishing-route').dispatchEvent(new WheelEvent('wheel', {
-              deltaY: depthGap / .54, bubbles: true, cancelable: true,
-            }));
+            const surface = document.querySelector('.fishing-route');
+            const wheel = deltaY => surface.dispatchEvent(new WheelEvent('wheel', { deltaY, bubbles: true, cancelable: true }));
+            // Start a downward burst so aiming upward does not also jig.
+            if (depthGap < 0) wheel(.01);
+            wheel(depthGap / .54);
           }
           return { depthGap, horizontalGap: Math.abs(nearest.x - lure.x), width: lake.width, species: nearest.species };
         }, depthTolerance);
