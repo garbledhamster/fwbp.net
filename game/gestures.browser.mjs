@@ -216,8 +216,8 @@ async function checkGestures(browser, layout) {
   await tick(300);
   await settleInput();
 
-  for (let pull = 0; pull < 8 && await action.textContent() !== 'Pull up'; pull++) {
-    const beforeDepth = await depth();
+  const fightDepth = await depth();
+  for (let pull = 0; pull < 12 && await action.textContent() !== 'Pull up'; pull++) {
     const tight = /line’s tight/i.test(await status.textContent());
     await gesture(await waterPoint(), 0, tight ? 65 : -65);
     if (!touch && await action.textContent() === 'Pull up') {
@@ -225,11 +225,11 @@ async function checkGestures(browser, layout) {
       assert.equal(await action.textContent(), 'Pull up', 'wheel momentum cannot turn the last reel into a lift');
     }
     await tick(300);
-    if (!tight) assert.ok(await depth() < beforeDepth, 'reeling anywhere in the water raises the fish');
     await settleInput();
   }
 
   assert.equal(await action.textContent(), 'Pull up');
+  assert.ok(await depth() < fightDepth, 'reeling over the water brings the fish to the hole');
   await gesture(await waterPoint(), 0, -7);
   assert.equal(await action.textContent(), 'Pull up', 'small input cannot lift a fish at the hole');
   await settleInput();

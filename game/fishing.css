@@ -239,6 +239,7 @@ body.fishing .dive-ceiling { transform: none !important; }
   gap: 10px 14px;
   margin-block-start: 16px;
 }
+.fishing-outing-picker .fishing-picker-options { grid-template-columns: minmax(98px, 43%) minmax(0, 1fr); }
 .fishing-picker button {
   min-height: 44px;
   padding-inline: 10px;
@@ -316,6 +317,8 @@ body.fishing .dive-ceiling { transform: none !important; }
     grid-template-columns: minmax(0, 1fr) 32%;
     align-items: center;
   }
+  .fishing-outing-picker .fishing-dialog-art { grid-area: 1 / 2; }
+  .fishing-outing-picker [data-outing-message] { grid-column: 1 / -1; }
   .fishing-shopkeeper img { width: 44px; }
   .fishing-picker-options { margin-block-start: 12px; }
 }
