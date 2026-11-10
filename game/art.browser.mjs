@@ -42,12 +42,14 @@ await withBrowser(async browser => {
     await press(launch, 'Enter');
     const picker = page.getByRole('dialog', { name: 'Choose an outing' });
     const campaign = picker.getByRole('button', { name: 'Campaign', exact: true });
+    const tutorial = picker.getByRole('button', { name: 'Tutorial with Bryan', exact: true });
     const openShop = picker.getByRole('button', { name: 'Tackle shop', exact: true });
     await picker.waitFor();
     await checkArt(picker, 'mille-lacs-dawn.webp');
     assert.ok(await inDialogViewport(picker, campaign), 'Campaign stays visible with the outing art');
-    assert.ok(await inDialogViewport(picker, openShop), 'Tackle shop stays visible with the outing art');
+    assert.ok(await inDialogViewport(picker, tutorial), 'Tutorial stays visible with the outing art');
     await capture(page, `${size}-outings`);
+    assert.ok(await inDialogViewport(picker, openShop), `${size}: Tackle shop stays visible with the outing art`);
 
     await press(openShop);
     const shop = page.getByRole('dialog', { name: 'Tackle shop' });

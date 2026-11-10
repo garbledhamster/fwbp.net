@@ -47,7 +47,7 @@ const reefArea = 'deep-reef';
 const reefLicense = shopItems.find(item => item.area === reefArea);
 const reefRequirement = `Requires the ${reefLicense.name}, ${reefLicense.cost} coins at the tackle shop.`;
 const picker = document.createElement('dialog');
-picker.className = 'fishing-picker';
+picker.className = 'fishing-picker fishing-outing-picker';
 picker.setAttribute('aria-labelledby', 'fishing-picker-title');
 picker.innerHTML = `
   <div class="fishing-dialog-intro">
@@ -57,7 +57,7 @@ picker.innerHTML = `
   </div>
   <div class="fishing-picker-options">
     <button type="button" data-mode="tutorial" aria-describedby="tutorial-description">Tutorial with Bryan</button>
-    <p id="tutorial-description">New to ice fishing? Jig, set the hook, and land a perch with Bryan.</p>
+    <p id="tutorial-description">Practice jigging, setting the hook, and landing a perch.</p>
     <button type="button" data-mode="campaign" data-area="${starterArea}" aria-describedby="campaign-description">Campaign</button>
     <p id="campaign-description">Fish ${campaignAreas[starterArea].name} on Mille Lacs with your own tackle.</p>
     <button type="button" data-mode="campaign" data-area="${reefArea}" aria-describedby="reef-description">${campaignAreas[reefArea].name}</button>
