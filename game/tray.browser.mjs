@@ -33,9 +33,11 @@ async function scrollStep(page, direction, mobile) {
     const send = (type, y) => touch.send('Input.dispatchTouchEvent', {
       type, touchPoints: y === undefined ? [] : [{ x: 160, y }],
     });
-    const from = direction > 0 ? 350 : 170;
+    const from = 220;
+    // Use a short upstroke to check attachment without starting a jig.
+    const steps = direction > 0 ? [40, 80, 120] : [12, 24, 30];
     await send('touchStart', from);
-    for (const delta of [60, 120, 180]) await send('touchMove', from - direction * delta);
+    for (const delta of steps) await send('touchMove', from + direction * delta);
     await page.waitForTimeout(160);
     await send('touchEnd');
     await touch.detach();
