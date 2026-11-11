@@ -14,7 +14,7 @@ The 23 fish illustrations combine subjects from Bryan’s lake, river, and Great
 
 Tap **Fishing with Bryan** in the sticky header to open the fish guide. The page content hides in place so you can select the fish swimming behind it. Opening a card pauses the water motion. Close the card to keep exploring, and tap Bryan again to restore the page content. Identification and habitat text lives in `assets/fish-profiles.js`.
 
-The lakebed footer uses foreground growth, a distant ridge and two of Bryan’s underwater videos. A pike swims toward the lure as the visitor reaches the bottom. The fishing line ends with a bobber, a red-and-white spoon, and a grilled wiener on the hook. The rig links to [Bryan’s Dardevle Short](https://www.youtube.com/shorts/kgUSasaMays). The lure illustration references [Eppinger’s design history](https://dardevle.com/ourtradition/).
+The lakebed footer uses foreground growth, a distant ridge and two of Bryan’s underwater videos. A pike swims toward the lure as the visitor reaches the bottom. The spoon links to [Bryan’s Dardevle Short](https://www.youtube.com/shorts/kgUSasaMays). Tap the hot dog on the hook to watch a random hot dog video, or choose **Hot dog** in the library to see the whole group. Add new matches verified from Bryan’s public upload titles or descriptions to the Hot dog entries in `site.js`. The lure illustration references [Eppinger’s design history](https://dardevle.com/ourtradition/).
 
 The lakebed moves decorative layers with [CSS transforms](https://web.dev/articles/animations-guide) and honors [reduced motion](https://www.w3.org/WAI/WCAG21/Understanding/animation-from-interactions).
 

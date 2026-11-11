@@ -1,6 +1,7 @@
 import { spriteHref } from "./game/lake-sprites.mjs";
 import { openVideo } from './game/video-player.mjs';
 
+const hotDogCategory = "Hot dog";
 const episodes = [
   {
     id: "3dmUMd9oR88",
@@ -52,7 +53,15 @@ const episodes = [
     category: "Gear",
     art: "camp",
     description: "Bryan takes an underwater camera out for an early-ice scouting trip in Minnesota."
-  }
+  },
+  ...[
+    ["NpQtS2wNDRc", "Hot Dog vs. Pike! Will They Eat?", "Bryan tries hot dogs for northern pike in shallow water."],
+    ["L7Ub8BdT0Ws", "Big Pike vs. Hot Dog!", "A Short about whether big pike like hot dogs."],
+    ["W63YgKh-szs", "Ice Fishing Hot Dogs for Big Pike", "Bryan gives hot dog bait a try and shares what happened."],
+    ["gujypoDa-dc", "Ice Fishing with Hot Dog for Northern Pike", "See how pike react to hot dog bait on Bryan’s underwater camera."],
+    ["GRJ1GOc6Pvk", "Hot Dog vs. Kielbasa", "Bryan puts both baits in front of northern pike."],
+    ["aYJhIZhbeDg", "Pike Eats Hot Dog!", "A Short of a northern pike going for hot dog bait."]
+  ].map(([id, title, description]) => ({ id, title, description, category: hotDogCategory, art: "lure" }))
 ];
 
 const duckHunterShort = {
@@ -71,6 +80,8 @@ const filters = document.querySelector(".filters");
 const filterButtons = new Map();
 const libraryStatus = document.querySelector("#library-status");
 const byId = new Map([...episodes, duckHunterShort].map((episode) => [episode.id, episode]));
+const hotDogEpisodes = episodes.filter((episode) => episode.category === hotDogCategory);
+let lastHotDogId;
 
 function makeEpisode(episode) {
   const article = document.createElement("article");
@@ -138,7 +149,15 @@ setFilter("All");
 document.addEventListener("click", (event) => {
   const trigger = event.target.closest("a[data-watch]");
   if (!trigger || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-  const episode = byId.get(trigger.dataset.watch);
+  let episode = byId.get(trigger.dataset.watch);
+  if (trigger.hasAttribute("data-random-hot-dog") && hotDogEpisodes.length) {
+    const choices = hotDogEpisodes.length > 1
+      ? hotDogEpisodes.filter((candidate) => candidate.id !== lastHotDogId)
+      : hotDogEpisodes;
+    episode = choices[Math.floor(Math.random() * choices.length)];
+    lastHotDogId = episode.id;
+    trigger.href = watchUrl(episode.id);
+  }
   if (episode && openVideo({ ...episode, url: trigger.href }, { trigger })) event.preventDefault();
 });
 

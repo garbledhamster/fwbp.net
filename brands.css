@@ -159,6 +159,17 @@
 .lakebed-videos .episode-meta, .lakebed-videos .episode-name { padding-inline: 5px; }
 .footer-lure { display: block; position: relative; padding: 173px var(--space) 29px; text-align: center; text-decoration: none; }
 .lure-rig { position: absolute; top: 0; left: var(--line-x); translate: -50% 0; }
+.footer-hot-dog {
+  position: absolute;
+  top: 117px; left: calc(var(--line-x) - 4px);
+  translate: -50% 0;
+  display: grid; place-items: center;
+  width: 104px; height: 44px;
+  border-radius: 12px;
+}
+.footer-hot-dog:is(:hover, :focus-visible) img {
+  filter: drop-shadow(0 0 5px var(--lamp));
+}
 .lure-fish {
   position: absolute; top: 86px; right: calc(100% - var(--line-x) + 16px);
   width: clamp(144px, 31vw, 290px); height: auto;
