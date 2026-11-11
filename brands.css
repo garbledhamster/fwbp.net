@@ -157,7 +157,7 @@
 .lakebed-videos .episode:first-child .episode-trigger { rotate: -1.8deg; }
 .lakebed-videos .episode:nth-child(2) .episode-trigger { rotate: 1.8deg; }
 .lakebed-videos .episode-meta, .lakebed-videos .episode-name { padding-inline: 5px; }
-.footer-lure { display: block; position: relative; padding: 162px var(--space) 29px; text-align: center; text-decoration: none; }
+.footer-lure { display: block; position: relative; padding: 173px var(--space) 29px; text-align: center; text-decoration: none; }
 .lure-rig { position: absolute; top: 0; left: var(--line-x); translate: -50% 0; }
 .lure-fish {
   position: absolute; top: 86px; right: calc(100% - var(--line-x) + 16px);
