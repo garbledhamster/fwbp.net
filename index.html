@@ -10,10 +10,10 @@
   <meta property="og:description" content="Go through the ice with Bryan Prokuski. Watch underwater fishing videos and browse illustrated field notes.">
   <link rel="icon" href="./assets/branding/underwater-stamp-favicon.ico" sizes="16x16 32x32 48x48">
   <link rel="icon" href="./assets/branding/underwater-stamp-favicon.svg" type="image/svg+xml" sizes="any">
-  <link rel="stylesheet" href="./styles.css?v=tent-cutaway">
+  <link rel="stylesheet" href="./styles.css?v=inline-video">
   <link rel="stylesheet" href="./brands.css?v=tent-cutaway">
   <script type="module" src="./brands.js?v=campaign-ranks"></script>
-  <script type="module" src="./site.js?v=tent-cover"></script>
+  <script type="module" src="./site.js?v=inline-video"></script>
   <link rel="stylesheet" href="./game/fishing.css?v=tent-cutaway">
   <script type="module" src="./game/fishing.mjs?v=tent-cutaway"></script>
   <title>Fishing with Bryan Prokuski</title>
@@ -57,27 +57,20 @@
           </div>
         </div>
         <img class="hero-portrait" src="./assets/branding/bryan-pike.webp" width="850" height="1243" alt="Bryan kneels with a northern pike. A rod rests over his shoulder, with a Five of Diamonds lure beside his head." decoding="async">
-        <button class="game-entry tent-game" type="button" data-enter-through-ice aria-haspopup="dialog">
-          <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v13m-5-5 5 5 5-5"/></svg>
-          Go ice fishing with Bryan
-        </button>
+        <button class="game-entry tent-game" type="button" data-enter-through-ice aria-haspopup="dialog" aria-label="Enter Ice Fishing with Bryan through the ice hole"></button>
         <section class="hero-video" aria-labelledby="hero-video-title">
           <div class="hero-video-heading">
             <span>Latest video</span>
             <h2 id="hero-video-title">Five of Diamonds for northern pike and bass</h2>
           </div>
-          <a class="hero-cover" href="https://www.youtube.com/watch?v=3dmUMd9oR88" data-watch="3dmUMd9oR88" aria-label="Play Five of Diamonds for northern pike and bass">
-            <img src="https://i.ytimg.com/vi/3dmUMd9oR88/maxresdefault.jpg" width="1280" height="720" alt="" fetchpriority="high">
-            <span class="play-mark" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="m6 3 11 7-11 7z"/></svg></span>
-          </a>
-          <div class="hero-actions" role="group" aria-label="Video links">
-            <a class="button primary" href="https://www.youtube.com/watch?v=3dmUMd9oR88" data-watch="3dmUMd9oR88"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m6 3 11 7-11 7z"/></svg>Watch the latest video</a>
-            <a class="button" href="#videos">Video library <span aria-hidden="true">↘</span></a>
-            <a class="button" href="https://www.youtube.com/@BryanProkuski">Watch on YouTube <span aria-hidden="true">↗</span></a>
+          <div class="hero-player" data-video-id="3dmUMd9oR88">
+            <a class="hero-cover" href="https://www.youtube.com/watch?v=3dmUMd9oR88" aria-label="Watch Five of Diamonds for northern pike and bass on YouTube">
+              <img src="https://i.ytimg.com/vi/3dmUMd9oR88/maxresdefault.jpg" width="1280" height="720" alt="">
+              <span class="play-mark" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="m6 3 11 7-11 7z"/></svg></span>
+            </a>
           </div>
         </section>
       </div>
-      <div class="descent-link wrap" data-fish-overlay><a href="#ice"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v13m-5-5 5 5 5-5"/></svg>Through the hole</a></div>
     </section>
     <section id="ice" class="ice" aria-label="Crossing the ice">
       <svg class="ice-art artwork" viewBox="0 0 400 177" preserveAspectRatio="none" role="img" aria-label="Warm light falls across the frosted ice"><use href="./assets/scenes.svg?v=campaign-tap-jig#bi-rim"/></svg>

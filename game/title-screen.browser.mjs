@@ -73,7 +73,7 @@ await withBrowser(async browser => {
     });
     await page.goto(process.env.FISHING_QA_URL ?? 'http://127.0.0.1:9867/', { waitUntil: 'domcontentloaded' });
     const surface = page.locator('#surface');
-    const entry = surface.getByRole('button', { name: 'Go ice fishing with Bryan' });
+    const entry = surface.getByRole('button', { name: 'Enter Ice Fishing with Bryan through the ice hole' });
     const splash = page.getByRole('dialog', { name: 'Ice Fishing with Bryan' });
     await entry.click();
     if (reducedMotion === 'no-preference') await surface.locator('xpath=self::*[@data-game-descent]').waitFor();

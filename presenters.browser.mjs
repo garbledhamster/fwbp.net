@@ -8,7 +8,9 @@ const muskrat = 'PHJOCTI5XUo';
 await withBrowser(async browser => {
   for (const width of [320, 1280]) {
     const page = await browser.newPage({
-      viewport: { width, height: 840 },
+      viewport: { width, height: width === 320 ? 840 : 620 },
+      hasTouch: width === 320,
+      isMobile: width === 320,
       reducedMotion: width === 320 ? 'reduce' : 'no-preference',
     });
     page.setDefaultTimeout(5000);
@@ -16,7 +18,44 @@ await withBrowser(async browser => {
     page.on('pageerror', error => errors.push(error.message));
     await page.route('https://www.youtube-nocookie.com/embed/**', route =>
       route.fulfill({ body: '<title>YouTube player</title>', contentType: 'text/html' }));
+    await page.route('https://www.youtube.com/iframe_api', route => route.fulfill({
+      contentType: 'application/javascript',
+      body: `
+        window.featuredPlayback = [];
+        window.YT = {
+          Player: function (iframe, options) {
+            options.events.onReady({ target: {
+              getPlayerState: () => -1,
+              mute: () => window.featuredPlayback.push('mute'),
+              playVideo: () => window.featuredPlayback.push('play'),
+            } });
+          },
+        };
+        window.onYouTubeIframeAPIReady();
+      `,
+    }));
     await page.goto(url, { waitUntil: 'domcontentloaded' });
+
+    const featuredPlayer = page.locator('.hero-player iframe');
+    await featuredPlayer.waitFor();
+    const featuredUrl = new URL(await featuredPlayer.getAttribute('src'));
+    assert.equal(featuredUrl.pathname, '/embed/' + latest);
+    assert.equal(featuredUrl.searchParams.get('autoplay'), '0');
+    assert.equal(featuredUrl.searchParams.get('playsinline'), '1');
+    assert.equal(await page.locator('.hero-video button, .hero-video a').count(), 0);
+    assert.equal(await page.locator('.tent-game').innerText(), '');
+    assert.equal(await page.getByRole('link', { name: 'Through the hole', exact: true }).count(), 0);
+    if (width === 320) {
+      assert.equal(featuredUrl.searchParams.has('enablejsapi'), false);
+      assert.equal(await page.evaluate(() => typeof window.onYouTubeIframeAPIReady), 'undefined');
+    } else {
+      assert.equal(featuredUrl.searchParams.get('enablejsapi'), '1');
+      await page.waitForFunction(() => Array.isArray(window.featuredPlayback));
+      assert.deepEqual(await page.evaluate(() => window.featuredPlayback), []);
+      await featuredPlayer.scrollIntoViewIfNeeded();
+      await page.waitForFunction(() => window.featuredPlayback.length === 2);
+      assert.deepEqual(await page.evaluate(() => window.featuredPlayback), ['mute', 'play']);
+    }
 
     const about = page.locator('#about');
     const hero = page.locator('.surface-inner');
@@ -68,15 +107,12 @@ await withBrowser(async browser => {
     assert.equal(await hero.getByRole('heading', { level: 1 }).textContent(), 'Fishing with Bryan Prokuski');
     await hero.locator('.hero-portrait').evaluate(image => image.decode());
     assert.match(await hero.locator('.hero-portrait').getAttribute('src'), /bryan-pike\.webp/);
-    assert.deepEqual(await hero.locator('.hero-actions a').allTextContents(),
-      ['Watch the latest video', 'Video library ↘', 'Watch on YouTube ↗']);
     assert.equal(await page.locator('#featured-grid .episode').count(), 2);
     assert.match(await page.locator('.footer-lure').getAttribute('href'), /\/shorts\/kgUSasaMays$/);
-    assert.match(await page.locator('.hero-cover img').getAttribute('src'), new RegExp(latest));
 
     const player = page.locator('#player');
     assert.equal(await player.locator('iframe').count(), 0);
-    for (const [trigger, id] of [[page.locator('.hero-cover'), latest], [hero.getByRole('link', { name: 'Watch the latest video' }), latest], [lakebed.locator('.presenter-footage'), muskrat]]) {
+    for (const [trigger, id] of [[lakebed.locator('.presenter-footage'), muskrat]]) {
       assert.match(await trigger.getAttribute('href'), new RegExp(id));
       await trigger.focus();
       await page.keyboard.press('Enter');
@@ -97,4 +133,4 @@ await withBrowser(async browser => {
     await page.close();
   }
 });
-console.log('About, latest video, lakebed and Your Lake verified at 320px and 1280px.');
+console.log('Verified mobile tap-to-play configuration, visible muted desktop autoplay, and the lakebed video dialog.');

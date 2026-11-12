@@ -146,6 +146,47 @@ for (const shortcut of document.querySelectorAll(".trip-picks button")) {
 featured.replaceChildren(...episodes.filter((episode) => episode.featured).map(makeEpisode));
 setFilter("All");
 
+const heroPlayer = document.querySelector(".hero-player");
+const heroEpisode = byId.get(heroPlayer?.dataset.videoId);
+if (heroEpisode) {
+  const touchDevice = matchMedia("(hover: none) and (pointer: coarse)").matches;
+  const url = new URL("https://www.youtube-nocookie.com/embed/" + heroEpisode.id);
+  url.search = new URLSearchParams({ autoplay: "0", playsinline: "1", rel: "0" }).toString();
+  const frame = document.createElement("iframe");
+  frame.title = heroEpisode.title;
+  frame.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
+  frame.allowFullscreen = true;
+  frame.referrerPolicy = "strict-origin-when-cross-origin";
+
+  if (!touchDevice) {
+    url.searchParams.set("enablejsapi", "1");
+    url.searchParams.set("origin", location.origin);
+    window.onYouTubeIframeAPIReady = () => {
+      new window.YT.Player(frame, {
+        events: {
+          onReady({ target }) {
+            const visibility = new IntersectionObserver(([entry]) => {
+              if (entry.intersectionRatio < .51) return;
+              visibility.disconnect();
+              const state = target.getPlayerState();
+              if (state !== -1 && state !== 5) return;
+              target.mute();
+              target.playVideo();
+            }, { threshold: .51 });
+            visibility.observe(frame);
+          },
+        },
+      });
+    };
+    const api = document.createElement("script");
+    api.src = "https://www.youtube.com/iframe_api";
+    document.head.append(api);
+  }
+
+  frame.src = url.href;
+  heroPlayer.replaceChildren(frame);
+}
+
 document.addEventListener("click", (event) => {
   const trigger = event.target.closest("a[data-watch]");
   if (!trigger || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
