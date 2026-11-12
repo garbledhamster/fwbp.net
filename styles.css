@@ -94,6 +94,10 @@ button, a, summary { -webkit-tap-highlight-color: transparent; }
 .scroll-progress { position: absolute; inset: auto 0 -1px; height: 2px; background: var(--lamp); transform: scaleX(var(--scroll, 0)); transform-origin: left; }
 .surface {
   --scene-height: clamp(755px, 68vw, 990px);
+  --rig-width: clamp(160px, 18vw, 265px);
+  --rig-height: calc(var(--rig-width) * 2 / 3);
+  --rig-top: calc(var(--scene-height) * .568 - var(--rig-height) * .838);
+  --jig-tip: calc(var(--rig-top) + var(--rig-height) * .262);
   position: relative;
   isolation: isolate;
   overflow: clip;
@@ -108,6 +112,43 @@ button, a, summary { -webkit-tap-highlight-color: transparent; }
   object-fit: fill;
   transform-origin: 45% 58%;
   pointer-events: none;
+}
+/* Align the rod guide and the line with the opening in the cutaway artwork. */
+.tent-jig { position: absolute; z-index: 2; pointer-events: none; }
+.tent-jig-gear {
+  display: block;
+  left: calc(var(--home-line-x) - var(--rig-width) * .031);
+  top: var(--rig-top);
+  width: var(--rig-width);
+  height: var(--rig-height);
+  filter: drop-shadow(1px 3px 3px #102422ab);
+}
+.tent-jig-line {
+  left: var(--home-line-x);
+  top: var(--jig-tip);
+  width: 19px;
+  height: calc(var(--scene-height) * .582 - var(--jig-tip));
+  translate: -50% 0;
+  overflow: hidden;
+}
+.tent-jig-line::before {
+  content: "";
+  display: block;
+  height: 100%;
+  width: 1.5px;
+  margin-inline: auto;
+  border-radius: 1px;
+  background: #ffdfa3;
+  box-shadow: 0 0 2px #14211b;
+  transform-origin: center top;
+}
+@media (prefers-reduced-motion: no-preference) {
+  body:not([data-reduced]) .tent-jig-line::before { animation: jig-leader 2.7s ease-in-out infinite; }
+}
+@keyframes jig-leader {
+  0%, 26%, 100% { transform: skewX(0deg) scaleY(1); }
+  8%, 18% { transform: skewX(-2.6deg) scaleY(.965); }
+  13% { transform: skewX(.9deg) scaleY(1.025); }
 }
 .surface::after {
   content: "";
@@ -176,7 +217,7 @@ button, a, summary { -webkit-tap-highlight-color: transparent; }
 }
 .surface .tent-game:hover { border-color: #f5cd8490; background: #e9b96524; }
 .surface .tent-game:focus-visible { outline-offset: 1px; }
-.surface[data-game-descent] .surface-inner { opacity: 0; transition: opacity .23s ease-out; }
+.surface[data-game-descent] :is(.surface-inner, .tent-jig) { opacity: 0; transition: opacity .23s ease-out; }
 .hero-video {
   position: relative;
   width: min(45%, 490px);
@@ -192,6 +233,7 @@ button, a, summary { -webkit-tap-highlight-color: transparent; }
 .hero-video-heading span { color: var(--lamp); font-size: .72rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
 .hero-video-heading h2 { font: 690 1rem/1.25 system-ui, sans-serif; letter-spacing: normal; }
 .hero-player {
+  width: 100%;
   min-height: 200px;
   position: relative;
   overflow: hidden;
@@ -225,9 +267,6 @@ button, a, summary { -webkit-tap-highlight-color: transparent; }
 .section-mark { display: flex; align-items: center; gap: 9px; font-size: .83rem; letter-spacing: .045em; font-weight: 680; }
 .section-mark span { width: 7px; height: 7px; border-radius: 50%; background: var(--lamp); flex: none; }
 .chevron, .close svg { width: 20px; height: 20px; stroke: currentColor; stroke-width: 1.65; fill: none; stroke-linecap: round; stroke-linejoin: round; }
-.ice { position: relative; isolation: isolate; overflow: hidden; height: clamp(180px, 34vw, 425px); background: var(--ice); }
-.ice-art { height: 100%; }
-.ice-light { position: absolute; inset: -15% -10%; pointer-events: none; background: radial-gradient(ellipse at 75% 32%, #fbe5a240, transparent 27%); }
 .presenter-card {
   --cutout-width: clamp(78px, 14vw, 140px);
   position: relative;
@@ -377,7 +416,7 @@ a.presenter-footage span { display: flex; align-items: center; min-height: 44px;
 .merch-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 132px), 1fr)); gap: clamp(12px, 2vw, 20px); margin-top: 20px; }
 .merch-grid img { display: block; width: 100%; height: auto; border-radius: 5px; }
 .merch-grid figcaption { margin-top: 7px; font-size: .86rem; line-height: 1.35; }
-.footer { background: #132925; padding: 27px 0; }
+.footer { --footer-inset: 27px; background: #132925; padding: var(--footer-inset) 0; }
 .footer-inner, .footer-links { display: flex; flex-wrap: wrap; gap: 8px 20px; justify-content: space-between; align-items: center; }
 .footer-inner p { color: var(--muted); font-size: .82rem; }
 .footer-links button, .footer-links a { min-height: 44px; display: inline-flex; align-items: center; border: 0; padding: 0; background: transparent; font-size: .85rem; text-decoration: underline; text-underline-offset: .22em; }
@@ -419,7 +458,11 @@ body[data-reduced] .scroll-progress { display: none; }
   .surface-inner { padding-top: calc(var(--scene-height) * .621 + 55px); }
 }
 @media (max-width: 900px) {
-  .surface { --scene-height: clamp(455px, 110vw, 560px); }
+  .surface {
+    --scene-height: clamp(455px, 110vw, 560px);
+    --rig-width: clamp(107px, 28vw, 165px);
+  }
+  .tent-jig-line::before { width: 1px; }
   .surface-inner { width: 100%; padding: calc(var(--scene-height) * .755) var(--space) 20px; }
   .hero-identity, .hero-identity > div { display: contents; }
   .channel-logo, .hero-identity h1 { position: absolute; z-index: 1; }
