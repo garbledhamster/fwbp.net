@@ -7,7 +7,7 @@ const url = process.env.FISHING_QA_URL ?? 'http://127.0.0.1:9867/';
 for (const width of [320, 1200]) {
   test(`Field Notes at ${width}px`, async (t) => {
     await withBrowser(async (browser) => {
-      const page = await browser.newPage({ viewport: { width, height: 800 }, reducedMotion: 'reduce' });
+      const page = await browser.newPage({ viewport: { width, height: 800 }, hasTouch: width === 320, isMobile: width === 320, reducedMotion: 'reduce' });
       await page.goto(url, { waitUntil: 'domcontentloaded' });
       const notes = page.locator('#field-notes');
 
@@ -63,6 +63,58 @@ for (const width of [320, 1200]) {
           await playFrom(guide.locator('a[data-watch="1mtyGF6wlDI"]'), '1mtyGF6wlDI');
         } finally {
           await closeGuide(summary);
+        }
+      });
+
+      await t.test('camera previews play inline and hand off to the matching YouTube timestamp', async () => {
+        const context = page.context();
+        await context.route('https://www.youtube-nocookie.com/embed/**', route =>
+          route.fulfill({ contentType: 'text/html', body: '<p>Embed fixture</p>' }));
+        await context.route('https://www.youtube.com/watch?**', route =>
+          route.fulfill({ contentType: 'text/html', body: '<p>YouTube fixture</p>' }));
+        const { summary, guide } = await openGuide('Underwater camera setup');
+        const player = guide.locator('iframe');
+        const clips = guide.locator('.guide-stills a');
+        assert.equal(await clips.count(), 3);
+        try {
+          for (const [index, start, end] of [[0, 215, 245], [1, 245, 255], [2, 255, 265]]) {
+            const clip = clips.nth(index);
+            if (width === 320) await clip.tap();
+            else await clip.press('Enter');
+
+            const embed = new URL(await player.getAttribute('src'));
+            assert.equal(embed.pathname, '/embed/1mtyGF6wlDI');
+            assert.equal(embed.searchParams.get('start'), String(start));
+            assert.equal(embed.searchParams.get('end'), String(end));
+            assert.equal(embed.searchParams.get('autoplay'), '1');
+            assert.equal(embed.searchParams.get('playsinline'), '1');
+            const box = await player.boundingBox();
+            assert.ok(box.width >= 200 && box.height >= 200);
+            assert.match(await clip.innerText(), /Continue on YouTube/);
+
+            const opened = page.waitForEvent('popup');
+            if (width === 320) await clip.tap();
+            else await clip.press('Enter');
+            const youtube = await opened;
+            try {
+              const destination = new URL(youtube.url());
+              assert.equal(destination.hostname, 'www.youtube.com');
+              assert.equal(destination.searchParams.get('v'), '1mtyGF6wlDI');
+              assert.equal(destination.searchParams.get('t'), start + 's');
+              assert.equal(await player.count(), 0);
+            } finally {
+              await youtube.close();
+            }
+          }
+
+          await clips.first().press('Enter');
+          await clips.nth(1).press('Enter');
+          assert.equal(await player.count(), 1);
+          assert.equal(new URL(await player.getAttribute('src')).searchParams.get('start'), '245');
+          await closeGuide(summary);
+          await player.waitFor({ state: 'detached' });
+        } finally {
+          if (await summary.evaluate(el => el.parentElement.open)) await closeGuide(summary);
         }
       });
 

@@ -459,7 +459,17 @@ a.species-reference-link:hover { border-color: var(--lamp); }
 .guide-frames { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 9px; list-style: none; margin: 11px 0 0; padding: 0; }
 .fish-frames { grid-template-columns: repeat(2,minmax(0,1fr)); }
 .guide-frames .artwork { border-radius: 4px; background: #d7deca; }
-.guide-stills img, .guide-example img { display: block; width: 100%; height: auto; border-radius: 4px; }
+.guide-clip img, .guide-example img { display: block; width: 100%; height: auto; border-radius: 4px; }
+.guide-stills { grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); }
+.guide-clip { display: block; text-decoration: none; }
+.guide-clip-poster { position: relative; display: block; }
+.guide-clip-poster .play-mark { width: 34px; height: 34px; inset: auto 7px 7px auto; }
+.guide-clip:hover .play-mark { background: white; }
+.guide-clip-copy { display: block; min-height: 44px; margin-top: 5px; font-size: .85rem; line-height: 1.35; }
+.guide-clip:hover .guide-clip-copy strong, .guide-clip[data-playing] .guide-clip-copy { text-decoration: underline; text-underline-offset: .18em; }
+.guide-clip-action, .guide-clip[data-playing] .guide-clip-poster { display: none; }
+.guide-clip[data-playing] .guide-clip-action { display: inline; }
+.guide-clip-player { display: block; width: 100%; min-height: 200px; aspect-ratio: 16/9; border: 0; border-radius: 4px; background: var(--ink); }
 .guide-frames figcaption { margin-top: 6px; font-size: .85rem; line-height: 1.35; }
 .guide-frames strong { display: block; }
 .guide-jig-intro { display: grid; grid-template-columns: 1fr clamp(84px, 23vw, 150px); gap: 12px; align-items: center; }
@@ -490,8 +500,8 @@ dialog iframe { display: block; width: 100%; min-height: 200px; max-height: 56dv
 @media (max-width: 680px) {
   .video-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .guide-stills { grid-template-columns: 1fr; }
-  .guide-stills figure { display: grid; grid-template-columns: minmax(90px, 38%) 1fr; gap: 10px; align-items: center; }
-  .guide-stills figcaption { margin-top: 0; }
+  .guide-clip:not([data-playing]) { display: grid; grid-template-columns: minmax(125px, 38%) minmax(0, 1fr); gap: 10px; align-items: center; }
+  .guide-clip:not([data-playing]) .guide-clip-copy { min-height: auto; margin-top: 0; }
 }
 @media (max-width: 360px) {
   :root { --space: 14px; }

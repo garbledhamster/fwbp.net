@@ -125,6 +125,55 @@ if (heroEpisode) {
   heroPlayer.replaceChildren(frame);
 }
 
+const cameraGuide = document.querySelector(".guide-camera");
+let cameraPreview;
+
+function stopCameraPreview() {
+  if (!cameraPreview) return;
+  cameraPreview.frame.remove();
+  cameraPreview.link.removeAttribute("data-playing");
+  cameraPreview = undefined;
+}
+
+cameraGuide.addEventListener("toggle", () => {
+  if (!cameraGuide.open) stopCameraPreview();
+});
+
+cameraGuide.addEventListener("click", (event) => {
+  const link = event.target.closest(".guide-clip");
+  if (!link || event.defaultPrevented || event.button !== 0 ||
+      event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+
+  if (cameraPreview?.link === link) {
+    stopCameraPreview();
+    return;
+  }
+
+  event.preventDefault();
+  stopCameraPreview();
+  const watch = new URL(link.href);
+  const embed = new URL("https://www.youtube-nocookie.com/embed/" + watch.searchParams.get("v"));
+  embed.search = new URLSearchParams({
+    start: parseInt(watch.searchParams.get("t"), 10),
+    end: link.dataset.clipEnd,
+    autoplay: "1",
+    playsinline: "1",
+    rel: "0",
+  });
+
+  const frame = document.createElement("iframe");
+  frame.className = "guide-clip-player";
+  frame.title = link.querySelector("strong").textContent;
+  frame.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
+  frame.allowFullscreen = true;
+  frame.referrerPolicy = "strict-origin-when-cross-origin";
+  link.setAttribute("data-playing", "");
+  link.before(frame);
+  frame.scrollIntoView({ block: "nearest", behavior: "instant" });
+  frame.src = embed.href;
+  cameraPreview = { link, frame };
+});
+
 document.addEventListener("click", (event) => {
   const trigger = event.target.closest("a[data-watch]");
   if (!trigger || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -134,7 +183,10 @@ document.addEventListener("click", (event) => {
     lastHotDogId = episode.id;
     trigger.href = episode.url;
   }
-  if (episode && openVideo({ ...episode, url: trigger.href }, { trigger })) event.preventDefault();
+  if (episode && openVideo({ ...episode, url: trigger.href }, { trigger })) {
+    stopCameraPreview();
+    event.preventDefault();
+  }
 });
 
 const motion = document.querySelector("#motion");
