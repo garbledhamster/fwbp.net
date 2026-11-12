@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#243329">
+  <meta name="description" content="Fish Minnesota with Bryan Prokuski, from underwater ice fishing on Mille Lacs to summer kayak trips on the Mississippi.">
+  <meta property="og:title" content="Fishing with Bryan Prokuski">
+  <meta property="og:description" content="Go through the ice with Bryan Prokuski. Watch underwater fishing videos and browse illustrated field notes.">
+  <link rel="icon" href="./assets/branding/underwater-stamp-favicon.ico" sizes="16x16 32x32 48x48">
+  <link rel="icon" href="./assets/branding/underwater-stamp-favicon.svg" type="image/svg+xml" sizes="any">
+  <link rel="stylesheet" href="./styles.css?v=tent-jig">
+  <link rel="stylesheet" href="./brands.css?v=tent-jig">
+  <script type="module" src="./brands.js?v=tent-library"></script>
+  <script type="module" src="./site.js?v=tent-jig"></script>
+  <link rel="stylesheet" href="./game/fishing.css?v=tent-jig">
+  <script type="module" src="./game/fishing.mjs?v=tent-library"></script>
+  <script type="module" src="./assets/live-counters.mjs"></script>
+  <title>Fishing with Bryan Prokuski</title>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="mast">
+    <div class="mast-inner">
+      <button id="fish-guide-toggle" class="brand" type="button" aria-label="Fishing with Bryan, fish guide" aria-pressed="false" disabled>
+        <img id="brand-mark" src="./assets/branding/underwater-stamp.svg" width="34" height="34" alt="">
+        <span>Fishing with Bryan<small class="brand-mode">Fish guide</small></span>
+      </button>
+      <nav aria-label="Main">
+        <a href="#videos">Videos</a>
+        <a href="#field-notes">Field notes</a>
+        <a href="#merch">Merch</a>
+        <a href="https://www.youtube.com/@BryanProkuski">YouTube</a>
+        <div class="mast-game-preview">
+          <button class="game-entry mast-game" type="button" aria-haspopup="dialog" aria-describedby="game-preview">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.5 6h9a4 4 0 0 1 4 3.4l1 5.6a2.5 2.5 0 0 1-4.1 2.3L15 15H9l-2.4 2.3A2.5 2.5 0 0 1 2.5 15l1-5.6A4 4 0 0 1 7.5 6Z"/><path d="M6.5 11h5M9 8.5v5m6.5-2.5h.1m2.4-1.5h.1"/></svg>
+            <span>Go ice fishing with Bryan</span>
+          </button>
+          <div class="game-preview" id="game-preview" role="tooltip" hidden>
+            <p>It’s free to play. Learn what anglers mean by jigging, setting the hook, and reeling in slack. Read the Mille Lacs map and fish different spots and depths. Each outing gives you another chance to try a different hole or lure. Play while you’re waiting for a bite on the ice or after you get home.</p>
+          </div>
+        </div>
+      </nav>
+      <p class="fish-mode-hint" hidden><span>Tap a fish</span><a href="#dive">First fish</a></p>
+    </div>
+    <div class="scroll-progress" aria-hidden="true"></div>
+  </header>
+  <main id="main" class="fishing-route">
+    <section class="surface" id="surface" aria-labelledby="name">
+      <img class="tent-art" src="./assets/branding/tent-solid-ice.webp" width="1536" height="1024" alt="">
+      <img class="tent-jig tent-jig-gear" src="./assets/branding/tent-jig-rig.webp" width="960" height="640" alt="Automatic jigging stand with an underwater camera monitor and recording gear">
+      <div class="tent-jig tent-jig-line" aria-hidden="true"></div>
+      <div class="surface-inner wrap" data-fish-overlay>
+        <div id="channel-showcase" class="hero-identity">
+          <img class="channel-logo" src="./assets/fwbp-logo.jpg" width="900" height="900" alt="FWBP Minnesota channel logo">
+          <div>
+            <h1 id="name">Fishing with Bryan Prokuski</h1>
+            <p>Come along for summer kayak trips, days on the ice, and a look at what happens below the surface. Sometimes Bryan’s kids join him, too.</p>
+          </div>
+        </div>
+        <img class="hero-portrait" src="./assets/branding/bryan-pike.webp" width="850" height="1243" alt="Bryan kneels with a northern pike. A rod rests over his shoulder, with a Five of Diamonds lure beside his head." decoding="async">
+        <button class="game-entry tent-game" type="button" data-enter-through-ice aria-haspopup="dialog" aria-label="Enter Ice Fishing with Bryan through the ice hole"></button>
+        <section class="hero-video" aria-labelledby="hero-video-title">
+          <div class="hero-video-heading">
+            <span>Latest video</span>
+            <h2 id="hero-video-title">Five of Diamonds for northern pike and bass</h2>
+          </div>
+          <div class="hero-player" data-video-id="3dmUMd9oR88">
+            <a class="hero-cover" href="https://www.youtube.com/watch?v=3dmUMd9oR88" aria-label="Watch Five of Diamonds for northern pike and bass on YouTube">
+              <img src="https://i.ytimg.com/vi/3dmUMd9oR88/maxresdefault.jpg" width="1280" height="720" alt="">
+              <span class="play-mark" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="m6 3 11 7-11 7z"/></svg></span>
+            </a>
+          </div>
+        </section>
+      </div>
+    </section>
+    <aside class="angler-banner" aria-label="Fishing with Bryan site counters" data-fish-overlay>
+      <div class="wrap angler-banner-inner">
+        <div class="angler-banner-avatar" aria-hidden="true">
+          <img src="./assets/branding/bryan-headshot.webp" width="560" height="595" alt="">
+        </div>
+        <div class="angler-stat">
+          <strong data-counter="anglers" aria-live="off">—</strong>
+          <span>Anglers lured to the site</span>
+        </div>
+        <div class="angler-stat angler-stat-hotdog">
+          <strong data-counter="hotdog" aria-live="off">—</strong>
+          <span>Anglers who clicked the hotdog</span>
+        </div>
+      </div>
+    </aside>
+    <div class="lake" id="ice">
+      <div id="dive" class="dive" data-dive="pike">
+        <div class="dive-water" aria-hidden="true">
+          <svg class="dive-ceiling" viewBox="0 0 800 110" preserveAspectRatio="none"><use href="./assets/lake-life.svg#ceiling"/></svg>
+          <div class="dive-actors"></div>
+        </div>
+      </div>
+      <div id="perch" class="dive" data-dive="perch">
+        <div class="dive-water" aria-hidden="true">
+          <div class="dive-actors"></div>
+        </div>
+      </div>
+      <div id="weeds" class="dive" data-dive="weeds">
+        <div class="dive-water" aria-hidden="true">
+          <div class="dive-actors"></div>
+        </div>
+        <div class="wrap dive-content" data-fish-overlay>
+          <section id="about" class="presenter-card about-inner" aria-labelledby="about-heading">
+            <div class="presenter-copy">
+              <h2 id="about-heading">About Bryan</h2>
+              <p>Bryan fishes Minnesota year-round. He takes his kayak out for Mississippi River smallmouth in summer and films pike, walleye and perch under the ice.</p>
+              <p class="content-note"><a href="https://www.youtube.com/@BryanProkuski">Bryan’s YouTube channel</a> · <a href="https://www.instagram.com/fishingwithbryan">Instagram</a></p>
+            </div>
+            <img class="presenter-cutout" src="./assets/branding/bryan-headshot.webp" width="560" height="595" alt="" loading="lazy" decoding="async">
+            <img class="channel-banner" src="./assets/fwbp-channel-banner.jpg" width="2048" height="339" loading="lazy" decoding="async" alt="Bryan’s channel banner shows four underwater fishing scenes.">
+          </section>
+        </div>
+      </div>
+      <div id="rocks" class="dive" data-dive="midwater">
+        <div class="dive-water" aria-hidden="true">
+          <div class="dive-actors"></div>
+        </div>
+      </div>
+      <div id="camera" class="dive" data-dive="camera">
+        <div class="dive-water" aria-hidden="true">
+          <div class="dive-actors"></div>
+        </div>
+      </div>
+      <div class="dive dive-expanse" data-dive="coldwater">
+        <div class="dive-water" aria-hidden="true"><div class="dive-actors"></div></div>
+      </div>
+      <section id="videos" class="library" data-dive="library" aria-labelledby="library-heading">
+        <div class="dive-water" aria-hidden="true"><div class="dive-actors"></div></div>
+        <div class="wrap" data-fish-overlay>
+          <div class="section-heading">
+            <div><h2 id="library-heading">Video library</h2><p>Underwater strikes, ice-fishing trips, and gear setups.</p></div>
+          </div>
+          <article class="presenter-card trip-picker" aria-labelledby="trip-picker-heading">
+            <div class="presenter-copy">
+              <h3 id="trip-picker-heading">Pick a trip</h3>
+              <p>Come along on the ice or see how Bryan sets up his gear.</p>
+              <div class="trip-picks" role="group" aria-label="Find videos by topic">
+                <button type="button" data-category="Underwater">Underwater strikes</button>
+                <button type="button" data-category="Mille Lacs">Mille Lacs trips</button>
+                <button type="button" data-category="Gear">Gear setups</button>
+              </div>
+            </div>
+            <img class="presenter-cutout" src="./assets/branding/bryan-standing-welcome.webp" width="346" height="640" alt="" loading="lazy" decoding="async">
+          </article>
+          <div class="library-controls">
+            <div class="filters" role="group" aria-label="Filter videos"></div>
+            <button class="button primary" id="random-video" type="button" hidden>Pick a random video</button>
+          </div>
+          <p class="library-status" id="library-status" role="status"></p>
+          <div class="video-grid" id="video-grid"></div>
+          <button class="button" id="more-videos" type="button" hidden>Show more videos</button>
+          <a class="library-channel" href="https://www.youtube.com/@BryanProkuski/videos">See all uploads on YouTube ↗</a>
+        </div>
+        <div class="library-water" data-dive="library-water"><div class="dive-water" aria-hidden="true"><div class="dive-actors"></div></div></div>
+      </section>
+      <section id="field-notes" class="field-notes" data-dive="field-notes" aria-labelledby="notes-heading">
+        <div class="dive-water" aria-hidden="true"><div class="dive-actors"></div></div>
+        <div class="wrap" data-fish-overlay>
+          <div class="section-heading">
+            <div><h2 id="notes-heading">Field notes</h2><p>Short picture guides from the ice.</p></div>
+          </div>
+          <div class="guide-list">
+            <details class="guide guide-camera">
+              <summary>
+                <span><strong>Underwater camera setup</strong><small>Bryan’s early-ice video</small></span>
+                <img class="guide-avatar" src="./assets/branding/bryan-camera.webp?v=matched" width="360" height="592" alt="" loading="lazy" decoding="async">
+                <svg class="chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m5 7 5 5 5-5"/></svg>
+              </summary>
+              <div class="guide-body">
+                <p>Follow Bryan on a scouting trip as he brings an underwater camera out on early ice in Minnesota.</p>
+                <ol class="guide-frames guide-stills">
+                  <li><figure>
+                    <img src="./assets/field-notes/camera-215.jpg" width="320" height="180" alt="Bryan holds the camera and cable above the ice" loading="lazy" decoding="async">
+                    <figcaption><strong>Get the camera ready</strong><time datetime="PT3M35S">3:35</time> in the video</figcaption>
+                  </figure></li>
+                  <li><figure>
+                    <img src="./assets/field-notes/camera-245.jpg" width="320" height="180" alt="Bryan guides the cable through the bucket lid" loading="lazy" decoding="async">
+                    <figcaption><strong>Feed out the cable</strong><time datetime="PT4M5S">4:05</time> in the video</figcaption>
+                  </figure></li>
+                  <li><figure>
+                    <img src="./assets/field-notes/camera-255.jpg" width="320" height="180" alt="Bryan holds up the monitor beside the bucket" loading="lazy" decoding="async">
+                    <figcaption><strong>Check the monitor</strong><time datetime="PT4M15S">4:15</time> in the video</figcaption>
+                  </figure></li>
+                </ol>
+                <a class="guide-watch" href="https://www.youtube.com/watch?v=1mtyGF6wlDI" data-watch="1mtyGF6wlDI">Watch the camera setup ↗</a>
+              </div>
+            </details>
+            <details class="guide guide-jig">
+              <summary>
+                <span><strong>How a jig moves</strong><small>Three illustrated steps</small></span>
+                <img class="guide-avatar" src="./assets/branding/bryan-full-body-jig.webp" width="402" height="640" alt="" loading="lazy" decoding="async">
+                <svg class="chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m5 7 5 5 5-5"/></svg>
+              </summary>
+              <div class="guide-body">
+                <div class="guide-jig-intro">
+                  <p>Follow the lure beneath the ice. Watch how its position changes when you lift the line, hold it, then let it drop.</p>
+                  <img src="./assets/branding/bryan-jig-portrait.webp" width="560" height="562" alt="Illustration of Bryan holding up a jig" loading="lazy" decoding="async">
+                </div>
+                <ol class="guide-frames">
+                  <li><figure><svg class="artwork" viewBox="0 0 110 84" aria-hidden="true"><use href="./assets/scenes.svg#bi-jig-frame"/><path d="M59 7v24m22 29V36m-4 5 4-5 4 5" stroke="#f6d397" stroke-width="1.4" fill="none"/><use href="./assets/scenes.svg#bi-jig-hook" x="51" y="29" width="19" height="20"/></svg><figcaption><strong>Lift</strong>Bring the lure up.</figcaption></figure></li>
+                  <li><figure><svg class="artwork" viewBox="0 0 110 84" aria-hidden="true"><use href="./assets/scenes.svg#bi-jig-frame"/><path d="M59 7v27" stroke="#f6d397" stroke-width="1.4"/><path d="M77 37v13m5-13v13" stroke="#e2e7c8" stroke-width="1.5"/><use href="./assets/scenes.svg#bi-jig-hook" x="51" y="32" width="19" height="20"/></svg><figcaption><strong>Pause</strong>Hold it there.</figcaption></figure></li>
+                  <li><figure><svg class="artwork" viewBox="0 0 110 84" aria-hidden="true"><use href="./assets/scenes.svg#bi-jig-frame"/><path d="M59 7v47m22-19v25m-4-5 4 5 4-5" stroke="#f6d397" stroke-width="1.4" fill="none"/><use href="./assets/scenes.svg#bi-jig-hook" x="51" y="52" width="19" height="20"/></svg><figcaption><strong>Lower</strong>Bring it back down.</figcaption></figure></li>
+                </ol>
+                <a class="guide-example" href="https://www.youtube.com/watch?v=3dmUMd9oR88&amp;t=435s">
+                  <img src="./assets/field-notes/spoon-450.jpg" width="320" height="180" alt="" loading="lazy" decoding="async">
+                  <span>Watch the spoon rise and fall at 7:15 ↗</span>
+                </a>
+              </div>
+            </details>
+            <details class="guide guide-identification">
+              <summary>
+                <span><strong>Walleye or yellow perch?</strong><small>Two fish side by side</small></span>
+                <img class="guide-avatar" src="./assets/branding/bryan-walleye-portrait.webp" width="560" height="634" alt="" loading="lazy" decoding="async">
+                <svg class="chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m5 7 5 5 5-5"/></svg>
+              </summary>
+              <div class="guide-body">
+                <p>Start with the tail on one and the bars on the other.</p>
+                <ul class="guide-frames fish-frames">
+                  <li><figure><svg class="artwork" viewBox="0 0 172 76" aria-hidden="true"><use href="./assets/scenes.svg#bi-walleye" y="5" width="172" height="66"/><circle cx="155" cy="60" r="8" fill="none" stroke="#744d28" stroke-width="1.3"/></svg><figcaption><strong>Walleye</strong>White on the lower tail tip.</figcaption></figure></li>
+                  <li><figure><svg class="artwork" viewBox="0 0 172 76" aria-hidden="true"><use href="./assets/scenes.svg#bi-perch" y="5" width="172" height="66"/><path d="M44 60v4h63v-4" stroke="#744d28" fill="none" stroke-width="1.3"/></svg><figcaption><strong>Yellow perch</strong>Dark bars across yellow sides.</figcaption></figure></li>
+                </ul>
+                <a class="guide-watch" href="https://www.youtube.com/watch?v=i5TfAtufo7U" data-watch="i5TfAtufo7U">Watch Bryan fish for walleye on Mille Lacs ↗</a>
+                <p class="field-reference">See the Minnesota DNR guides to <a href="https://www.dnr.state.mn.us/gofishing/ice-fishing-walleye.html">walleye</a> and <a href="https://www.dnr.state.mn.us/minnaqua/speciesprofile/yellowperch.html">yellow perch</a>.</p>
+              </div>
+            </details>
+          </div>
+        </div>
+      </section>
+      <section id="merch" class="merch" data-dive="merch" aria-labelledby="merch-heading">
+        <div class="dive-water" aria-hidden="true"><div class="dive-actors"></div></div>
+        <div class="wrap" data-fish-overlay>
+          <div class="section-heading">
+            <div><h2 id="merch-heading">FWBP merch</h2><p>A look at Bryan’s classic Minnesota mark and Keep On Jigging designs. The former shop has closed.</p></div>
+          </div>
+          <aside class="quick-reference" id="quick-reference" aria-labelledby="quick-reference-heading">
+            <h3 id="quick-reference-heading">Quick Reference</h3>
+            <p>Getting ready for a real trip? Bring an auger to open a hole, ice picks for self-rescue, and a rod, line and jigs suited to the fish you’re after. Check the official guidance before you head out.</p>
+            <nav aria-label="Minnesota fishing references">
+              <a href="https://www.dnr.state.mn.us/safety/ice/index.html" target="_blank" rel="noopener">DNR ice safety ↗</a>
+              <a href="https://www.dnr.state.mn.us/fishing/millelacs.html" target="_blank" rel="noopener">Mille Lacs fishing regulations ↗</a>
+              <a href="https://www.dnr.state.mn.us/lakefind/index.html" target="_blank" rel="noopener">DNR LakeFinder ↗</a>
+            </nav>
+          </aside>
+          <div class="merch-grid">
+            <figure><img src="./assets/merch/classic-tee.jpg" width="512" height="512" loading="lazy" decoding="async" alt="White FWBP Minnesota logo on a burgundy shirt"><figcaption>FWBP Classic T-shirt</figcaption></figure>
+            <figure><img src="./assets/merch/classic-hoodie.jpg" width="512" height="512" loading="lazy" decoding="async" alt="White FWBP Minnesota logo on a green pullover"><figcaption>FWBP Hoodie</figcaption></figure>
+            <figure><img src="./assets/merch/tall-tumbler.jpg" width="512" height="512" loading="lazy" decoding="async" alt="Black FWBP Minnesota logo on a stainless tumbler"><figcaption>FWBP Tall Tumbler</figcaption></figure>
+            <figure><img src="./assets/merch/keep-on-jigging-tee.jpg" width="512" height="512" loading="lazy" decoding="async" alt="White Keep On Jigging logo on an olive shirt"><figcaption>Keep On Jigging T-shirt</figcaption></figure>
+            <figure><img src="./assets/merch/keep-on-jigging-hoodie.jpg" width="512" height="512" loading="lazy" decoding="async" alt="Black Keep On Jigging logo on a blue pullover"><figcaption>Keep On Jigging Hoodie</figcaption></figure>
+          </div>
+        </div>
+      </section>
+      <div class="dive dive-expanse" data-dive="bottomfish">
+        <div class="dive-water" aria-hidden="true"><div class="dive-actors"></div></div>
+      </div>
+    </div>
+  </main>
+  <footer id="lakebed" class="footer lakebed" data-dive="lakebed">
+    <div class="lakebed-art" aria-hidden="true">
+      <svg class="lakebed-ridge" viewBox="0 0 1000 240" preserveAspectRatio="none"><use href="./assets/lake-life.svg#lakebed-ridge"/></svg>
+      <div class="dive-actors"></div>
+      <svg class="lakebed-ground" viewBox="0 0 1000 320" preserveAspectRatio="none"><use href="./assets/lake-life.svg#lakebed-ground"/></svg>
+      <svg class="lakebed-growth" viewBox="0 0 1000 350" preserveAspectRatio="none"><use href="./assets/lake-life.svg#lakebed-growth"/></svg>
+    </div>
+    <div class="lakebed-feature" data-dive="lakebed-feature">
+      <div class="dive-water" aria-hidden="true"><div class="dive-actors"></div></div>
+      <section id="featured" class="wrap lakebed-videos" data-fish-overlay aria-labelledby="featured-heading">
+        <h2 id="featured-heading">More from beneath the ice</h2>
+        <div class="featured-grid" id="featured-grid"></div>
+        <article id="muskrat-presenter" class="presenter-card" aria-labelledby="muskrat-heading">
+          <div class="presenter-copy">
+            <h3 id="muskrat-heading">Look who showed up</h3>
+            <p>Watch for a muskrat swimming past Bryan’s Aqua-Vu camera under the ice.</p>
+          </div>
+          <img class="presenter-cutout" src="./assets/branding/bryan-leaning-in.webp" width="560" height="566" alt="" loading="lazy" decoding="async">
+          <a class="presenter-footage" href="https://www.youtube.com/watch?v=PHJOCTI5XUo" data-watch="PHJOCTI5XUo">
+            <img src="https://i.ytimg.com/vi/PHJOCTI5XUo/mqdefault.jpg" width="320" height="180" alt="" loading="lazy" decoding="async">
+            <span>Watch the muskrat clip ↗</span>
+          </a>
+        </article>
+      </section>
+    </div>
+    <div class="footer-rig">
+      <button class="lure-fish fish-target" type="button" data-fish="pike" aria-label="Northern pike" aria-haspopup="dialog" disabled>
+        <svg viewBox="0 0 230 72" aria-hidden="true"><use href="./assets/lake-life.svg#pike" transform="translate(230 0) scale(-1 1)"/></svg>
+      </button>
+      <a class="footer-lure" href="https://www.youtube.com/shorts/kgUSasaMays">
+        <svg class="lure-rig" viewBox="-20 0 120 166" width="120" height="166" aria-hidden="true">
+          <path d="M40 0v44" fill="none" stroke="#d9cea1" stroke-width="1.4"/>
+          <circle cx="40" cy="22" r="13" fill="#eee6c7" stroke="#a39775" stroke-width="1.4"/>
+          <path d="M27 22a13 13 0 0 0 26 0Z" fill="#b34c3d"/>
+          <path d="M31 17q3-6 9-6M39 9V5m2 34v-5" fill="none" stroke="#f8edd0" stroke-width="1.3" stroke-linecap="round"/>
+          <path d="M40 39v88q0 8 6 8t6-7" fill="none" stroke="#e5c98e" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+        <span class="footer-lure-copy" data-fish-overlay>
+          <span class="section-mark">At the end of the line</span>
+          <strong>The Dardevle through the ice</strong>
+          <span class="lure-story">A spoon design from 1906, jigged through Minnesota ice.</span>
+          <span>Watch Bryan’s Short ↗</span>
+        </span>
+      </a>
+      <a class="footer-hot-dog" href="https://www.youtube.com/watch?v=NpQtS2wNDRc"
+         data-watch="NpQtS2wNDRc" data-random-hot-dog data-fish-overlay
+         aria-label="Watch a random hot dog video" title="Watch a random hot dog video">
+        <img src="./assets/gentle-rise-bait.webp" width="104" height="38" alt="" loading="lazy">
+      </a>
+    </div>
+    <div class="wrap footer-inner" data-fish-overlay>
+      <div><strong>Fishing with Bryan Prokuski</strong><p>Ice fishing and open-water trips in Minnesota.</p></div>
+      <div class="footer-links"><a href="#merch">Merch</a><button id="motion" type="button" aria-pressed="false" hidden>Reduce motion</button><a href="#surface">Back to surface ↑</a></div>
+    </div>
+  </footer>
+  <dialog id="player" aria-labelledby="player-title" aria-describedby="player-description">
+    <div class="dialog-head"><div><p class="player-label">Fishing with Bryan</p><h2 id="player-title"></h2></div><form method="dialog"><button class="close" aria-label="Close video" autofocus><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10m0-10L5 15"/></svg></button></form></div>
+    <div id="player-video"></div>
+    <p id="player-description"></p>
+    <p>If the video won’t play here, open it on YouTube or close it to continue.</p>
+    <a id="player-source" target="_blank" rel="noopener">Open on YouTube ↗</a>
+  </dialog>
+  <dialog id="fish-card" aria-labelledby="fish-card-name">
+    <div class="fish-card-frame">
+      <div class="fish-card-head">
+        <div><p class="fish-card-series">FWBP Fish Guide <span data-card="number"></span></p><h2 id="fish-card-name"></h2><p class="fish-card-family" data-card="family"></p></div>
+        <form method="dialog"><button class="close" aria-label="Close fish card" autofocus><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10m0-10L5 15"/></svg></button></form>
+      </div>
+      <div class="fish-card-picture"><svg class="fish-card-art" aria-hidden="true"><use/></svg></div>
+      <div class="fish-card-details">
+        <dl><div><dt>How to spot it</dt><dd data-card="feature"></dd></div><div><dt>Where it lives</dt><dd data-card="habitat"></dd></div></dl>
+        <p class="fish-card-note" data-card="note" hidden></p>
+        <a data-card="source" target="_blank" rel="noopener">Species reference ↗</a>
+      </div>
+    </div>
+  </dialog>
+</body>
+</html>
