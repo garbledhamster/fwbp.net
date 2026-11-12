@@ -474,6 +474,7 @@ a.species-reference-link:hover { border-color: var(--lamp); }
 .guide-frames strong { display: block; }
 .guide-jig-intro { display: grid; grid-template-columns: 1fr clamp(84px, 23vw, 150px); gap: 12px; align-items: center; }
 .guide-jig-intro img { display: block; width: 100%; height: auto; }
+.guide-jig-intro + p, .guide-jig .guide-frames + p { margin-top: 12px; }
 .guide-example { display: inline-grid; grid-template-columns: clamp(86px, 24vw, 134px) minmax(0, 1fr); gap: 12px; align-items: center; margin-top: 16px; }
 .field-reference { margin-top: 14px; color: #43574b; font-size: .79rem; }
 .library-channel, .guide-watch { display: inline-flex; align-items: center; min-height: 44px; margin-top: 10px; font-size: .88rem; }

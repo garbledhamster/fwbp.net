@@ -118,13 +118,13 @@ for (const width of [320, 1200]) {
         }
       });
 
-      await t.test('jig guide shows two poses, its three diagrams, and a timestamped example', async () => {
-        const { summary, guide } = await openGuide('How a jig moves');
+      await t.test('jigging guide shows two poses, its three diagrams, and a timestamped example', async () => {
+        const { summary, guide } = await openGuide('What is jigging?');
         try {
           await checkIllustration(summary, 'bryan-full-body-jig.webp', 'left');
           assert.equal(await guide.locator('.guide-body img[src*="bryan-jig-portrait.webp"]').count(), 1);
-          assert.deepEqual(await guide.locator('.guide-frames figcaption strong').allTextContents(), ['Lift', 'Pause', 'Lower']);
-          const example = guide.getByRole('link', { name: /watch the spoon/i });
+          assert.deepEqual(await guide.locator('.guide-frames figcaption strong').allTextContents(), ['Lift', 'Lower', 'Pause']);
+          const example = guide.getByRole('link', { name: /watch a jigging spoon/i });
           assert.equal(await example.count(), 1);
           assert.equal(await example.getAttribute('href'), 'https://www.youtube.com/watch?v=3dmUMd9oR88&t=435s');
         } finally {
