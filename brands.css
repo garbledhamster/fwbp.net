@@ -1,6 +1,7 @@
 /* A timber lodge and a canvas gear catalog. */
 :root {
   --line-x: 62%;
+  --home-line-x: 45%;
   --lakebed-water: #142c2b;
   --tent: #253429; --lake: #414b32; --deep: #2b392b; --blackwater: #1f2d24;
   --foam: #fff4d7; --muted: #ded7b9; --lamp: #e6b56b;
@@ -8,7 +9,7 @@
 }
 .mast { background: #243329; }
 .brand { font: bold .98rem Georgia, serif; letter-spacing: .04em; }
-.ice-art, .episode-art .artwork { filter: sepia(.48) saturate(.82); }
+.episode-art .artwork { filter: sepia(.48) saturate(.82); }
 .episode-art { border: 2px solid #b39b6c; border-radius: 16px 3px; }
 .lake .field-notes, .lake .merch { background: transparent; }
 .field-notes > .wrap {
@@ -16,20 +17,6 @@
   border: 1px solid #c3ac74;
   border-radius: 7px;
   background: #ede2c5 repeating-linear-gradient(0deg,#6448140a 0 1px,transparent 1px 7px);
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  body:not([data-reduced]) .surface { overflow: clip; }
-  body:not([data-reduced]) .ice-art {
-    position: absolute; inset: calc(-1 * var(--travel)) 0 auto;
-    height: calc(100% + 2 * var(--travel));
-    transform: translateY(calc(var(--depth, 0) * var(--travel)));
-  }
-  .ice-art { --travel: 43px; }
-  body:not([data-reduced]) .ice-light {
-    transform: translateY(calc(var(--depth, 0) * 96px));
-  }
-
 }
 
 .lake {
@@ -77,16 +64,21 @@
   body:not([data-reduced]) .dive-ceiling { transform: translateY(calc(var(--depth, 0) * 12px)); }
 }
 
-/* The aligned segments sit above the water and behind the page content. */
+/* The line reappears below the ice and runs behind the page content. */
 .fishing-route > section { position: relative; isolation: isolate; }
-.fishing-route > section::before, .lake::before, .lakebed-feature::before {
-  content: ""; position: absolute; z-index: 0; inset: 0 auto 0 var(--line-x);
-  width: 1px; background: #e9d6a355; pointer-events: none;
+.surface::before, .angler-banner::before, .lake::before, .lakebed-feature::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0 auto 0 var(--home-line-x);
+  width: 1px;
+  background: #e9d6a388;
+  pointer-events: none;
 }
-.fishing-route > .surface::before { background: linear-gradient(transparent 40%, #e9d6a355); }
-.fishing-route > section > .wrap, .lake .wrap { position: relative; z-index: 1; }
-.ice-art, .ice-light { position: relative; z-index: -1; }
-.ice-light { position: absolute; }
+.surface::before { top: calc(var(--scene-height) * .694); }
+.angler-banner::before { inset-block: -1px; }
+.fishing-route > section > .wrap, .lake .wrap, .angler-banner-inner { position: relative; z-index: 1; }
+body:not(.fishing) .dive-ceiling { visibility: hidden; }
 .dive[data-dive="weeds"] {
   --water-start: clamp(35px, 5vw, 52px);
   --water-end: clamp(17px, 3vw, 34px);
@@ -126,7 +118,7 @@
 .lakebed-ground { bottom: 0; height: 70%; z-index: 2; }
 .lakebed-growth { bottom: 0; height: 75%; z-index: 3; }
 .lakebed-feature { position: relative; --water-space-end: clamp(21px, 4vw, 50px); }
-.lakebed-feature::before { background: linear-gradient(#e9d6a355, #d9cea1); }
+.lakebed-feature::before { top: calc(-1 * var(--footer-inset)); background: linear-gradient(#e9d6a388, #d9cea1); }
 .lakebed-videos { position: relative; width: min(830px, 100% - var(--space) * 2); }
 .lakebed-videos h2 {
   width: fit-content;
@@ -149,11 +141,12 @@
 .lakebed-videos .episode:nth-child(2) .episode-trigger { rotate: 1.8deg; }
 .lakebed-videos .episode-meta, .lakebed-videos .episode-name { padding-inline: 5px; }
 .footer-lure { display: block; position: relative; padding: 173px var(--space) 29px; text-align: center; text-decoration: none; }
-.lure-rig { position: absolute; top: 0; left: var(--line-x); translate: -50% 0; }
+.lure-rig { position: absolute; top: 0; left: var(--home-line-x); translate: -50% 0; }
 .footer-hot-dog {
   position: absolute;
-  top: 117px; left: calc(var(--line-x) - 4px);
+  top: 118px; left: var(--home-line-x);
   translate: -50% 0;
+  rotate: -12deg;
   display: grid; place-items: center;
   width: 104px; height: 44px;
   border-radius: 12px;
@@ -162,7 +155,7 @@
   filter: drop-shadow(0 0 5px var(--lamp));
 }
 .lure-fish {
-  position: absolute; top: 86px; right: calc(100% - var(--line-x) + 16px);
+  position: absolute; top: 86px; right: calc(100% - var(--home-line-x) + 16px);
   width: clamp(144px, 31vw, 290px); height: auto;
   translate: 0 -50%;
   filter: drop-shadow(0 5px 4px #0c201947);

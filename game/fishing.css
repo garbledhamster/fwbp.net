@@ -1,6 +1,6 @@
 .game-entry { border: 1px solid #81936f; background: #213a2d; }
 .game-entry:hover { background: #36513a; }
-.fishing :is(.mast, .skip, .surface, .angler-banner, .ice, .dive-content, .library, .field-notes, .merch, .lakebed-feature, .footer-rig, .footer-inner) { display: none; }
+.fishing :is(.mast, .skip, .surface, .angler-banner, .dive-content, .library, .field-notes, .merch, .lakebed-feature, .footer-rig, .footer-inner) { display: none; }
 html:has(body[data-campaign-camera]), body[data-campaign-camera] {
   height: 100%;
   overflow: clip;

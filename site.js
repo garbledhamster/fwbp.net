@@ -155,7 +155,7 @@ motion.addEventListener("click", () => {
 systemMotion.addEventListener("change", applyMotionPreference);
 
 const progress = document.querySelector(".scroll-progress");
-const depthScenes = [...document.querySelectorAll(".surface, .ice, [data-dive]")];
+const depthScenes = [...document.querySelectorAll(".surface, [data-dive]")];
 
 const lure = document.querySelector(".footer-rig");
 
