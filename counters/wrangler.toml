@@ -1,0 +1,14 @@
+name = "fwbp-site-counters"
+main = "worker.mjs"
+compatibility_date = "2026-10-01"
+workers_dev = false
+preview_urls = false
+routes = [{ pattern = "counts.fwbp.net", custom_domain = true }]
+
+[observability]
+enabled = false
+
+[[d1_databases]]
+binding = "DB"
+database_name = "fwbp-site-counters"
+database_id = "e18006be-50f4-4acd-a1c4-02749d04a829"

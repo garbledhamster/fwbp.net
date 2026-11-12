@@ -306,3 +306,55 @@ body[data-fish-mode] .fish-target:enabled:focus-visible { border-radius: 6px; }
 @media (max-width: 360px) {
   .brand { font-size: .82rem; letter-spacing: .01em; }
 }
+
+.angler-banner {
+  position: relative;
+  z-index: 1;
+  background: #243329;
+  color: var(--foam);
+  border-block: 1px solid #d5ae6659;
+}
+.angler-banner-inner {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(10px, 3vw, 30px);
+  max-width: 700px;
+  padding-block: 12px;
+}
+.angler-banner-avatar {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  width: clamp(54px, 11vw, 96px);
+  aspect-ratio: 1;
+}
+.angler-banner-avatar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--lamp);
+  clip-path: polygon(50% 0, 60% 19%, 79% 8%, 80% 29%, 100% 29%, 89% 48%, 100% 64%, 79% 68%, 80% 89%, 60% 81%, 50% 100%, 40% 81%, 20% 89%, 21% 68%, 0 64%, 11% 48%, 0 29%, 20% 29%, 21% 8%, 40% 19%);
+}
+.angler-banner-avatar img {
+  display: block;
+  width: 72%;
+  height: auto;
+}
+.angler-stat {
+  display: grid;
+  gap: 4px;
+  line-height: 1.25;
+  font-size: clamp(.79rem, 2vw, 1rem);
+}
+.angler-stat strong {
+  color: var(--lamp);
+  font: bold clamp(1.3rem, 4.5vw, 2.5rem)/1 Georgia, serif;
+  font-variant-numeric: tabular-nums;
+}
+.angler-stat-hotdog {
+  border-inline-start: 1px solid #d5ae6659;
+  padding-inline-start: clamp(10px, 3vw, 30px);
+}

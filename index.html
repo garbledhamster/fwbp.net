@@ -11,11 +11,12 @@
   <link rel="icon" href="./assets/branding/underwater-stamp-favicon.ico" sizes="16x16 32x32 48x48">
   <link rel="icon" href="./assets/branding/underwater-stamp-favicon.svg" type="image/svg+xml" sizes="any">
   <link rel="stylesheet" href="./styles.css?v=tent-library">
-  <link rel="stylesheet" href="./brands.css?v=tent-library">
+  <link rel="stylesheet" href="./brands.css?v=live-counters">
   <script type="module" src="./brands.js?v=tent-library"></script>
   <script type="module" src="./site.js?v=tent-library"></script>
   <link rel="stylesheet" href="./game/fishing.css?v=tent-library">
   <script type="module" src="./game/fishing.mjs?v=tent-library"></script>
+  <script type="module" src="./assets/live-counters.mjs"></script>
   <title>Fishing with Bryan Prokuski</title>
 </head>
 <body>
@@ -72,6 +73,21 @@
         </section>
       </div>
     </section>
+    <aside class="angler-banner" aria-label="Fishing with Bryan site counters" data-fish-overlay>
+      <div class="wrap angler-banner-inner">
+        <div class="angler-banner-avatar" aria-hidden="true">
+          <img src="./assets/branding/bryan-headshot.webp" width="560" height="595" alt="">
+        </div>
+        <div class="angler-stat">
+          <strong data-counter="anglers" aria-live="off">—</strong>
+          <span>Anglers lured to the site</span>
+        </div>
+        <div class="angler-stat angler-stat-hotdog">
+          <strong data-counter="hotdog" aria-live="off">—</strong>
+          <span>Anglers who clicked the hotdog</span>
+        </div>
+      </div>
+    </aside>
     <section id="ice" class="ice" aria-label="Crossing the ice">
       <svg class="ice-art artwork" viewBox="0 0 400 177" preserveAspectRatio="none" role="img" aria-label="Warm light falls across the frosted ice"><use href="./assets/scenes.svg?v=campaign-tap-jig#bi-rim"/></svg>
       <div class="ice-light" aria-hidden="true"></div>
