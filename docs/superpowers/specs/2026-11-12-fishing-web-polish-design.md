@@ -4,7 +4,7 @@ Design for review · November 12, 2026 · Baseline v31 (`4399357`)
 
 ## What a player should be able to do
 
-Open **Ice Fishing with Bryan** from the site navigation and see a title screen with **Start Game** and **Exit Game**. Start Game opens the outing picker. Exit Game returns to the site. Bryan’s guided perch and saved Campaign are available from the picker. The proposed Home Screen version should open the same branded title screen.
+Choose **Go ice fishing with Bryan** in the site navigation and see a title screen with **Start Game** and **Exit Game**. Start Game opens the outing picker. Exit Game returns to the site. Bryan’s guided perch and saved Campaign are available from the picker. The proposed Home Screen version should open the same branded title screen.
 
 Tap anywhere on the water to jig. Swipe down and the lure drops with the push. A quick flick carries farther after the thumb lifts. Swipe up to bring the lure up. When a fish bites, the player can tap the water during a clear, forgiving **Hook now** cue. Once hooked, the fish turns away and pulls the line when it runs. When the player reels the line tight, the fish turns toward the hole. The line stays attached to its mouth through both motions.
 
@@ -26,7 +26,7 @@ The live v31 baseline passed the tutorial, Campaign catch and reload, gesture, P
 
 ## Game entry and Pause
 
-- Put **Ice Fishing with Bryan** in the site’s main navigation. Open the title screen over the site using the existing Mille Lacs dawn artwork. Focus **Start Game** on entry. **Exit Game** and Escape return focus to the control that opened it. Keep the title and both controls visible on a short landscape screen.
+- Put **Go ice fishing with Bryan** in the site’s main navigation. Show a short game description on hover, keyboard focus, or a long press. Open the title screen over the site using the existing Mille Lacs dawn artwork. Focus **Start Game** on entry. **Exit Game** and Escape return focus to the control that opened it. Keep the title and both controls visible on a short landscape screen.
 - **Start Game** opens the existing outing picker. Keep Tutorial with Bryan, Campaign, Practice, Ranked, Shop and Skills available through their existing paths. Keep **Resume** in Pause for an in-progress bite or fight.
 - The proposed installed web app entry is `/play/`. When that work is implemented, use the same title and visual identity during load. After the guided perch, offer the Starter Shore Campaign map. A returning player should be able to open the Campaign map with the saved day and holes.
 - Put **Outing**, **Gear**, and **Controls** tabs in Pause, styled like the tackle shop. Outing links to Shop, Your Lake and Skills and lets the player leave for the title screen. Gear shows the current loadout. Controls shows the gestures and keyboard alternatives. Keep **Resume** visible. Retain focus return and the current pause hold when a child dialog opens.

@@ -1996,7 +1996,7 @@ function leave() {
   launch.focus({ preventScroll: true });
 }
 
-document.querySelectorAll('.game-entry, .fish-entry').forEach(entry => entry.addEventListener('click', enter));
+document.querySelectorAll('.game-entry').forEach(entry => entry.addEventListener('click', enter));
 titleScreen.querySelector('[data-start-game]').addEventListener('click', () => {
   titleScreen.close();
   showOutingPicker();

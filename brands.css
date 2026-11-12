@@ -9,11 +9,10 @@
 .mast { background: #243329; }
 .brand { font: bold .98rem Georgia, serif; letter-spacing: .04em; }
 .surface {
-  background: #253429 repeating-linear-gradient(6deg,#ffffff08 0 1px,transparent 1px 8px);
+  background: #223229 repeating-linear-gradient(8deg,#e5c88808 0 1px,transparent 1px 12px);
+  padding-top: clamp(19px, 2.5vw, 32px);
 }
-.surface-art { opacity: .48; filter: sepia(.72) saturate(.7); }
-.intro h1 { color: #f5e0af; font-weight: 800; font-size: clamp(49px,9vw,113px); }
-.hero-cover { border: 6px solid #d1b680; outline: 1px solid #fff2d2; outline-offset: 4px; border-radius: 46px 6px 46px 6px; aspect-ratio: 1.32; }
+.surface-art { opacity: .62; }
 .ice-art, .episode-art .artwork { filter: sepia(.48) saturate(.82); }
 .episode-art { border: 2px solid #b39b6c; border-radius: 16px 3px; }
 .lake .field-notes, .lake .merch { background: transparent; }
@@ -308,66 +307,6 @@ body[data-fish-mode] .fish-target:enabled:focus-visible { border-radius: 6px; }
   .fish-card-picture { height: clamp(78px, 18dvh, 108px); padding: 9px; }
   .fish-card-head { padding-block: 9px; }
   .fish-card-details { padding-top: 6px; }
-}
-
-.channel-showcase {
-  position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
-  grid-template-areas: "identity ." "copy .";
-  align-items: center;
-  gap: 16px clamp(20px, 4vw, 54px);
-  margin-top: clamp(54px, 7vw, 88px);
-  padding: 24px clamp(24px, 4vw, 54px);
-  color: var(--ink);
-  background: #f1e8d0;
-  border: 1px solid #c3ac74;
-  border-radius: 22px 6px 22px 6px;
-}
-.channel-identity { grid-area: identity; align-self: end; }
-.channel-identity p {
-  margin-bottom: 8px;
-  color: #526155;
-  font-size: .76rem;
-  font-weight: 760;
-  letter-spacing: .07em;
-  text-transform: uppercase;
-}
-.channel-logo { display: block; width: 86px; height: auto; border-radius: 8px; }
-.channel-copy { grid-area: copy; align-self: start; }
-.channel-copy h2 { font-size: clamp(26px, 4vw, 42px); line-height: 1.05; }
-.channel-copy p { max-width: 44ch; margin-top: 10px; }
-.channel-link { margin-top: 14px; background: var(--tent); color: var(--foam); }
-.channel-link:hover { background: var(--lake); }
-.channel-showcase :focus-visible { outline-color: #745022; }
-.channel-avatar {
-  position: absolute;
-  inset: -20px clamp(20px, 3.5vw, 50px) auto auto;
-  display: block;
-  width: auto;
-  max-width: 40%;
-  height: calc(100% + 40px);
-  object-fit: contain;
-  object-position: center top;
-}
-@media (max-width: 740px) {
-  .channel-showcase {
-    grid-template-columns: minmax(0, 1fr) minmax(0, .95fr);
-    grid-template-areas: "identity avatar" "copy copy";
-    gap: 10px 8px;
-    padding: 18px;
-  }
-  .channel-identity { align-self: center; }
-  .channel-avatar {
-    position: static;
-    grid-area: avatar;
-    width: min(100%, 152px);
-    max-width: none;
-    height: auto;
-    margin-block: -39px 0;
-    justify-self: center;
-  }
-  .channel-copy h2 { max-width: 24ch; }
 }
 
 @media (max-width: 360px) {

@@ -50,8 +50,7 @@ export async function practicePage(browser, { mobile = false, viewport, configur
   const button = name => tray.getByRole('button', { name, exact: true });
   const action = tray.locator('.fishing-action');
   const timing = tray.locator('.fishing-timing');
-  const launch = page.getByRole('button', { name: 'Play fishing game', exact: true })
-    .or(page.getByRole('link', { name: 'Fishing with Bryan, start fishing' }));
+  const launch = page.getByRole('button', { name: 'Go ice fishing with Bryan', exact: true });
 
   async function press(locator, key = 'Space') {
     // Keyboard focus/touch dispatch do not auto-wait for enabled controls.

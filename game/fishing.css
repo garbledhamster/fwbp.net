@@ -1,5 +1,3 @@
-.fish-entry { padding: 0; border: 0; background: none; font: inherit; letter-spacing: inherit; text-align: left; }
-.fish-entry:hover { color: var(--lamp); }
 .game-entry { border: 1px solid #81936f; background: #213a2d; }
 .game-entry:hover { background: #36513a; }
 .fishing :is(.mast, .skip, .surface, .ice, .dive-content, .library, .field-notes, .merch, .lakebed-feature, .footer-rig, .footer-inner) { display: none; }

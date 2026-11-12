@@ -81,11 +81,12 @@ await withBrowser(async browser => {
       await toggle.click();
       assert.equal(await page.locator('#field-notes [data-fish-overlay]').isVisible(), true);
 
-      await page.getByRole('button', { name: 'Play fishing game' }).click();
+      await page.getByRole('button', { name: 'Go ice fishing with Bryan' }).click();
+      await page.getByRole('button', { name: 'Start Game', exact: true }).click();
       await page.getByRole('button', { name: 'Practice', exact: true }).click();
       await page.getByRole('button', { name: 'Menu', exact: true }).click();
       await page.locator('.fishing-pause').getByRole('button', { name: 'Leave outing', exact: true }).click();
-      assert.equal(await page.getByRole('button', { name: 'Play fishing game' }).isVisible(), true);
+      assert.equal(await page.getByRole('button', { name: 'Go ice fishing with Bryan' }).isVisible(), true);
 
       await page.emulateMedia({ reducedMotion: 'no-preference' });
       const motion = page.locator('#motion');

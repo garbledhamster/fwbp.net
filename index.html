@@ -10,12 +10,12 @@
   <meta property="og:description" content="Go through the ice with Bryan Prokuski. Watch underwater fishing videos and browse illustrated field notes.">
   <link rel="icon" href="./assets/branding/underwater-stamp-favicon.ico" sizes="16x16 32x32 48x48">
   <link rel="icon" href="./assets/branding/underwater-stamp-favicon.svg" type="image/svg+xml" sizes="any">
-  <link rel="stylesheet" href="./styles.css?v=game-title">
-  <link rel="stylesheet" href="./brands.css?v=hot-dog">
+  <link rel="stylesheet" href="./styles.css?v=tent-cover">
+  <link rel="stylesheet" href="./brands.css?v=tent-cover">
   <script type="module" src="./brands.js?v=campaign-ranks"></script>
-  <script type="module" src="./site.js?v=hot-dog"></script>
-  <link rel="stylesheet" href="./game/fishing.css?v=game-title">
-  <script type="module" src="./game/fishing.mjs?v=game-title"></script>
+  <script type="module" src="./site.js?v=tent-cover"></script>
+  <link rel="stylesheet" href="./game/fishing.css?v=tent-cover">
+  <script type="module" src="./game/fishing.mjs?v=tent-cover"></script>
   <title>Fishing with Bryan Prokuski</title>
 </head>
 <body>
@@ -31,7 +31,15 @@
         <a href="#field-notes">Field notes</a>
         <a href="#merch">Merch</a>
         <a href="https://www.youtube.com/@BryanProkuski">YouTube</a>
-        <button class="game-entry mast-game" type="button">Ice Fishing with Bryan</button>
+        <div class="mast-game-preview">
+          <button class="game-entry mast-game" type="button" aria-haspopup="dialog" aria-describedby="game-preview">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.5 6h9a4 4 0 0 1 4 3.4l1 5.6a2.5 2.5 0 0 1-4.1 2.3L15 15H9l-2.4 2.3A2.5 2.5 0 0 1 2.5 15l1-5.6A4 4 0 0 1 7.5 6Z"/><path d="M6.5 11h5M9 8.5v5m6.5-2.5h.1m2.4-1.5h.1"/></svg>
+            <span>Go ice fishing with Bryan</span>
+          </button>
+          <div class="game-preview" id="game-preview" role="tooltip" hidden>
+            <p>It’s free to play. Learn what anglers mean by jigging, setting the hook, and reeling in slack. Read the Mille Lacs map and fish different spots and depths. Each outing gives you another chance to try a different hole or lure. Play while you’re waiting for a bite on the ice or after you get home.</p>
+          </div>
+        </div>
       </nav>
       <p class="fish-mode-hint" hidden><span>Tap a fish</span><a href="#dive">First fish</a></p>
     </div>
@@ -41,43 +49,30 @@
     <section class="surface" id="surface" aria-labelledby="name">
       <svg class="surface-art artwork" viewBox="0 0 400 315" preserveAspectRatio="none" aria-hidden="true"><use href="./assets/scenes.svg#bi-tent-inside"/></svg>
       <div class="surface-inner wrap" data-fish-overlay>
-        <div class="intro">
-          <p class="preview-label"><span></span> Fishing with Bryan</p>
-          <h1 id="name"><button class="fish-entry" type="button" aria-label="Bryan Prokuski, start fishing">Bryan <br>Prokuski</button></h1>
-          <p class="intro-line">Minnesota fishing from the kayak to the ice hole.</p>
-          <div class="hero-actions">
-            <a class="button primary" href="https://www.youtube.com/watch?v=3dmUMd9oR88" data-watch="3dmUMd9oR88"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m6 3 11 7-11 7z"/></svg>Watch the latest video</a>
-            <a class="text-link" href="#videos">Video library <span aria-hidden="true">↘</span></a>
-            <button class="button game-entry" type="button">Play fishing game</button>
+        <div id="channel-showcase" class="hero-identity">
+          <img class="channel-logo" src="./assets/fwbp-logo.jpg" width="900" height="900" alt="FWBP Minnesota channel logo">
+          <div>
+            <h1 id="name">Fishing with Bryan Prokuski</h1>
+            <p>Come along for summer kayak trips, days on the ice, and a look at what happens below the surface. Sometimes Bryan’s kids join him, too.</p>
           </div>
         </div>
-        <div class="hero-video">
-          <a class="hero-cover" href="https://www.youtube.com/watch?v=3dmUMd9oR88" data-watch="3dmUMd9oR88" aria-label="Watch Five of Diamonds for northern pike and bass">
+        <img class="hero-portrait" src="./assets/branding/bryan-pike.webp" width="850" height="1243" alt="Bryan kneels with a northern pike. A rod rests over his shoulder, with a Five of Diamonds lure beside his head." decoding="async">
+        <section class="hero-video" aria-labelledby="hero-video-title">
+          <div class="hero-video-heading">
+            <span>Latest video</span>
+            <h2 id="hero-video-title">Five of Diamonds for northern pike and bass</h2>
+          </div>
+          <a class="hero-cover" href="https://www.youtube.com/watch?v=3dmUMd9oR88" data-watch="3dmUMd9oR88" aria-label="Play Five of Diamonds for northern pike and bass">
             <img src="https://i.ytimg.com/vi/3dmUMd9oR88/maxresdefault.jpg" width="1280" height="720" alt="" fetchpriority="high">
-            <div class="hero-cover-caption"><span>Latest video</span><strong>Five of Diamonds for northern pike and bass</strong></div>
             <span class="play-mark" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="m6 3 11 7-11 7z"/></svg></span>
           </a>
-          <aside class="presenter-card latest-presenter" aria-labelledby="latest-presenter-heading">
-            <div class="presenter-copy">
-              <h2 id="latest-presenter-heading">Watch for the pike</h2>
-              <p>Around 5:40, a pike comes up toward the spoon.</p>
-            </div>
-            <img class="presenter-cutout" src="./assets/branding/bryan-front-facing.webp" width="560" height="575" alt="" decoding="async">
-          </aside>
-        </div>
+          <div class="hero-actions" role="group" aria-label="Video links">
+            <a class="button primary" href="https://www.youtube.com/watch?v=3dmUMd9oR88" data-watch="3dmUMd9oR88"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m6 3 11 7-11 7z"/></svg>Watch the latest video</a>
+            <a class="button" href="#videos">Video library <span aria-hidden="true">↘</span></a>
+            <a class="button" href="https://www.youtube.com/@BryanProkuski">Watch on YouTube <span aria-hidden="true">↗</span></a>
+          </div>
+        </section>
       </div>
-      <section id="channel-showcase" class="channel-showcase wrap" aria-labelledby="channel-heading" data-fish-overlay>
-        <div class="channel-identity">
-          <p>On YouTube</p>
-          <img class="channel-logo" src="./assets/fwbp-logo.jpg" width="900" height="900" alt="FWBP Minnesota channel logo">
-        </div>
-        <div class="channel-copy">
-          <h2 id="channel-heading">Fishing with Bryan Prokuski</h2>
-          <p>Come along for summer kayak trips, days on the ice, and a look at what happens below the surface. Sometimes Bryan’s kids join him, too.</p>
-          <a class="button channel-link" href="https://www.youtube.com/@BryanProkuski">Watch on YouTube <span aria-hidden="true">↗</span></a>
-        </div>
-        <img class="channel-avatar" src="./assets/branding/bryan-walleye.webp?v=inked" width="640" height="936" loading="lazy" decoding="async" alt="Illustration of Bryan kneeling with a walleye">
-      </section>
       <div class="descent-link wrap" data-fish-overlay><a href="#ice"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v13m-5-5 5 5 5-5"/></svg>Through the hole</a></div>
     </section>
     <section id="ice" class="ice" aria-label="Crossing the ice">

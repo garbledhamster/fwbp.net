@@ -19,13 +19,12 @@ await withBrowser(async browser => {
     await page.goto(url, { waitUntil: 'domcontentloaded' });
 
     const about = page.locator('#about');
-    const note = page.locator('.latest-presenter');
+    const hero = page.locator('.surface-inner');
     const lakebed = page.locator('#muskrat-presenter');
     const picks = page.locator('.trip-picker');
     const kayak = page.locator('#kayak-presenter');
     const short = page.locator('#short-presenter');
     const presenters = [
-      [note, 'front-facing', 'left'],
       [about, 'headshot', 'right'],
       [picks, 'standing-welcome', 'left'],
       [kayak, 'kayak', 'right'],
@@ -56,7 +55,6 @@ await withBrowser(async browser => {
           `${pose} art should sit ${pose === 'kayak' ? 'between the copy and footage' : 'past the footage'}`);
       }
     }
-    assert.ok(artWidths.get('headshot') > artWidths.get('front-facing'), 'About leads the compact latest-video note');
     if (width > 1000) {
       const [pickBox, kayakBox, shortBox] = await Promise.all([picks.boundingBox(), kayak.boundingBox(), short.boundingBox()]);
       assert.ok(pickBox.x > shortBox.x && kayakBox.x > shortBox.x, 'Library callouts sit on different page alignments');
@@ -64,18 +62,21 @@ await withBrowser(async browser => {
     }
 
     assert.match(await about.innerText(), /Minnesota.*kayak.*ice/s);
-    assert.match(await note.innerText(), /pike.*spoon/i);
     assert.match(await page.locator('#brand-mark').getAttribute('src'), /underwater-stamp\.svg$/);
     assert.equal(await page.locator('link[rel="icon"][href*="underwater-stamp"]').count(), 2);
     assert.equal(await page.locator('#channel-showcase .channel-logo').count(), 1);
-    assert.match(await page.locator('#channel-showcase .channel-avatar').getAttribute('src'), /bryan-walleye\.webp/);
+    assert.equal(await hero.getByRole('heading', { level: 1 }).textContent(), 'Fishing with Bryan Prokuski');
+    await hero.locator('.hero-portrait').evaluate(image => image.decode());
+    assert.match(await hero.locator('.hero-portrait').getAttribute('src'), /bryan-pike\.webp/);
+    assert.deepEqual(await hero.locator('.hero-actions a').allTextContents(),
+      ['Watch the latest video', 'Video library ↘', 'Watch on YouTube ↗']);
     assert.equal(await page.locator('#featured-grid .episode').count(), 2);
     assert.match(await page.locator('.footer-lure').getAttribute('href'), /\/shorts\/kgUSasaMays$/);
     assert.match(await page.locator('.hero-cover img').getAttribute('src'), new RegExp(latest));
 
     const player = page.locator('#player');
     assert.equal(await player.locator('iframe').count(), 0);
-    for (const [trigger, id] of [[page.locator('.hero-cover'), latest], [lakebed.locator('.presenter-footage'), muskrat]]) {
+    for (const [trigger, id] of [[page.locator('.hero-cover'), latest], [hero.getByRole('link', { name: 'Watch the latest video' }), latest], [lakebed.locator('.presenter-footage'), muskrat]]) {
       assert.match(await trigger.getAttribute('href'), new RegExp(id));
       await trigger.focus();
       await page.keyboard.press('Enter');
@@ -88,9 +89,9 @@ await withBrowser(async browser => {
     }
 
     await page.locator('#fish-guide-toggle').click();
-    for (const card of [about, note, lakebed]) assert.equal(await card.isVisible(), false);
+    for (const card of [about, hero, lakebed]) assert.equal(await card.isVisible(), false);
     await page.locator('#fish-guide-toggle').click();
-    for (const card of [about, note, lakebed]) assert.equal(await card.isVisible(), true);
+    for (const card of [about, hero, lakebed]) assert.equal(await card.isVisible(), true);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth), width);
     assert.deepEqual(errors, []);
     await page.close();

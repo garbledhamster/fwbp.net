@@ -8,7 +8,7 @@ const episodes = [
     title: "Five of Diamonds for northern pike and bass",
     category: "Underwater",
     art: "ice",
-    description: "Bryan fishes a Five of Diamonds spoon through the ice with an underwater camera."
+    description: "Bryan fishes a Five of Diamonds spoon through the ice with an underwater camera. Around 5:40, a pike comes up toward the spoon."
   },
   {
     id: "20uLF46BQKk",
@@ -215,3 +215,59 @@ addEventListener("resize", requestScrollUpdate);
 addEventListener("popstate", requestScrollUpdate);
 for (const guide of document.querySelectorAll("details")) guide.addEventListener("toggle", requestScrollUpdate);
 applyMotionPreference();
+
+const gamePreview = document.querySelector('.mast-game-preview');
+const gameButton = gamePreview.querySelector('.mast-game');
+const gameDescription = gamePreview.querySelector('#game-preview');
+let touchPress;
+let holdTimer;
+let held = false;
+
+function cancelGameHold() {
+  clearTimeout(holdTimer);
+  touchPress = undefined;
+}
+
+gamePreview.addEventListener('pointerenter', event => {
+  if (event.pointerType === 'mouse') gameDescription.hidden = false;
+});
+gamePreview.addEventListener('pointerleave', event => {
+  if (event.pointerType === 'mouse' && !gameButton.matches(':focus-visible')) gameDescription.hidden = true;
+});
+gameButton.addEventListener('focus', () => {
+  if (gameButton.matches(':focus-visible')) gameDescription.hidden = false;
+});
+gameButton.addEventListener('blur', () => { gameDescription.hidden = true; });
+
+gameButton.addEventListener('pointerdown', event => {
+  if (!event.isPrimary) return;
+  held = false;
+  if (event.pointerType !== 'touch') return;
+  touchPress = { x: event.clientX, y: event.clientY };
+  holdTimer = setTimeout(() => {
+    held = true;
+    gameDescription.hidden = false;
+  }, 500);
+});
+gameButton.addEventListener('pointermove', event => {
+  if (touchPress && Math.hypot(event.clientX - touchPress.x, event.clientY - touchPress.y) > 12) cancelGameHold();
+});
+gameButton.addEventListener('pointerup', cancelGameHold);
+gameButton.addEventListener('pointercancel', cancelGameHold);
+gameButton.addEventListener('contextmenu', event => {
+  if (touchPress || held) event.preventDefault();
+});
+gameButton.addEventListener('click', event => {
+  if (held && event.detail > 0) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    return;
+  }
+  gameDescription.hidden = true;
+}, { capture: true });
+document.addEventListener('pointerdown', event => {
+  if (!gamePreview.contains(event.target)) gameDescription.hidden = true;
+});
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape') gameDescription.hidden = true;
+});
