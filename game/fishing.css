@@ -1,6 +1,19 @@
 .game-entry { border: 1px solid #81936f; background: #213a2d; }
 .game-entry:hover { background: #36513a; }
 .fishing :is(.mast, .skip, .surface, .angler-banner, .dive-content, .library, .field-notes, .merch, .lakebed-feature, .footer-rig, .footer-inner) { display: none; }
+/* Game menus can scroll, but taps and pinches should not zoom the page. */
+html:has(body.fishing, dialog:is(.fishing-picker, .fishing-frame)[open]),
+dialog:is(.fishing-picker, .fishing-frame)[open] {
+  touch-action: pan-x pan-y;
+}
+@supports (-webkit-touch-callout: none) {
+  /* iOS disables double-tap zoom with manipulation; gesture events handle pinch. */
+  html:has(body.fishing, dialog:is(.fishing-picker, .fishing-frame)[open]),
+  dialog:is(.fishing-picker, .fishing-frame)[open] {
+    touch-action: manipulation;
+  }
+}
+.fishing-tray input[name="nickname"] { font-size: max(16px, 1rem); }
 html:has(body[data-campaign-camera]), body[data-campaign-camera] {
   height: 100%;
   overflow: clip;
@@ -12,9 +25,9 @@ html:has(body[data-campaign-camera]), body[data-campaign-camera] {
   inset: 0;
   overflow: clip;
   background: #263e38;
-  touch-action: pinch-zoom;
+  touch-action: none;
 }
-.fishing[data-campaign-camera] .fishing-tray { touch-action: pinch-zoom; }
+.fishing[data-campaign-camera] .fishing-tray { touch-action: none; }
 .fishing[data-campaign-camera] .lake {
   translate: var(--camera-x, 0px) var(--camera-y, 0px);
   overflow: visible;
@@ -861,7 +874,7 @@ html:has(body[data-fishing-paused]) { overflow: hidden; }
 }
 .fishing-lure-action:focus-visible { outline: 2px solid #fff1cf; outline-offset: 2px; }
 .lake[data-line-gesture="hook"] .fishing-line-gesture,
-.lake:is([data-line-gesture="reel"], [data-line-gesture="lift"]) { touch-action: pinch-zoom; }
+.lake:is([data-line-gesture="reel"], [data-line-gesture="lift"]) { touch-action: none; }
 .lake:is([data-line-gesture="reel"], [data-line-gesture="lift"]) .fishing-line-gesture {
   display: block;
   width: var(--fight-guide-width, 110px);
@@ -1416,7 +1429,7 @@ body[data-reduced] .fishing-auger-scene svg { transition: none; transform: none;
 }
 
 /* Campaign catches use a Phaser rig over the existing lake and a DOM HUD. */
-.fishing[data-campaign-angler] .fishing-route { touch-action: pinch-zoom; user-select: none; }
+.fishing[data-campaign-angler] .fishing-route { touch-action: none; user-select: none; }
 .campaign-scene { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
 .campaign-scene canvas { display: block; }
 .fishing-route:has(.campaign-scene[data-ready]) :is(.fishing-line-path, .fishing-line-eye) { opacity: 0; }

@@ -451,6 +451,18 @@ export function acquireSuspension() {
 
 const dialogOpen = () => Boolean(document.querySelector('dialog[open]'));
 const gameBlocked = () => tray.hidden || busy || outingTime.suspended || dialogOpen();
+const gameViewOpen = () => document.body.classList.contains('fishing') ||
+  Boolean(document.querySelector('dialog:is(.fishing-picker, .fishing-frame)[open]'));
+
+// Safari exposes pinch as a gesture event. Cancel it only while playing or in a game menu.
+for (const name of ['gesturestart', 'gesturechange']) {
+  document.addEventListener(name, event => {
+    if (gameViewOpen()) event.preventDefault();
+  }, { capture: true, passive: false });
+}
+window.addEventListener('wheel', event => {
+  if (event.ctrlKey && gameViewOpen()) event.preventDefault();
+}, { capture: true, passive: false });
 
 let countdownTimer, rankedSeekUntil, rankedServerSeekUntil, escapeTimer;
 let jigActivation = false;
