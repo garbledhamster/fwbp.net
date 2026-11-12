@@ -1494,14 +1494,14 @@ body[data-reduced] .fishing-auger-scene svg { transition: none; transform: none;
   position: absolute;
   inset: auto auto 0 50%;
   width: var(--bryan-width, 210px);
-  height: var(--bryan-height, 78px);
+  height: var(--bryan-height, 104px);
   max-width: none;
   translate: calc(-50% + var(--bryan-offset, 0px)) 0;
   object-fit: cover;
   object-position: center top;
   filter: drop-shadow(0 3px 3px #081b2499);
 }
-.fishing-bryan-callout[data-cue="hook"] { --bryan-width: 156px; --bryan-height: 74px; }
+.fishing-bryan-callout[data-cue="hook"] { --bryan-width: 156px; }
 .fishing-bryan-callout[data-cue="reel"] { --bryan-width: 217px; --bryan-offset: -4px; }
 .fishing-bryan-callout[data-cue="reel"] .fishing-starburst {
   min-height: 2.35rem;
@@ -1538,8 +1538,8 @@ body[data-reduced] .fishing-auger-scene svg { transition: none; transform: none;
 }
 .fishing-catch-bryan {
   width: min(250px, 70vw);
-  padding-top: 37px;
-  --bryan-height: 100px;
+  padding-top: 65px;
+  --bryan-height: 128px;
   --bryan-width: 250px;
   --bryan-offset: -21px;
 }
@@ -1625,11 +1625,11 @@ body[data-reduced] .fishing-auger-scene svg { transition: none; transform: none;
 }
 @media (max-height: 450px) and (orientation: landscape) {
   .fishing-bryan-callout { bottom: calc(var(--tray-inset, 125px) + 2px); }
-  .fishing-bryan-callout .fishing-bryan-portrait { height: 22px; --bryan-height: 56px; }
+  .fishing-bryan-callout .fishing-bryan-portrait { height: 22px; --bryan-height: 99px; --bryan-width: 156px; }
   .fishing-catch-popup[open] { gap: 4px; padding-block: 6px; }
   .fishing-catch-header { grid-template-columns: auto 1fr; align-items: end; }
   .fishing-catch-header h2 { justify-self: start; align-self: center; }
-  .fishing-catch-bryan { width: 150px; padding-top: 17px; --bryan-height: 50px; --bryan-width: 145px; --bryan-offset: -13px; }
+  .fishing-catch-bryan { width: 150px; padding-top: 43px; --bryan-height: 76px; --bryan-width: 145px; --bryan-offset: -13px; }
   .fishing-catch-bryan .fishing-bryan-portrait { height: 32px; }
   .fishing-catch-bryan .fishing-starburst { min-height: 29px; font-size: .84rem; }
   .fishing-catch-popup .fishing-reward-art svg { height: 62px; }
