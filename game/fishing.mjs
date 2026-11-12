@@ -11,7 +11,10 @@ const outingTime = createSuspensionClock();
 let campaignScene, campaignPointer, depthVelocity;
 const anglerOuting = () => mode === 'campaign' && !tutorial;
 // Keep the previous Campaign controls available while trying the bait-only tray.
-const restoreCampaignLiveButtons = new URLSearchParams(location.search).get('campaign-live-buttons') === '1';
+const launchParams = new URLSearchParams(location.search);
+const restoreCampaignLiveButtons = launchParams.get('campaign-live-buttons') === '1';
+const directGameLaunch = launchParams.get('play') === '1' ||
+  navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
 const endpoint = document.querySelector('meta[name="fishing-api"]')?.content;
 const lake = document.querySelector('.lake');
 const water = [...lake.querySelectorAll(':scope > .dive')];
@@ -2189,6 +2192,7 @@ function leave() {
   document.body.classList.remove('fishing');
   window.scrollTo({ top: previousScroll, behavior: 'instant' });
   launch.focus({ preventScroll: true });
+  if (directGameLaunch) titleScreen.showModal();
 }
 
 document.querySelectorAll('.game-entry').forEach(entry => entry.addEventListener('click', enter));
@@ -3114,3 +3118,8 @@ catchPopup.addEventListener('click', event => {
     catchPopup.close();
   }
 });
+
+if (directGameLaunch) {
+  document.title = 'Ice Fishing with Bryan';
+  document.querySelector('.mast-game').click();
+}

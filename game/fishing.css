@@ -1428,6 +1428,61 @@ body[data-reduced] .fishing-auger-scene svg { transition: none; transform: none;
     #0b252b url('../assets/branding/tent-cutaway.webp') 49% 94% / cover;
 }
 
+@media (pointer: coarse), (display-mode: standalone) {
+  .fishing-picker:is(.fishing-title, .fishing-outing-picker)[open] {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    max-width: none;
+    height: 100dvh;
+    min-height: 0;
+    max-height: none;
+    margin: 0;
+    padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right))
+      max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .fishing-title .fishing-title-actions button { min-height: 48px; }
+  .fishing-outing-picker > * { width: min(100%, 620px); margin-inline: auto; }
+}
+
+@media (pointer: coarse) and (orientation: portrait), (display-mode: standalone) and (orientation: portrait) {
+  .fishing-picker.fishing-title[open] {
+    align-content: end;
+    padding-bottom: max(68px, calc(env(safe-area-inset-bottom) + 56px));
+  }
+  .fishing-picker.fishing-title[open]:not([data-from-ice]) {
+    background-position: center, center, 64% center;
+  }
+}
+
+@media (pointer: coarse) and (max-height: 440px), (display-mode: standalone) and (max-height: 440px) {
+  .fishing-picker.fishing-outing-picker[open] {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    align-content: center;
+    align-items: center;
+    gap: 10px 22px;
+  }
+  .fishing-outing-picker .fishing-dialog-intro { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .fishing-outing-picker .fishing-dialog-art { grid-area: auto; }
+  .fishing-outing-picker .fishing-picker-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-block-start: 0;
+    gap: 8px;
+  }
+  .fishing-outing-picker .fishing-picker-options p {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .fishing-outing-picker form { grid-column: 2; margin-block-start: 0; }
+}
+
 /* Campaign catches use a Phaser rig over the existing lake and a DOM HUD. */
 .fishing[data-campaign-angler] .fishing-route { touch-action: none; user-select: none; }
 .campaign-scene { position: absolute; inset: 0; z-index: 2; pointer-events: none; }

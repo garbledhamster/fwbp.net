@@ -24,7 +24,7 @@ if [[ -n "$(git diff --name-only --diff-filter=DMRT FETCH_HEAD HEAD -- ':(glob)v
   exit 1
 fi
 
-site_files=(index.html styles.css brands.css site.js brands.js assets game/fishing.css game/fishing.mjs game/campaign-scene.mjs game/rules.mjs game/campaign-map.mjs game/lake-map-data.mjs game/profile.mjs game/suspension.mjs game/species-catalog.mjs game/lake-sprites.mjs game/collection.mjs game/collection.css game/bryan-videos.mjs game/video-player.mjs game/species-video.mjs)
+site_files=(index.html styles.css brands.css site.js brands.js assets fishing.webmanifest play/index.html game/fishing.css game/fishing.mjs game/campaign-scene.mjs game/rules.mjs game/campaign-map.mjs game/lake-map-data.mjs game/profile.mjs game/suspension.mjs game/species-catalog.mjs game/lake-sprites.mjs game/collection.mjs game/collection.css game/bryan-videos.mjs game/video-player.mjs game/species-video.mjs)
 number=0
 while IFS= read -r name; do
   if [[ "$name" =~ ^v([1-9][0-9]*)$ ]] && (( BASH_REMATCH[1] > number )); then
@@ -42,8 +42,11 @@ if (( number == 0 )) || ! git diff --quiet "HEAD:$version" HEAD -- "${site_files
   mkdir "$lock/$version"
   git archive --format=tar -o "$lock/site.tar" HEAD -- "${site_files[@]}"
   tar -xf "$lock/site.tar" -C "$lock/$version"
+  sed -E "s/(<meta name=\"fishing-build\" content=\")[^\"]*(\")/\\1$version\\2/" \
+    index.html > "$lock/$version/index.html"
+  cp "$lock/$version/index.html" index.html
   mv "$lock/$version" "$version"
-  git add -- "$version"
+  git add -- index.html "$version"
   git commit -m "Publish site $version"
 fi
 

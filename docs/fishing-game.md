@@ -4,6 +4,8 @@ Choose **Go ice fishing with Bryan** in the site navigation to open the title sc
 
 Once you choose an outing, you fish in the lake beneath the site. The site content gives way to open water. A fixed line hangs from the ice hole, and the lure bounces up and down when you jig. Watch how the fish responds to learn which lure works. The catch log records the pairing after you land it. After a Campaign or Practice catch saves, choose **Next fish** or **My Lake**. Bryan’s matching videos open on YouTube. Closing My Lake returns to the same catch and outing. A failed save offers **Save catch** before these next steps become available.
 
+Open [the game link](https://fwbp.net/play/) to go straight to the title screen. On iPhone, use **Share → Add to Home Screen** and leave **Open as Web App** on if Safari shows it. On Android, open the browser menu and choose **Install app** when offered. The Home Screen app opens at the title screen, and leaving an outing brings you back there. The installed app can keep its own save separate from the browser. The game needs a connection to load.
+
 ## Strategy
 
 The first outing should teach you how to find, hook and land a fish. Show how the fish responds to a jig, cue the player when it bites, and show its name, rarity and points when it lands. Ranked play offers a nickname prompt after an outing with a catch. The same lake, fish illustrations and warm lamp color make the game feel like part of Bryan’s site.
