@@ -11,4 +11,12 @@ The browser uses the existing site harness and a deterministic clock for timing 
 
 ## Status
 
-Plan complete. Baseline verified. Candidate implementation, regression suite, integrated playtest and screenshots pending. Public publication, pushes that trigger deployment and Firebase changes are outside this batch.
+Tickets 08 and 09 are integrated in the local branch. Runtime candidate `f300213` is based on v35 and has been archived with the same file list the publisher uses. The preview runs at http://127.0.0.1:9891/. No publish command was run.
+
+- Ticket 08 uses the existing Campaign run, Phaser for the visible rig, and the existing IndexedDB profile. Hook contact snapshots the fish and equipped hook and line. Legacy ranks map into the new ranks, and retired or over-cap ranks become practice points. New drilling days use the two-hole default. Existing days retain their saved allowance. The 8 lb line sets the baseline. Heavier line reduces passive payout during a run.
+- Ticket 09 uses the saved catch receipt for the celebration. The positive Campaign award remains XP credit, and pending species coins settle in a separate claim transaction. The daily perch quest uses the Central calendar date and a separate claim. The v35 cutaway, counter banner and inline hero remain in the archive.
+- All 74 Node tests passed at the candidate revision. A WebKit phone-sized run verified the v35 jigging rig, counter banner fixture, build watermark, live Campaign surface, catch, and claim. The dedicated 720 × 320 layout test verified a water area of 169.6 px and continuous hook attachment through rotation.
+
+The full browser command reported 62 of 63 passing on the archive. The remaining connected journey timed out on a raw mobile tap in the site fish guide. The browser replay now uses the site's **First caught fish** link and waits for the fish button to receive the tap. That journey then passed on desktop, portrait and landscape against the same runtime archive. The standard and deep trophy replays landed after 18 and 85 controlled taps. The six-fish replay, duplicate claims, reload, gear, Practice and Ranked checks, site hero and video library passed.
+
+Replay with `node --test game/*.test.mjs counters/counters.test.mjs`. With the archive served, set `FISHING_QA_URL=http://127.0.0.1:9891/` and run `node --test --test-concurrency=3 game/*.browser.mjs *.browser.mjs`. The public release awaits separate authorization.

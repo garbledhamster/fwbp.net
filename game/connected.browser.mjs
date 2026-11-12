@@ -173,8 +173,13 @@ async function connected(browser, viewport, mobile) {
   assert.deepEqual(returning.awards, credited.awards);
   await press(page.locator('#fish-guide-toggle'), 'Enter');
   await page.locator('.fish-mode-hint').filter({ hasText: /1 \/ 6/ }).waitFor();
-  await press(page.locator('.fish-target[data-fish="walleye"]:visible').first(), 'Enter');
+  const walleye = page.locator('.fish-target[data-fish="walleye"]:visible').first();
+  if (mobile) {
+    await page.getByRole('link', { name: 'First caught fish' }).tap();
+    await walleye.tap();
+  } else await press(walleye, 'Enter');
   const siteCard = page.locator('#fish-card');
+  await siteCard.getByRole('heading', { name: 'Walleye', exact: true }).waitFor();
   await watchVideo(siteCard.locator('[data-bryan-video]'), siteCard);
   assert.equal(await siteCard.getByRole('heading', { name: 'Walleye', exact: true }).isVisible(), true);
   await closeDialog(siteCard, siteCard.getByRole('button', { name: 'Close fish card', exact: true }));
