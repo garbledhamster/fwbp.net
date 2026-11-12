@@ -1,4 +1,4 @@
-import { openVideo } from './video-player.mjs';
+import { openVideo } from './video-player.mjs?v=tent-library';
 
 // Editorial associations only. Verify the exact species before adding a match.
 // Audit and public fallback evidence: docs/bryan-videos.md. No reviewed timestamps.

@@ -10,6 +10,25 @@ async function checkLibrary(check) {
     for (const viewport of viewports) {
       const page = await browser.newPage({ viewport, hasTouch: viewport.width === 320, reducedMotion: 'reduce' });
       try {
+        await page.route('https://www.youtube-nocookie.com/embed/**', route =>
+          route.fulfill({ body: '<title>YouTube player</title>', contentType: 'text/html' }));
+        await page.route('https://www.youtube.com/iframe_api', route => route.fulfill({
+          contentType: 'application/javascript',
+          body: `
+            window.YT = { Player: class {
+              constructor(frame, { events }) {
+                this.frame = frame;
+                this.events = events;
+                if (frame.closest('#player')) window.testPlayer = this;
+              }
+              loadVideoById(id) { this.id = id; }
+              destroy() { this.frame.remove(); }
+              finish() { this.events.onStateChange({ target: this, data: 0 }); }
+              unavailable() { this.events.onError({ target: this, data: 150 }); }
+            }};
+            window.onYouTubeIframeAPIReady();
+          `
+        }));
         const response = await page.goto(url, { waitUntil: 'domcontentloaded' });
         assert.ok(response?.ok());
         await check(page, page.getByRole('region', { name: 'Video library' }));
@@ -20,28 +39,14 @@ async function checkLibrary(check) {
   });
 }
 
-async function checkPlayer(page, action, id, source) {
-  const player = page.getByRole('dialog');
-  const frame = player.locator('iframe');
-  await action.focus();
-  await page.keyboard.press('Enter');
-  await player.waitFor({ state: 'visible' });
-  assert.equal(new URL(await frame.getAttribute('src')).pathname, '/embed/' + id);
-  assert.equal(await player.getByRole('link', { name: /Open on YouTube/ }).getAttribute('href'), source);
-  await page.keyboard.press('Escape');
-  await frame.waitFor({ state: 'detached' });
-  assert.equal(await action.evaluate(link => document.activeElement === link), true);
-}
-
 test('trip shortcuts select the matching library filter and show its results', async () => {
   await checkLibrary(async (page, library) => {
     const trip = library.getByRole('article', { name: 'Pick a trip' });
     assert.equal(await trip.isVisible(), true, 'the library has a trip picker');
     const videos = library.locator('#video-grid a');
-    const allCount = await videos.count();
     const options = [
-      ['Underwater strikes', 'Underwater', '20uLF46BQKk'],
-      ['Kayak trips', 'Kayak fishing', 'toN7z2eNxEU'],
+      ['Underwater strikes', 'Underwater', '3dmUMd9oR88'],
+      ['Mille Lacs trips', 'Mille Lacs', 'sXRoaFLDS10'],
       ['Gear setups', 'Gear', '1mtyGF6wlDI']
     ];
     for (const [shortcut, filter, id] of options) {
@@ -52,50 +57,17 @@ test('trip shortcuts select the matching library filter and show its results', a
       assert.equal(await selected.evaluate(button => document.activeElement === button), true);
       assert.ok((await videos.evaluateAll(links => links.map(link => link.dataset.watch))).includes(id));
       const categories = await videos.locator('.episode-meta').allTextContents();
-      assert.deepEqual([...new Set(categories)], [filter]);
+      assert.ok(categories.every(tags => tags.split(' · ').includes(filter)));
     }
     await library.getByRole('button', { name: 'All', exact: true }).press('Enter');
-    assert.equal(await videos.count(), allCount);
+    assert.ok(await library.getByRole('button', { name: 'Show more videos' }).isVisible());
     assert.equal(await library.getByRole('link', { name: /See all uploads/ }).getAttribute('href'), 'https://www.youtube.com/@BryanProkuski/videos');
-  });
-});
-
-test('the kayak presenter opens Bryan’s Mississippi smallmouth video with the keyboard', async () => {
-  await checkLibrary(async (page, library) => {
-    const trip = library.getByRole('article', { name: 'Smallmouth from the kayak' });
-    assert.equal(await trip.isVisible(), true, 'the library has a kayak presenter');
-    const watch = trip.getByRole('link', { name: 'Watch kayak trip' });
-    const source = 'https://www.youtube.com/watch?v=toN7z2eNxEU';
-    assert.equal(await watch.getAttribute('href'), source);
-    await checkPlayer(page, watch, 'toN7z2eNxEU', source);
-  });
-});
-
-test('the Short warns about gunfire before the keyboard Watch action opens its player', async () => {
-  await checkLibrary(async (page, library) => {
-    const short = library.getByRole('article', { name: 'Unexpected on the water' });
-    assert.equal(await short.isVisible(), true, 'the library has the duck-hunter Short callout');
-    const warning = short.getByText('Audio heads-up. This clip contains sudden gunfire.', { exact: true });
-    const watch = short.getByRole('link', { name: /Watch the Short/ });
-    const source = 'https://www.youtube.com/shorts/Qo7FSZc9S7I';
-    assert.equal(await watch.getAttribute('href'), source);
-    assert.equal(await page.locator('#player iframe').count(), 0);
-    await watch.scrollIntoViewIfNeeded();
-    const warningBounds = await warning.boundingBox();
-    const watchBounds = await watch.boundingBox();
-    assert.ok(warningBounds && watchBounds && warningBounds.y >= 0 &&
-      warningBounds.y + warningBounds.height <= watchBounds.y &&
-      watchBounds.y + watchBounds.height <= page.viewportSize().height,
-    'the warning is on screen above the Watch action');
-    await checkPlayer(page, watch, 'Qo7FSZc9S7I', source);
   });
 });
 
 test('the footer hot dog opens matching Bryan videos and the library lists the whole pool', async () => {
   const matches = ['NpQtS2wNDRc', 'L7Ub8BdT0Ws', 'W63YgKh-szs', 'gujypoDa-dc', 'GRJ1GOc6Pvk', 'aYJhIZhbeDg'];
   await checkLibrary(async (page, library) => {
-    await page.route('https://www.youtube-nocookie.com/embed/**', route =>
-      route.fulfill({ body: '<title>YouTube player</title>', contentType: 'text/html' }));
     const footer = page.getByRole('contentinfo');
     const hotDog = footer.getByRole('link', { name: 'Watch a random hot dog video' });
     await hotDog.waitFor({ timeout: 2500 });
@@ -110,7 +82,7 @@ test('the footer hot dog opens matching Bryan videos and the library lists the w
       const id = new URL(await frame.getAttribute('src')).pathname.split('/').at(-1);
       assert.ok(matches.includes(id), 'the hot dog plays a verified match');
       const fallback = player.getByRole('link', { name: /Open on YouTube/ });
-      assert.equal(new URL(await fallback.getAttribute('href')).searchParams.get('v'), id);
+      assert.match(await fallback.getAttribute('href'), new RegExp(id + '$'));
       played.push(id);
       await page.keyboard.press('Escape');
       await frame.waitFor({ state: 'detached' });
@@ -123,5 +95,52 @@ test('the footer hot dog opens matching Bryan videos and the library lists the w
     await library.getByRole('button', { name: 'Hot dog', exact: true }).click();
     const shown = await library.locator('#video-grid a').evaluateAll(links => links.map(link => link.dataset.watch));
     assert.deepEqual(shown.sort(), matches.sort());
+  });
+});
+
+test('the library opens on underwater ice fishing and includes eligible Shorts under All', async () => {
+  await checkLibrary(async (page, library) => {
+    const underwater = library.getByRole('button', { name: 'Underwater', exact: true });
+    assert.equal(await underwater.getAttribute('aria-pressed'), 'true');
+    const grid = library.locator('#video-grid');
+    assert.ok(await grid.locator('[data-watch="3dmUMd9oR88"]').count());
+    await library.getByRole('button', { name: 'All', exact: true }).click();
+    assert.ok(await grid.locator('a[href*="/shorts/"]').count());
+    const before = await grid.locator('a').count();
+    await library.getByRole('button', { name: 'Show more videos' }).click();
+    assert.ok(await grid.locator('a').count() > before);
+    assert.equal(await library.getByRole('button', { name: 'Kayak fishing', exact: true }).count(), 0);
+  });
+});
+
+test('the random button plays the selected category and loops its queue', async () => {
+  await checkLibrary(async (page, library) => {
+    await library.getByRole('button', { name: 'Hot dog', exact: true }).click();
+    const random = library.getByRole('button', { name: 'Pick a random video' });
+    await random.waitFor({ timeout: 2500 });
+    const expected = await library.locator('#video-grid a').evaluateAll(links =>
+      links.map(link => link.dataset.watch));
+    assert.ok(expected.length >= 3);
+    await page.evaluate(() => { Math.random = () => .999; });
+    await random.press('Enter');
+    await page.waitForFunction(() => window.testPlayer);
+    const source = page.locator('#player-source');
+    assert.match(await source.getAttribute('href'), new RegExp(expected.at(-1) + '$'));
+    await page.evaluate(() => window.testPlayer.finish());
+    assert.equal(await page.evaluate(() => window.testPlayer.id), expected[0]);
+    assert.match(await source.getAttribute('href'), new RegExp(expected[0] + '$'));
+    await page.evaluate(() => window.testPlayer.unavailable());
+    assert.equal(await page.evaluate(() => window.testPlayer.id), expected[1]);
+    await page.keyboard.press('Escape');
+    await page.locator('#player iframe').waitFor({ state: 'detached' });
+    assert.equal(await random.evaluate(button => document.activeElement === button), true);
+
+    await library.getByRole('button', { name: 'All', exact: true }).click();
+    await random.press('Enter');
+    await page.waitForFunction(() => window.testPlayer?.frame === document.querySelector('#player iframe'));
+    // The last catalog entry is outside the first visible batch.
+    assert.match(await source.getAttribute('href'), /oXallEXVMjg$/);
+    await page.evaluate(() => window.testPlayer.finish());
+    assert.match(await source.getAttribute('href'), /3dmUMd9oR88$/);
   });
 });

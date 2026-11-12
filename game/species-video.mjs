@@ -1,4 +1,4 @@
-import { getBryanVideo, openBryanVideo } from './bryan-videos.mjs';
+import { getBryanVideo, openBryanVideo } from './bryan-videos.mjs?v=tent-library';
 
 // An ordinary anchor preserves the public destination for modified clicks and
 // browser navigation. Local outings optionally hold their own logical clock.

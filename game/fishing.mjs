@@ -4,7 +4,7 @@ import { catchQuality, moveToHole, stepCampaignFish, abandonHoleFish, advanceLin
 import { areaPermit, hasAreaAccess, campaignGoal, campaignProgress, campaignTraining, campaignSkills, campaignSkillCap, campaignSkillRanks, shopAvailability, applyProfile, campaignMilestone, loadProfile, shopItems } from './profile.mjs?v=campaign-ranks';
 import { lureTip } from './species-catalog.mjs';
 import { openYourLake } from './collection.mjs?v=campaign-ranks';
-import { renderSpeciesVideo } from './species-video.mjs';
+import { renderSpeciesVideo } from './species-video.mjs?v=tent-library';
 import { spriteHref } from './lake-sprites.mjs';
 
 const outingTime = createSuspensionClock();

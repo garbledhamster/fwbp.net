@@ -10,12 +10,12 @@
   <meta property="og:description" content="Go through the ice with Bryan Prokuski. Watch underwater fishing videos and browse illustrated field notes.">
   <link rel="icon" href="./assets/branding/underwater-stamp-favicon.ico" sizes="16x16 32x32 48x48">
   <link rel="icon" href="./assets/branding/underwater-stamp-favicon.svg" type="image/svg+xml" sizes="any">
-  <link rel="stylesheet" href="./styles.css?v=inline-video">
-  <link rel="stylesheet" href="./brands.css?v=tent-cutaway">
-  <script type="module" src="./brands.js?v=campaign-ranks"></script>
-  <script type="module" src="./site.js?v=inline-video"></script>
-  <link rel="stylesheet" href="./game/fishing.css?v=tent-cutaway">
-  <script type="module" src="./game/fishing.mjs?v=tent-cutaway"></script>
+  <link rel="stylesheet" href="./styles.css?v=tent-library">
+  <link rel="stylesheet" href="./brands.css?v=tent-library">
+  <script type="module" src="./brands.js?v=tent-library"></script>
+  <script type="module" src="./site.js?v=tent-library"></script>
+  <link rel="stylesheet" href="./game/fishing.css?v=tent-library">
+  <script type="module" src="./game/fishing.mjs?v=tent-library"></script>
   <title>Fishing with Bryan Prokuski</title>
 </head>
 <body>
@@ -121,47 +121,30 @@
         <div class="dive-water" aria-hidden="true"><div class="dive-actors"></div></div>
         <div class="wrap" data-fish-overlay>
           <div class="section-heading">
-            <div><h2 id="library-heading">Video library</h2><p>From underwater strikes to summer kayak trips.</p></div>
+            <div><h2 id="library-heading">Video library</h2><p>Underwater strikes, ice-fishing trips, and gear setups.</p></div>
           </div>
           <article class="presenter-card trip-picker" aria-labelledby="trip-picker-heading">
             <div class="presenter-copy">
               <h3 id="trip-picker-heading">Pick a trip</h3>
-              <p>Come along for a day on the water, or see how Bryan sets up his gear.</p>
+              <p>Come along on the ice or see how Bryan sets up his gear.</p>
               <div class="trip-picks" role="group" aria-label="Find videos by topic">
                 <button type="button" data-category="Underwater">Underwater strikes</button>
-                <button type="button" data-category="Kayak fishing">Kayak trips</button>
+                <button type="button" data-category="Mille Lacs">Mille Lacs trips</button>
                 <button type="button" data-category="Gear">Gear setups</button>
               </div>
             </div>
             <img class="presenter-cutout" src="./assets/branding/bryan-standing-welcome.webp" width="346" height="640" alt="" loading="lazy" decoding="async">
           </article>
-          <div class="filters" role="group" aria-label="Filter videos"></div>
+          <div class="library-controls">
+            <div class="filters" role="group" aria-label="Filter videos"></div>
+            <button class="button primary" id="random-video" type="button" hidden>Pick a random video</button>
+          </div>
           <p class="library-status" id="library-status" role="status"></p>
           <div class="video-grid" id="video-grid"></div>
+          <button class="button" id="more-videos" type="button" hidden>Show more videos</button>
           <a class="library-channel" href="https://www.youtube.com/@BryanProkuski/videos">See all uploads on YouTube ↗</a>
         </div>
         <div class="library-water" data-dive="library-water"><div class="dive-water" aria-hidden="true"><div class="dive-actors"></div></div></div>
-        <div class="wrap library-callouts" data-fish-overlay>
-          <article id="kayak-presenter" class="presenter-card" aria-labelledby="kayak-presenter-heading">
-            <div class="presenter-copy">
-              <h3 id="kayak-presenter-heading">Smallmouth from the kayak</h3>
-              <p>Bryan floats the Upper Mississippi and catches smallmouth on a wacky worm.</p>
-              <a class="button" href="https://www.youtube.com/watch?v=toN7z2eNxEU" data-watch="toN7z2eNxEU">Watch kayak trip</a>
-            </div>
-            <img class="presenter-cutout" src="./assets/branding/bryan-kayak.webp" width="560" height="403" alt="" loading="lazy" decoding="async">
-            <img class="presenter-footage" src="https://i.ytimg.com/vi/toN7z2eNxEU/mqdefault.jpg" width="320" height="180" alt="Bryan holds a smallmouth bass above his kayak" loading="lazy" decoding="async">
-          </article>
-          <article id="short-presenter" class="presenter-card" aria-labelledby="short-presenter-heading">
-            <div class="presenter-copy">
-              <h3 id="short-presenter-heading">Unexpected on the water</h3>
-              <p>Duck hunters startled Bryan on a kayak trip. He shared the moment in his 27-second Short, <cite>I THOUGHT I GOT SHOT!</cite></p>
-              <p class="presenter-warning" id="short-audio-warning"><strong>Audio heads-up.</strong> This clip contains sudden gunfire.</p>
-              <a class="button" href="https://www.youtube.com/shorts/Qo7FSZc9S7I" data-watch="Qo7FSZc9S7I" aria-describedby="short-audio-warning">Watch the Short</a>
-            </div>
-            <img class="presenter-cutout" src="./assets/branding/bryan-over-the-shoulder.webp" width="496" height="640" alt="" loading="lazy" decoding="async">
-            <img class="presenter-footage" src="https://i.ytimg.com/vi/Qo7FSZc9S7I/hqdefault.jpg" width="480" height="360" alt="Bryan films from his kayak in the Short" loading="lazy" decoding="async">
-          </article>
-        </div>
       </section>
       <section id="field-notes" class="field-notes" data-dive="field-notes" aria-labelledby="notes-heading">
         <div class="dive-water" aria-hidden="true"><div class="dive-actors"></div></div>

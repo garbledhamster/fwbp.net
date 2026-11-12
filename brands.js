@@ -2,7 +2,7 @@ import { fishProfiles } from "./assets/fish-profiles.js";
 
 import { speciesArt as species } from "./game/species-catalog.mjs";
 import { loadProfile } from "./game/profile.mjs?v=campaign-map-discovery";
-import { renderSpeciesVideo } from "./game/species-video.mjs";
+import { renderSpeciesVideo } from "./game/species-video.mjs?v=tent-library";
 import { fillSpeciesCard } from "./game/collection.mjs?v=campaign-ranks";
 import { spriteHref } from "./game/lake-sprites.mjs";
 
