@@ -22,7 +22,7 @@ async function inDialogViewport(dialog, target) {
 }
 
 async function checkArt(dialog, file) {
-  const art = dialog.locator(`img[src$="/${file}"]`);
+  const art = dialog.locator(`img[src$="/${file}"]:visible`);
   assert.equal(await art.count(), 1, `the open dialog must show ${file}`);
   const decoded = await art.evaluate(async img => {
     await img.decode();
@@ -42,7 +42,7 @@ await withBrowser(async browser => {
     await openGame();
     const picker = page.getByRole('dialog', { name: 'Choose an outing' });
     const campaign = picker.getByRole('button', { name: 'Campaign', exact: true });
-    const tutorial = picker.getByRole('button', { name: 'Tutorial with Bryan', exact: true });
+    const tutorial = picker.getByRole('button', { name: 'Tutorial', exact: true });
     const openShop = picker.getByRole('button', { name: 'Tackle shop', exact: true });
     await picker.waitFor();
     await checkArt(picker, 'mille-lacs-dawn.webp');
@@ -50,6 +50,26 @@ await withBrowser(async browser => {
     assert.ok(await inDialogViewport(picker, tutorial), 'Tutorial stays visible with the outing art');
     await capture(page, `${size}-outings`);
     assert.ok(await inDialogViewport(picker, openShop), `${size}: Tackle shop stays visible with the outing art`);
+
+    await press(tutorial);
+    const training = page.getByRole('dialog', { name: 'Tutorial', exact: true });
+    await checkArt(training, 'bryan-jig-portrait.webp');
+    const lesson = training.getByRole('button', { name: 'Tutorial with Bryan', exact: true });
+    const practice = training.getByRole('button', { name: 'Practice', exact: true });
+    await capture(page, `${size}-tutorial`);
+    for (const target of [lesson, practice, training.getByRole('button', { name: 'Back to outings' })]) {
+      assert.ok(await inDialogViewport(training, target), `${size}: "${await target.innerText()}" fits on screen`);
+      assert.ok((await target.boundingBox()).height >= 44);
+    }
+    assert.ok(await training.evaluate(el => el.scrollWidth <= el.clientWidth), 'training has no horizontal overflow');
+    await press(practice);
+    await page.locator('.fishing-tray[data-mode="practice"] [data-exit]:enabled').waitFor();
+    await press(page.locator('[data-exit]'));
+    const pause = page.getByRole('dialog', { name: 'Paused', exact: true });
+    await closeDialog(pause, pause.getByRole('button', { name: 'Leave outing' }));
+    await training.waitFor();
+    await press(training.getByRole('button', { name: 'Back to outings' }));
+    assert.ok(await tutorial.evaluate(el => document.activeElement === el), 'return focus to the Tutorial entry');
 
     await press(openShop);
     const shop = page.getByRole('dialog', { name: 'Tackle shop' });

@@ -112,7 +112,10 @@ export async function practicePage(browser, { mobile = false, viewport, configur
 
   async function chooseMode(name = 'Practice', spot) {
     const picker = page.getByRole('dialog', { name: 'Choose an outing' });
-    await press(picker.getByRole('button', { name, exact: true }), 'Enter');
+    const training = name === 'Practice' || name === 'Tutorial with Bryan';
+    if (training) await press(picker.getByRole('button', { name: 'Tutorial', exact: true }), 'Enter');
+    const menu = training ? page.getByRole('dialog', { name: 'Tutorial', exact: true }) : picker;
+    await press(menu.getByRole('button', { name, exact: true }), 'Enter');
     if (name === 'Campaign') {
       const map = page.locator('.fishing-map');
       const permit = page.locator('.fishing-permit');
@@ -145,6 +148,11 @@ export async function practicePage(browser, { mobile = false, viewport, configur
   }
 
   async function openGame() {
+    const training = page.getByRole('dialog', { name: 'Tutorial', exact: true });
+    if (await training.isVisible()) {
+      await press(training.getByRole('button', { name: 'Back to outings' }), 'Enter');
+      return;
+    }
     await press(launch, 'Enter');
     await startGame();
   }

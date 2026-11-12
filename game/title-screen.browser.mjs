@@ -57,7 +57,17 @@ await withBrowser(async browser => {
     await start.click();
     await picker.waitFor();
     assert.equal(await menu.isVisible(), false);
-    await picker.getByRole('button', { name: 'Tutorial with Bryan', exact: true }).click();
+    const openTutorial = picker.getByRole('button', { name: 'Tutorial', exact: true });
+    const tutorial = page.getByRole('dialog', { name: 'Tutorial', exact: true });
+    assert.equal(await picker.getByRole('button', { name: 'Practice', exact: true }).count(), 0);
+    await openTutorial.click();
+    await tutorial.waitFor();
+    assert.equal(await tutorial.getByRole('heading', { name: 'Tutorial', exact: true }).evaluate(el => el === document.activeElement), true);
+    await page.keyboard.press('Escape');
+    await picker.waitFor();
+    assert.equal(await openTutorial.evaluate(el => el === document.activeElement), true);
+    await openTutorial.click();
+    await tutorial.getByRole('button', { name: 'Tutorial with Bryan', exact: true }).click();
     await tray.waitFor();
     await tick(100);
     assert.match(await tray.innerText(), /Bryan’s practice hole.*Tutorial/s);

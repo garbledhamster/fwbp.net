@@ -99,26 +99,71 @@ const picker = document.createElement('dialog');
 picker.className = 'fishing-picker fishing-outing-picker fishing-frame';
 picker.setAttribute('aria-labelledby', 'fishing-picker-title');
 picker.innerHTML = `
-  <div class="fishing-dialog-intro">
-    <h2 id="fishing-picker-title">Choose an outing</h2>
-    <p data-outing-message role="status"></p>
-    <img class="fishing-dialog-art" src="./assets/fishing/mille-lacs-dawn.webp" alt="" width="1104" height="460" loading="lazy">
-  </div>
-  <div class="fishing-picker-options">
-    <button type="button" data-mode="tutorial" aria-describedby="tutorial-description">Tutorial with Bryan</button>
-    <p id="tutorial-description">Practice jigging, setting the hook, and landing a perch.</p>
-    <button type="button" data-mode="campaign" data-area="${starterArea}" aria-describedby="campaign-description">Campaign</button>
-    <p id="campaign-description">Fish shallow and deep water on Mille Lacs with your own tackle.</p>
-    <button type="button" data-open-shop aria-describedby="shop-description">Tackle shop</button>
-    <p id="shop-description">Spend coins and choose your gear between outings.</p>
-    <button type="button" data-open-skills aria-describedby="skills-description">Angler Skills</button>
-    <p id="skills-description">Train with practice points you earn from landing fish.</p>
-    <button type="button" data-mode="practice" aria-describedby="practice-description">Practice</button>
-    <p id="practice-description">Practice with starter gear. Two catches reach Level 2: choose a longer hook window or an extra first clear pull.</p>
-    ${endpoint ? `<button type="button" data-mode="ranked" aria-describedby="ranked-description">Ranked</button>
-      <p id="ranked-description">Fish for a score on the public board.</p>` : ''}
-  </div>
-  <form method="dialog"><button>Back to the site</button></form>`;
+  <section class="fishing-menu-page" data-picker-page="outings" aria-labelledby="fishing-picker-title">
+    <header class="fishing-menu-masthead">
+      <p class="fishing-menu-kicker">Ice Fishing with Bryan</p>
+      <h2 id="fishing-picker-title" tabindex="-1" autofocus>Choose an outing</h2>
+      <p data-outing-message role="status"></p>
+    </header>
+    <div class="fishing-outing-choices">
+      <button type="button" class="fishing-outing-card fishing-outing-campaign" data-mode="campaign" data-area="${starterArea}" aria-labelledby="campaign-label" aria-describedby="campaign-description">
+        <img src="./assets/fishing/mille-lacs-dawn.webp" alt="" width="1104" height="460">
+        <span class="fishing-outing-copy">
+          <span class="fishing-menu-kicker">Mille Lacs Lake</span>
+          <strong id="campaign-label">Campaign</strong>
+          <span id="campaign-description">Pick a hole and fish with your own tackle.</span>
+        </span>
+        <span class="fishing-menu-arrow" aria-hidden="true">→</span>
+      </button>
+      <button type="button" class="fishing-outing-card fishing-outing-tutorial" data-open-tutorial aria-labelledby="tutorial-label" aria-describedby="tutorial-description">
+        <img src="./assets/branding/bryan-jig-portrait.webp" alt="">
+        <span class="fishing-outing-copy">
+          <span class="fishing-menu-kicker">Bryan’s practice hole</span>
+          <strong id="tutorial-label">Tutorial</strong>
+          <span id="tutorial-description">Fish with Bryan or practice on your own.</span>
+        </span>
+        <span class="fishing-menu-arrow" aria-hidden="true">→</span>
+      </button>
+    </div>
+    <div class="fishing-menu-tools" role="group" aria-label="More ways to play">
+      <button type="button" data-open-shop>${icon('shop')} Tackle shop</button>
+      <button type="button" data-open-skills>${icon('training')} Angler Skills</button>
+      ${endpoint ? `<button type="button" data-mode="ranked" aria-description="Fish for a score on the public board.">${icon('quick')} Ranked</button>` : ''}
+    </div>
+    <form method="dialog" class="fishing-menu-footer"><button>Back to the site</button></form>
+  </section>
+  <section class="fishing-menu-page" data-picker-page="tutorial" aria-labelledby="fishing-tutorial-title" hidden>
+    <header class="fishing-menu-masthead">
+      <p class="fishing-menu-kicker">Bryan’s practice hole</p>
+      <h2 id="fishing-tutorial-title" tabindex="-1">Tutorial</h2>
+    </header>
+    <div class="fishing-training-choices">
+      <section class="fishing-lesson" aria-labelledby="fishing-lesson-title">
+        <div class="fishing-lesson-art" aria-hidden="true">
+          <img src="./assets/branding/bryan-jig-portrait.webp" alt="">
+        </div>
+        <div class="fishing-lesson-copy">
+          <h3 id="fishing-lesson-title">Your first perch</h3>
+          <p>Catch a yellow perch with Bryan. There’s no outing timer.</p>
+          <ol class="fishing-lesson-steps" aria-label="What you’ll learn">
+            <li>${icon('jig')}<strong>Jig</strong><small>Work the lure</small></li>
+            <li>${icon('hook')}<strong>Hook</strong><small>Wait for gold</small></li>
+            <li>${icon('reel')}<strong>Reel</strong><small>Ease a tight line</small></li>
+          </ol>
+          <button type="button" class="fishing-lesson-start" data-mode="tutorial">Tutorial with Bryan <span aria-hidden="true">→</span></button>
+        </div>
+      </section>
+      <section class="fishing-training-practice" aria-labelledby="fishing-practice-title">
+        <div class="fishing-practice-art" aria-hidden="true">${fishSvg(fishArt.get('perch'))}</div>
+        <div class="fishing-practice-copy">
+          <h3 id="fishing-practice-title">Fish on your own</h3>
+          <p id="practice-description">Use starter tackle. Land two fish to unlock a skill for this outing.</p>
+        </div>
+        <button type="button" data-mode="practice" aria-describedby="practice-description">Practice <span aria-hidden="true">→</span></button>
+      </section>
+    </div>
+    <footer class="fishing-menu-footer"><button type="button" data-back-outings><span aria-hidden="true">←</span> Back to outings</button></footer>
+  </section>`;
 const shop = document.createElement('dialog');
 shop.className = 'fishing-picker fishing-frame fishing-shop';
 shop.setAttribute('aria-labelledby', 'fishing-shop-title');
@@ -575,11 +620,22 @@ const shopBalance = shop.querySelector('[data-shop-balance]');
 const shopMessage = shop.querySelector('[data-shop-message]');
 const shopList = shop.querySelector('[data-shop-items]');
 
+function showPickerPage(name, focus) {
+  for (const page of picker.querySelectorAll('[data-picker-page]')) {
+    page.hidden = page.dataset.pickerPage !== name;
+  }
+  const heading = name === 'tutorial' ? 'fishing-tutorial-title' : 'fishing-picker-title';
+  picker.setAttribute('aria-labelledby', heading);
+  if (!picker.open) picker.showModal();
+  picker.scrollTop = 0;
+  const target = (focus && picker.querySelector(focus)) || picker.querySelector(`#${heading}`);
+  target.focus({ preventScroll: true });
+}
+
 function showOutingPicker(focusArea, message = '') {
   const current = ++pickerGeneration;
   picker.querySelector('[data-outing-message]').textContent = message;
-  if (!picker.open) picker.showModal();
-  if (focusArea) picker.querySelector(`[data-area="${focusArea}"]`)?.focus();
+  showPickerPage('outings', focusArea ? `[data-area="${focusArea}"]` : undefined);
   void loadProfile().then(savedProfile => {
     if (current !== pickerGeneration || !picker.open) return;
     for (const entry of picker.querySelectorAll('[data-area]')) {
@@ -589,8 +645,8 @@ function showOutingPicker(focusArea, message = '') {
       entry.removeAttribute('aria-disabled');
     }
     picker.querySelector('#campaign-description').textContent = hasAreaAccess(savedProfile)
-      ? 'Fish shallow and deep water on Mille Lacs with your own tackle.'
-      : 'Claim the free Mille Lacs permit before your first Campaign outing.';
+      ? 'Pick a hole and fish with your own tackle.'
+      : 'Claim your free permit and pick a hole.';
   }).catch(() => {});
 }
 
@@ -826,7 +882,10 @@ pause.addEventListener('click', async event => {
     leavingOuting = true;
     const ended = mode !== 'campaign' || await finishCampaignDay();
     leavingOuting = false;
-    if (ended) { pause.close(); leave(); }
+    if (ended) {
+      pause.close();
+      leave({ next: tutorial || mode === 'practice' ? 'tutorial' : 'home' });
+    }
     else pause.querySelector('[data-pause-error]').textContent = 'Couldn’t end the day. Try leaving again.';
   }
   if (destination === 'skills') void openCampaignSkills();
@@ -2157,7 +2216,7 @@ async function startSelected(selectedMode, hole, savedProfile) {
   }
 }
 
-function leave() {
+function leave({ next = 'home' } = {}) {
   stopOutingClock();
   tutorial = false;
   campaignDayId = undefined;
@@ -2192,7 +2251,8 @@ function leave() {
   document.body.classList.remove('fishing');
   window.scrollTo({ top: previousScroll, behavior: 'instant' });
   launch.focus({ preventScroll: true });
-  if (directGameLaunch) titleScreen.showModal();
+  if (next === 'tutorial') showPickerPage('tutorial');
+  if (next === 'home' && directGameLaunch) titleScreen.showModal();
 }
 
 document.querySelectorAll('.game-entry').forEach(entry => entry.addEventListener('click', enter));
@@ -2200,7 +2260,18 @@ titleScreen.querySelector('[data-start-game]').addEventListener('click', () => {
   titleScreen.close();
   showOutingPicker();
 });
+function backToOutings() {
+  showPickerPage('outings', '[data-open-tutorial]');
+}
+
+picker.addEventListener('cancel', event => {
+  if (picker.querySelector('[data-picker-page="tutorial"]').hidden) return;
+  event.preventDefault();
+  backToOutings();
+});
 picker.addEventListener('click', event => {
+  if (event.target.closest('[data-open-tutorial]')) return showPickerPage('tutorial');
+  if (event.target.closest('[data-back-outings]')) return backToOutings();
   if (event.target.closest('[data-open-shop]')) return openShop();
   const choice = event.target.closest('button[data-mode]');
   if (choice?.dataset.mode === 'campaign') {
@@ -2778,7 +2849,7 @@ mapButton.after(tutorialReplay);
 tutorialReplay.addEventListener('click', () => { if (tutorial && !gameBlocked()) void begin('tutorial'); });
 
 function finishTutorial() {
-  leave();
+  leave({ next: 'map' });
   void showLakeMap(false, undefined, starterArea);
 }
 

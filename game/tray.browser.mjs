@@ -68,7 +68,8 @@ async function checkTray(browser, mobile) {
   await openGame();
   const picker = page.getByRole('dialog', { name: 'Choose an outing' });
   assert.equal(await picker.isVisible(), true, 'the site entry offers a choice of outings');
-  assert.equal(await picker.getByRole('button', { name: 'Practice', exact: true }).isVisible(), true);
+  assert.equal(await picker.getByRole('button', { name: 'Tutorial', exact: true }).isVisible(), true);
+  assert.equal(await picker.getByRole('button', { name: 'Practice', exact: true }).count(), 0);
   assert.equal(await picker.getByRole('button', { name: 'Ranked', exact: true }).count(), 0);
   await chooseMode('Campaign');
   await tray.locator('[data-wallet]').waitFor();
