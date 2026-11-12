@@ -22,6 +22,14 @@ The lakebed moves decorative layers with [CSS transforms](https://web.dev/articl
 
 Choose **Play fishing game** from the hero to fish beneath the ice. See the [game design and deployment notes](docs/fishing-game.md) for rules, lake sources and ranked setup.
 
+## Live counters
+
+The homepage banner reads shared totals from the Cloudflare Worker at `counts.fwbp.net`. The visitor total counts each public IP once. The hotdog total counts the first activation of the footer hotdog from each public IP. The totals started with V34. They refresh every 30 seconds while the page is visible and update after a hotdog click.
+
+D1 stores a keyed hash of each IP and whether it clicked the hotdog. The Worker returns only aggregate totals. Keep its `COUNTER_KEY` secret stable across deployments so returning IPs match their existing records. The production database and custom domain are declared in [the Worker configuration](counters/wrangler.toml).
+
+Run the counter test with Node 24 using `node --test counters/counters.test.mjs`. To redeploy the Worker with an authenticated Cloudflare CLI, run `npx wrangler deploy --config counters/wrangler.toml` from the repository root. The production database is already initialized with [the schema](counters/schema.sql).
+
 ## Publish a version
 
 1. Make and check edits in the root site files. Commit them on `main`.

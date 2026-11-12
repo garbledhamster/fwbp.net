@@ -38,6 +38,9 @@ export async function practicePage(browser, { mobile = false, viewport, configur
   await page.route('https://www.youtube.com/iframe_api', route => route.fulfill({
     contentType: 'application/javascript', body: '',
   }));
+  await page.route('https://counts.fwbp.net/**', route => route.fulfill({
+    json: { anglers: 24, hotdog: 8 },
+  }));
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.clock.install({ time: clockStart });

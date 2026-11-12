@@ -1,6 +1,6 @@
 # Campaign fishing integration checkpoint
 
-Baseline is `10a0c6f` (site v33) on `fishing/web-polish`. The release worktree fast-forwarded cleanly with the local design, sandbox and CONTEXT.md edits in place. The v33 title screen, map, permit, shop and Campaign save remain the entry and progression surfaces. Rollback is the v33 baseline. The authorized target is a locally served review candidate.
+Baseline is `10a0c6f` (site v33) on `fishing/web-polish`. The release worktree fast-forwarded cleanly with the local design, sandbox and CONTEXT.md edits in place. The v33 title screen, map, permit, shop and Campaign save remain the entry and progression surfaces. Upstream published v34 at `e2507a0` during implementation. The candidate incorporates its counter banner and client module. The v34 baseline is the rollback point. The authorized target is a locally served review candidate.
 
 | Ticket | Owner | Plan and acceptance evidence |
 | --- | --- | --- |
