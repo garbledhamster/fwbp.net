@@ -8,10 +8,22 @@ const profileCommand = (page, command) => page.evaluate(async input => {
 
 await withBrowser(async browser => {
   const context = await browser.newContext();
-  const { page, press, tray, openGame, tick, errors } = await practicePage(context);
+  const { page, press, tray, openGame, tick, errors } = await practicePage(context, {
+    configure: page => page.addInitScript(() => {
+      window.campaignConnections = [];
+      const open = IDBFactory.prototype.open;
+      IDBFactory.prototype.open = function (name, ...args) {
+        const request = open.call(this, name, ...args);
+        if (name === 'fwbp-campaign') {
+          request.addEventListener('success', () => window.campaignConnections.push(request.result), { once: true });
+        }
+        return request;
+      };
+    }),
+  });
   const oldSave = {
     version: 1, revision: 1, coins: 25, owned: ['starter-license', 'starter-line', 'starter-hook'],
-    equipped: { line: 'starter-line', hook: 'starter-hook' }, awards: {}, elapsedMs: 0,
+    equipped: { line: 'starter-line', hook: 'starter-hook' }, awards: { 'previous-catch': 10 }, elapsedMs: 0,
   };
   await profileCommand(page);
   await page.evaluate(save => new Promise((resolve, reject) => {
@@ -97,7 +109,31 @@ await withBrowser(async browser => {
   await page.getByRole('dialog', { name: 'Choose an outing' }).waitFor();
   assert.equal((await profileCommand(page)).day, undefined);
 
+  const picker = page.getByRole('dialog', { name: 'Choose an outing' });
+  const third = (await profileCommand(page, { type: 'begin-day' })).profile.day;
+  await profileCommand(page, open('A3', third.id));
+  const beforeEnd = (await profileCommand(page, open('E4', third.id))).profile;
+  await press(picker.getByRole('button', { name: 'Campaign', exact: true }), 'Enter');
+  await press(page.locator('[data-map-cell="A3"]'), 'Enter');
+  await press(page.locator('[data-map-drill]'), 'Enter');
+  await tray.locator('[data-exit]:enabled').waitFor();
+  await press(tray.locator('[data-open-map]'), 'Enter');
+  await page.locator('.fishing-map[open]').waitFor();
+  assert.match(await page.locator('[data-map-allowance]').textContent(), /0 of 2 new holes/);
+  // Close the connections after the map has loaded to simulate a stale cached handle.
+  await page.evaluate(() => window.campaignConnections.forEach(connection => connection.close()));
+  await press(page.locator('[data-map-end]'), 'Enter');
+  const saveError = page.locator('.fishing-map[open]').getByText('Couldn’t end the day. Try again.', { exact: true });
+  await picker.or(saveError).waitFor();
+  assert.ok(await picker.isVisible(), 'End day must recover from a closed save connection');
+  await tray.waitFor({ state: 'hidden' });
+  const afterEnd = await profileCommand(page);
+  assert.equal(afterEnd.day, undefined);
+  assert.equal(afterEnd.coins, beforeEnd.coins);
+  assert.deepEqual(afterEnd.awards, beforeEnd.awards);
+
   await press(page.getByRole('button', { name: 'Campaign', exact: true }), 'Enter');
+  assert.match(await page.locator('.fishing-map[open] [data-map-allowance]').textContent(), /2 of 2 new holes/);
   await press(page.locator('[data-map-drill]'), 'Enter');
   await press(page.locator('[data-drill-skip]'), 'Enter');
   await tray.locator('[data-exit]:enabled').waitFor();
@@ -110,4 +146,4 @@ await withBrowser(async browser => {
   assert.deepEqual(errors, []);
   await page.close();
 });
-console.log('Campaign day persists across tabs and reload, and ends on leave, map end, and expiry.');
+console.log('Campaign day persists across tabs and reload, ends on leave and expiry, and recovers a closed save connection on End day.');

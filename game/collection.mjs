@@ -1,4 +1,4 @@
-import { applyProfile, dailyLakeQuest, loadProfile } from './profile.mjs?v=angler-1';
+import { applyProfile, dailyLakeQuest, loadProfile } from './profile.mjs?v=day-save';
 import { renderSpeciesVideo } from './species-video.mjs?v=angler-1';
 import { collectibleSpecies, speciesArt, fishProfiles, lureTip } from './species-catalog.mjs';
 import { spriteHref } from './lake-sprites.mjs';

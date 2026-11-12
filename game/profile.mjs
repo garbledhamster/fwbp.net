@@ -144,9 +144,14 @@ function openDatabase() {
     request.onerror = () => reject(request.error);
     request.onsuccess = () => {
       const connection = request.result;
+      const opening = database;
+      const clearConnection = () => {
+        if (database === opening) database = undefined;
+      };
+      connection.onclose = clearConnection;
       connection.onversionchange = () => {
         connection.close();
-        database = undefined;
+        clearConnection();
       };
       resolve(connection);
     };
@@ -194,10 +199,19 @@ function collectionProfile(stored) {
 }
 
 async function readProfile(update) {
-  const connection = await openDatabase();
+  const opening = openDatabase();
+  const connection = await opening;
+  // Reads also perform the once-only legacy migration under the same tab-safe lock.
+  let transaction;
+  try {
+    transaction = connection.transaction(storeName, 'readwrite');
+  } catch (error) {
+    if (error.name !== 'InvalidStateError') throw error;
+    // The browser can close a cached connection before a transaction starts.
+    if (database === opening) database = undefined;
+    transaction = (await openDatabase()).transaction(storeName, 'readwrite');
+  }
   return new Promise((resolve, reject) => {
-    // Reads also perform the once-only legacy migration under the same tab-safe lock.
-    const transaction = connection.transaction(storeName, 'readwrite');
     const store = transaction.objectStore(storeName);
     const request = store.get(profileKey);
     let result, failure;

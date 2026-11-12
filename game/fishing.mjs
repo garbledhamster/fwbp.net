@@ -1,9 +1,9 @@
 import { openCampaignMap, mapCells, firstShoreHole, confirmEndAttempt } from './campaign-map.mjs?v=mobile-map';
 import { createSuspensionClock } from './suspension.mjs';
 import { moveToHole, stepCampaignFish, abandonHoleFish, advanceCampaignBite, advanceLineFight, apply, campaignDepthBand, campaignPhase, lakes, lineBalanceLimits, lineEffort, lures, practiceLevelXp, practiceSkills, publicRun, skills, start, starterArea, startTutorial } from './rules.mjs?v=campaign-tackle';
-import { areaPermit, hasAreaAccess, campaignGoal, campaignProgress, anglerSkills, anglerSkillLimits, anglerSkillRanks, anglerProgress, shopAvailability, applyProfile, campaignMilestone, loadProfile, shopItems } from './profile.mjs?v=angler-1';
+import { areaPermit, hasAreaAccess, campaignGoal, campaignProgress, anglerSkills, anglerSkillLimits, anglerSkillRanks, anglerProgress, shopAvailability, applyProfile, campaignMilestone, loadProfile, shopItems } from './profile.mjs?v=day-save';
 import { lureTip } from './species-catalog.mjs';
-import { openYourLake } from './collection.mjs?v=angler-1';
+import { openYourLake } from './collection.mjs?v=day-save';
 import { renderSpeciesVideo } from './species-video.mjs?v=angler-1';
 import { spriteHref } from './lake-sprites.mjs';
 
