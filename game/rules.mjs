@@ -34,7 +34,7 @@ export const campaignAreas = {
 export const campaignGoals = [
   { speciesId: 'perch', habitat: 'Weed edge', clue: 'Look for yellow perch along weed edges in 10–15 ft. Try a jig near the weeds on Starter Shore.' },
   { speciesId: 'pike', habitat: 'Weed edge', clue: 'Look for northern pike along weed edges in 10–15 ft. Try a spoon where pike can hide in the weeds.' },
-  { speciesId: 'walleye', habitat: 'Reef edge', area: 'deep-reef', clue: 'Look for walleye along reef edges around 25 ft. Try a minnow in Deep Reef, especially toward dusk.' },
+  { speciesId: 'walleye', habitat: 'Reef edge', area: 'deep-reef', clue: 'Look for walleye along reef edges around 25 ft. Try a minnow on Mille Lacs, especially toward dusk.' },
 ];
 const seekWindows = { Common: 30000, Uncommon: 25000, Rare: 20000 };
 const phaseWeights = {
@@ -75,6 +75,8 @@ function hookWindow(run, fish) {
   if (!run.campaign) return reelWindow(run.skills);
   const { hook, line, lineControlRank = 0 } = run.campaign;
   const window = reelWindow({ ...run.skills, control: lineControlRank, quick: run.campaign.lureWorkRank ?? 0 });
+  window.from -= run.campaign.hookEarlyMs ?? 0;
+  window.until += run.campaign.hookLateMs ?? 0;
   if (run.campaign.tutorial) window.until += 3000;
   if (hook && hook.lure === fish?.lure) window.until += hook.windowMs;
   if (line && line.lure === fish?.lure) window.until += line.windowMs;

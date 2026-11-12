@@ -44,7 +44,7 @@ async function connected(browser, viewport, mobile) {
     await press(action);
     await waitForBite();
     await tick(700);
-    await press(action);
+    await press(page.getByRole('button', { name: 'Set hook', exact: true }));
     await reelToHole();
     if (fail) await page.evaluate(() => {
       const transaction = IDBDatabase.prototype.transaction;

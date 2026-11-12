@@ -67,31 +67,27 @@ await withBrowser(async (browser) => {
     assert.match(await map.locator('[data-map-allowance]').textContent(), /0 of 2 new holes/);
 
     await press(cell('C1'), 'Enter');
-    assert.match(await map.locator('[data-map-permit]').textContent(), /Deep Reef permit.*Required/);
-    assert.equal(await map.locator('[data-map-access-label]').textContent(), 'Locked');
-    assert.equal(await cell('C1').locator('.fishing-map-lock-mark').isVisible(), true);
-    assert.equal(await cell('A3').getAttribute('data-spot-access'), 'unlocked');
+    assert.match(await map.locator('[data-map-permit]').textContent(), /Mille Lacs permit.*Owned/);
+    assert.equal(await cell('C1').locator('.fishing-map-lock-mark').isVisible(), false);
     await map.getByRole('radio', { name: 'Temperature' }).check();
-    assert.equal(await cell('C1').locator('.fishing-map-lock-mark').isVisible(), true);
-    assert.match(await map.locator('[data-map-info]').textContent(), /C1 · Locked · .*°F/);
-    await press(open, 'Enter');
-    await press(page.locator('[data-permit-shop]'), 'Enter');
+    assert.match(await map.locator('[data-map-info]').textContent(), /C1 · Unlocked · .*°F/);
+    assert.equal(await open.isDisabled(), true, 'the daily limit applies to deep water too');
+
+    await press(map.locator('[data-map-back]'), 'Enter');
+    await map.waitFor({ state: 'hidden' });
+    await press(tray.locator('[data-exit]'), 'Enter');
+    await press(page.locator('.fishing-pause [data-action="shop"]'), 'Enter');
     const shop = page.locator('.fishing-shop');
-    const permit = await qa.selectTackle('deep-reef-license');
-    await press(permit.getByRole('button', { name: 'Buy Deep Reef permit', exact: true }), 'Enter');
-    await permit.getByText('Owned', { exact: true }).waitFor();
+    await shop.locator('[data-shop-grid]').waitFor();
     const line = await qa.selectTackle('stronger-line');
     await press(line.getByRole('button', { name: 'Buy Stronger line', exact: true }), 'Enter');
     await press(line.getByRole('button', { name: 'Equip Stronger line', exact: true }), 'Enter');
     await line.getByText('Equipped for next outing', { exact: true }).waitFor();
     await qa.closeDialog(shop, shop.locator('[data-shop-back]'));
+    const pause = page.locator('.fishing-pause');
+    await qa.closeDialog(pause, pause.locator('[data-action="resume"]'));
+    await press(tray.locator('[data-open-map]'), 'Enter');
     await map.waitFor();
-    assert.equal(await cell('C1').getAttribute('aria-pressed'), 'true');
-    assert.match(await map.locator('[data-map-permit]').textContent(), /Deep Reef permit.*Owned/);
-    assert.equal(await map.locator('[data-map-access-label]').textContent(), 'Unlocked');
-    assert.equal(await cell('C1').getAttribute('data-spot-access'), 'unlocked');
-    assert.equal(await cell('C1').locator('.fishing-map-lock-mark').isVisible(), false);
-    assert.equal(await open.isDisabled(), true, 'buying a permit leaves the daily allowance fixed');
 
     await press(cell('A3'), 'Enter');
     await press(open, 'Enter');
@@ -106,7 +102,7 @@ await withBrowser(async (browser) => {
     await press(qa.launch, 'Enter');
     await press(page.getByRole('button', { name: 'Campaign', exact: true }), 'Enter');
     await press(map.locator('[data-map-end]'), 'Enter');
-    await qa.chooseMode('Deep Reef');
+    await qa.chooseMode('Campaign', 'C1');
     assert.equal(await tray.locator('meter').getAttribute('max'), '12', 'new equipment applies next outing');
     assert.ok(await page.locator('.lake > .dive:visible').count() > bands, 'deep holes extend the playable water');
     assert.deepEqual(qa.errors, []);

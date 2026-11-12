@@ -18,7 +18,7 @@ async function checkShortPortraitMap(browser) {
     await press(page.locator('[data-permit-shop]'), 'Enter');
     const shop = page.locator('.fishing-shop');
     const item = shop.locator('[data-item="starter-license"]');
-    await press(item.getByRole('button', { name: /^(Buy|Claim) Starter Shore permit$/ }), 'Enter');
+    await press(item.getByRole('button', { name: /^(Buy|Claim) Mille Lacs permit$/ }), 'Enter');
     await item.getByText('Owned', { exact: true }).waitFor();
     await closeDialog(shop, shop.locator('[data-shop-back]'));
     await dialog.waitFor();
@@ -64,16 +64,8 @@ await withBrowser(async browser => {
 
     await press(cell(reef.id), 'Enter');
     assert.equal(await cell(reef.id).getAttribute('aria-pressed'), 'true');
-    await press(dialog.locator('[data-map-drill]'), 'Enter');
-    const permit = page.locator('.fishing-permit');
-    await permit.waitFor();
-    assert.match(await permit.textContent(), /Deep Reef permit/);
-    await press(permit.locator('[data-permit-shop]'), 'Enter');
-    const shop = page.locator('.fishing-shop');
-    await shop.waitFor();
-    await shop.locator('[data-item="deep-reef-license"]').waitFor();
-    await qa.closeDialog(shop, shop.locator('[data-shop-back]'));
-    await dialog.waitFor();
+    assert.equal(await cell(reef.id).getAttribute('data-spot-access'), 'unlocked');
+    assert.equal(await dialog.locator('[data-map-drill]').textContent(), 'Drill hole');
     if (process.env.FISHING_EVIDENCE_DIR) {
       await page.screenshot({ path: `${process.env.FISHING_EVIDENCE_DIR}/map-${viewport.width}.png` });
     }

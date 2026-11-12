@@ -137,7 +137,7 @@ function drawMap() {
   accessLabel.dataset.spotAccess = accessible ? 'unlocked' : 'locked';
   accessLabel.textContent = access;
   map.querySelector('[data-map-permit-name]').textContent =
-    `${cell.area === 'starter-shore' ? 'Starter Shore' : 'Deep Reef'} permit · ${accessible ? 'Owned' : 'Required'}`;
+    `Mille Lacs permit · ${accessible ? 'Owned' : 'Required'}`;
   const present = new Set(roster?.map((fish) => fish.speciesId));
   const familiar = collectibleSpecies.filter(({ id }) => present.has(id) && recognized.has(id)).map(({ name }) => name);
   const fishInfo = map.querySelector('[data-map-fish]');
@@ -245,7 +245,7 @@ map.querySelector('[data-map-drill]').onclick = () => {
   if (context.day.opened.includes(cell.id)) return void openHole(map, cell);
   map.close();
   // Give each cell a consistent gameplay resistance.
-  requiredTurns = 4 + cell.depthFt / 5;
+  requiredTurns = Math.max(3, 4 + cell.depthFt / 5 - (context.day.drillReduction ?? 0));
   turns = 0;
   drill.querySelector('progress').max = requiredTurns;
   drill.querySelector('[data-map-message]').textContent = '';

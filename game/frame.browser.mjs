@@ -38,7 +38,7 @@ await withBrowser(async browser => {
     if(evidence) await page.screenshot({path:`${evidence}/grid-${viewport.width}x${viewport.height}.png`});
     const grid=shop.locator('[data-shop-grid]');
     await press(shop.locator('[data-shop-category="license"]'));
-    const bottomTile=shop.locator('[data-shop-select="deep-reef-license"]');
+    const bottomTile=shop.locator('[data-shop-select="starter-license"]');
     const scrollBefore=await grid.evaluate(el=>el.scrollTop);
     await press(bottomTile);
     if(viewport.width<600){

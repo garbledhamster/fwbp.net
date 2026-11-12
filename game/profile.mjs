@@ -1,18 +1,17 @@
-import { campaignGoals, createCampaignRoster, lakes } from './rules.mjs?v=campaign-map-discovery';
+import { campaignGoals, createCampaignRoster, lakes } from './rules.mjs?v=campaign-ranks';
 import lakeMap from './lake-map-data.mjs';
 
 const speciesIds = new Set(lakes['mille-lacs'].fish.map(fish => fish.id));
 export const shopItems = [
   { id: 'starter-line', category: 'line', name: 'Starter line', cost: 0, effect: '8 lb breaking strength; 100 ms more to set the hook with Jig.', strength: 8, lure: 'jig', windowMs: 100 },
   { id: 'stronger-line', category: 'line', name: 'Stronger line', cost: 10, level: 2, effect: '12 lb breaking strength.', strength: 12 },
-  { id: 'starter-hook', category: 'hook', name: 'Standard hooks', cost: 0, effect: 'Stock hooks for Jig, Spoon, and Minnow. Standard timing.' },
-  { id: 'finesse-hook', category: 'hook', name: 'Fine-wire jig setup', cost: 15, level: 2, effect: '200 ms more with Jig; stock hooks and timing with Spoon or Minnow.', lure: 'jig', windowMs: 200 },
+  { id: 'starter-hook', category: 'hook', name: 'Standard hooks', cost: 0, effect: 'Stock hooks and standard timing. 44 px target.' },
+  { id: 'finesse-hook', category: 'hook', name: 'Fine-wire jig setup', cost: 15, level: 2, effect: '56 px Jig target and 200 ms more to set Jig. Stock setup for other lures.', lure: 'jig', windowMs: 200, targetDiameter: 56 },
   { id: 'octopus-hook', category: 'hook', name: 'Octopus minnow setup', cost: 15, level: 2, effect: '200 ms more with Minnow; stock hooks and timing with Jig or Spoon.', lure: 'minnow', windowMs: 200 },
   { id: 'line-control', category: 'training', name: 'Line Control', cost: 20, effect: 'Rank 1 gives you 350 ms more to set the hook with any lure.', rank: 1 },
-  { id: 'starter-license', category: 'license', name: 'Starter Shore permit', cost: 0, effect: 'Free game access to Starter Shore on Mille Lacs.', area: 'starter-shore' },
-  { id: 'deep-reef-license', category: 'license', name: 'Deep Reef permit', cost: 25, effect: 'Game access to Deep Reef on Mille Lacs.', area: 'deep-reef' },
+  { id: 'starter-license', category: 'license', name: 'Mille Lacs permit', cost: 0, effect: 'Free game access to every fishing spot on Mille Lacs.', area: 'starter-shore' },
   { id: 'pro-line', category: 'line', name: 'Pro line', cost: 100, level: 10, effect: '18 lb breaking strength.', strength: 18 },
-  { id: 'pro-hook', category: 'hook', name: 'Pro jig setup', cost: 80, level: 10, effect: '400 ms more to set a Jig bite.', lure: 'jig', windowMs: 400 },
+  { id: 'pro-hook', category: 'hook', name: 'Pro jig setup', cost: 80, level: 10, effect: '68 px Jig target and 400 ms more to set Jig.', lure: 'jig', windowMs: 400, targetDiameter: 68 },
   { id: 'waxworm-bait', category: 'bait', name: 'Waxworm bait', cost: 15, level: 2, effect: 'Carry with Jig for 150 ms more to set the hook.', lure: 'jig', windowMs: 150 },
   { id: 'live-minnow', category: 'bait', name: 'Live minnow', cost: 75, level: 10, effect: 'Carry with Minnow for 250 ms more to set the hook.', lure: 'minnow', windowMs: 250 },
 ];
@@ -20,33 +19,48 @@ export const shopItems = [
 // XP is a projection of the existing, once-only Campaign payout ledger. Spending
 // coins never spends XP, and old saves require no new award or replay marker.
 export const campaignXpLevels = [0, 10, 40, 90, 160, 260, 400, 600, 850, 1200];
-export const campaignTechniques = [
-  { id: 'line-control-1', name: 'Line Control I', level: 2, cost: 1, effect: '350 ms more to set any hook. Paid Line Control already grants this rank.', path: 'control', rank: 1 },
-  { id: 'lure-work-1', name: 'Lure Work I', level: 2, cost: 1, effect: 'The hook window opens 125 ms earlier after a bite.', path: 'lure', rank: 1 },
-  { id: 'drilling-1', name: 'Drilling', level: 2, cost: 1, effect: 'Open 3 new holes per day, starting the next day.', path: 'drilling', rank: 1 },
-  { id: 'line-control-2', name: 'Line Control II', level: 4, cost: 2, requires: 'line-control-1', effect: '700 ms more to set any hook in total.', path: 'control', rank: 2 },
-  { id: 'lure-work-2', name: 'Lure Work II', level: 4, cost: 2, requires: 'lure-work-1', effect: 'The hook window opens 250 ms earlier after a bite.', path: 'lure', rank: 2 },
-];
+export const campaignSkillCap = 100;
+export const campaignSkills = { lure: 'Lure Work', control: 'Line Control', drilling: 'Drilling' };
+const legacyTechniques = {
+  'line-control-1': ['control', 1],
+  'line-control-2': ['control', 2],
+  'lure-work-1': ['lure', 1],
+  'lure-work-2': ['lure', 2],
+  'drilling-1': ['drilling', 1],
+};
+
+export function campaignSkillRanks(profile) {
+  const ranks = { lure: 0, control: 0, drilling: 0 };
+  if (profile?.skillRanks) {
+    for (const id of Object.keys(ranks)) {
+      const rank = profile.skillRanks[id];
+      if (Number.isSafeInteger(rank)) ranks[id] = Math.max(0, Math.min(campaignSkillCap, rank));
+    }
+    return ranks;
+  }
+  for (const id of new Set(Array.isArray(profile?.techniques) ? profile.techniques : [])) {
+    const technique = Object.hasOwn(legacyTechniques, id) && legacyTechniques[id];
+    if (technique) ranks[technique[0]] += technique[1];
+  }
+  return ranks;
+}
+
 export function campaignProgress(profile) {
   const xp = Object.values(profile?.awards ?? {}).reduce((sum, value) => sum + (Number.isSafeInteger(value) && value > 0 ? value : 0), 0);
   const level = campaignXpLevels.filter(required => xp >= required).length;
-  const spent = campaignTechniques.filter(node => profile?.techniques?.includes(node.id)).reduce((sum, node) => sum + node.cost, 0);
-  return { xp, level, points: Math.max(0, level - 1 - spent), spent, nextXp: campaignXpLevels[level] ?? null };
+  const spent = Object.values(campaignSkillRanks(profile)).reduce((sum, rank) => sum + rank, 0);
+  const earned = level - 1 + Math.floor(Math.max(0, xp - campaignXpLevels.at(-1)) / 100);
+  return { xp, level, earned, points: Math.max(0, earned - spent), spent, nextXp: campaignXpLevels[level] ?? null };
 }
-export function campaignTraining(profile) {
-  const nodes = campaignTechniques.filter(node => profile?.techniques?.includes(node.id));
+
+export function campaignTraining(profile, ranks = campaignSkillRanks(profile)) {
+  const control = ranks.control + Number(Boolean(profile?.owned?.includes('line-control')));
   return {
-    lineControlRank: Math.max(profile?.owned?.includes('line-control') ? 1 : 0, ...nodes.filter(node => node.path === 'control').map(node => node.rank)),
-    lureWorkRank: Math.max(0, ...nodes.filter(node => node.path === 'lure').map(node => node.rank)),
+    hookEarlyMs: ranks.lure ? 125 + Math.min(2, ranks.lure - 1) * 65 + Math.floor(Math.max(0, ranks.lure - 3) * 45 / 97) : 0,
+    hookLateMs: control ? 350 + Math.min(2, control - 1) * 175 + Math.min(100, Math.max(0, control - 3)) * 4 : 0,
+    aimBonus: ranks.lure ? 2 + Math.floor(ranks.lure / 10) : 0,
+    drillReduction: Math.floor(ranks.drilling / 20),
   };
-}
-export function techniqueState(profile, id) {
-  const node = campaignTechniques.find(node => node.id === id);
-  if (!node) return { status: 'invalid' };
-  if (profile?.techniques?.includes(id) || (id === 'line-control-1' && profile?.owned?.includes('line-control'))) return { status: 'learned', node };
-  const progress = campaignProgress(profile);
-  if (progress.level < node.level || (node.requires && techniqueState(profile, node.requires).status !== 'learned')) return { status: 'locked', node };
-  return { status: progress.points >= node.cost ? 'available' : 'unaffordable', node };
 }
 export function shopAvailability(profile, item) {
   const level = item.level ?? 1;
@@ -57,21 +71,17 @@ export function shopAvailability(profile, item) {
   return { level, owned, equipped, locked, shortfall, status: owned ? equipped ? 'equipped' : 'owned' : locked ? 'locked' : shortfall ? 'unaffordable' : 'available' };
 }
 
-export function areaPermit(area) {
-  return shopItems.find(item => item.category === 'license' && item.area === area);
+export function areaPermit() {
+  return shopItems.find(item => item.id === 'starter-license');
 }
 
-export function hasAreaAccess(profile, area) {
-  const permit = areaPermit(area);
-  return Boolean(permit && profile?.owned.includes(permit.id));
+export function hasAreaAccess(profile) {
+  return Boolean(profile?.owned.includes(areaPermit().id));
 }
 
 // Each goal receipt is the catch key, in the same order as the goals. Old saves begin at the first.
 export function campaignGoal(profile) {
-  const goal = campaignGoals[profile?.goalCatches?.length ?? 0];
-  if (!goal) return undefined;
-  const requiredPermit = goal.area && !hasAreaAccess(profile, goal.area) ? areaPermit(goal.area) : undefined;
-  return { ...goal, requiredPermit };
+  return campaignGoals[profile?.goalCatches?.length ?? 0];
 }
 
 // The payout ledger holds Campaign awards only; Practice collection credit lives separately.
@@ -128,6 +138,8 @@ function collectionProfile(stored) {
   const collectionAwards = profile.collectionAwards && typeof profile.collectionAwards === 'object'
     && !Array.isArray(profile.collectionAwards) ? profile.collectionAwards : {};
   const { day: savedDay } = profile;
+  const refund = profile.owned.includes('deep-reef-license') && !profile.reefPermitRefunded;
+  const migrateSkills = Array.isArray(profile.techniques) && !profile.skillRanks;
   // A saved day gains the extra slot when its roster storage is first added.
   const day = savedDay && !savedDay.rosters ? {
     ...savedDay,
@@ -138,7 +150,7 @@ function collectionProfile(stored) {
     && saved.length === normalized.length && saved.every((id, index) => id === normalized[index]);
   if (profile.version >= 2 && sameIds(profile.caughtSpecies, caughtSpecies)
     && sameIds(profile.studiedSpecies, studiedSpecies) && collectionAwards === profile.collectionAwards
-    && day === profile.day) return profile;
+    && day === profile.day && !refund && !migrateSkills) return profile;
   return {
     ...profile,
     version: Math.max(2, profile.version ?? 1),
@@ -147,6 +159,8 @@ function collectionProfile(stored) {
     studiedSpecies,
     collectionAwards,
     ...(day && { day }),
+    ...(refund && { coins: profile.coins + 25, reefPermitRefunded: true }),
+    ...(migrateSkills && { skillRanks: campaignSkillRanks(profile) }),
   };
 }
 
@@ -207,9 +221,8 @@ function award(profile, { key, outcome, catch: fish, speciesId, mode = 'campaign
     remaining = roster.filter(entry => entry.key !== fishKey);
   }
   const goal = mode === 'campaign' && validSpecies ? campaignGoal(profile) : undefined;
-  const activeGoal = goal && !goal.requiredPermit;
-  const completesGoal = activeGoal && goal.speciesId === speciesId;
-  const earned = activeGoal && !completesGoal ? Math.max(1, Math.floor(points / 2)) : points;
+  const completesGoal = Boolean(goal && goal.speciesId === speciesId);
+  const earned = goal && !completesGoal ? Math.max(1, Math.floor(points / 2)) : points;
   if (mode === 'campaign' && !Number.isSafeInteger(profile.coins + earned)) return { profile, status: 'no-award' };
   const caughtSpecies = validSpecies && !profile.caughtSpecies.includes(speciesId)
     ? [...profile.caughtSpecies, speciesId] : profile.caughtSpecies;
@@ -277,9 +290,10 @@ function updateDay(profile, { type, dayId, cellId, elapsedMs }) {
   const { day } = profile;
   if (type === 'begin-day') {
     if (day) return { profile, status: 'day-current' };
-    const allowance = techniqueState(profile, 'drilling-1').status === 'learned' ? 3 : 2;
+    const allowance = campaignSkillRanks(profile).drilling ? 3 : 2;
+    const { drillReduction } = campaignTraining(profile);
     return {
-      profile: { ...profile, revision: profile.revision + 1, day: { id: crypto.randomUUID(), allowance, opened: [], rosters: {} } },
+      profile: { ...profile, revision: profile.revision + 1, day: { id: crypto.randomUUID(), allowance, drillReduction, opened: [], rosters: {} } },
       status: 'day-started',
     };
   }
@@ -291,14 +305,14 @@ function updateDay(profile, { type, dayId, cellId, elapsedMs }) {
   }
   const cell = lakeMap.cells.find(cell => cell.id === cellId);
   if (!cell) return { profile, status: 'invalid' };
-  if (!hasAreaAccess(profile, cell.area)) return { profile, status: 'permit-required' };
+  if (!hasAreaAccess(profile)) return { profile, status: 'permit-required' };
   const alreadyOpen = day.opened.includes(cellId);
   const roster = day.rosters[cellId];
   if (alreadyOpen && Array.isArray(roster)) return { profile, status: roster.length ? 'hole-current' : 'hole-quiet' };
   if (!alreadyOpen && day.opened.length >= day.allowance) return { profile, status: 'daily-limit' };
   const currentElapsed = Number.isSafeInteger(elapsedMs) && elapsedMs >= 0 ? elapsedMs : profile.elapsedMs;
   const goal = campaignGoal(profile);
-  const newRoster = createCampaignRoster(cell, currentElapsed, undefined, goal?.requiredPermit ? undefined : goal?.speciesId);
+  const newRoster = createCampaignRoster(cell, currentElapsed, undefined, goal?.speciesId);
   return {
     profile: {
       ...profile,
@@ -316,10 +330,13 @@ function updateDay(profile, { type, dayId, cellId, elapsedMs }) {
 function train(profile, { type, id, revision, betweenOutings }) {
   if (profile.revision !== revision) return { profile, status: 'stale' };
   if (!betweenOutings) return { profile, status: 'outing-active' };
-  if (type === 'reset-skills') return { profile: { ...profile, revision: profile.revision + 1, techniques: [] }, status: 'reset' };
-  const { status } = techniqueState(profile, id);
-  if (status !== 'available') return { profile, status };
-  return { profile: { ...profile, revision: profile.revision + 1, techniques: [...(profile.techniques ?? []), id] }, status: 'learned' };
+  if (type === 'reset-skills') return { profile: { ...profile, revision: profile.revision + 1, skillRanks: {} }, status: 'reset' };
+  if (!Object.hasOwn(campaignSkills, id)) return { profile, status: 'invalid' };
+  const skillRanks = campaignSkillRanks(profile);
+  if (skillRanks[id] >= campaignSkillCap) return { profile, status: 'capped' };
+  if (!campaignProgress(profile).points) return { profile, status: 'unaffordable' };
+  skillRanks[id]++;
+  return { profile: { ...profile, revision: profile.revision + 1, skillRanks }, status: 'learned' };
 }
 
 export function applyProfile(command) {
