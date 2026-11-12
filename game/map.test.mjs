@@ -164,6 +164,25 @@ test('the wrong lure can make a nearby fish back away without starting the hook 
   assert.equal(r.committed, false);
 });
 
+test('repeated wrong lures spook a Campaign fish without spending an attempt', () => {
+  const roster = [{ key: 'one-perch', speciesId: 'perch', lane: 0, sizeRoll: .4, colorRoll: 0 }];
+  const r = start(1000, () => .2, undefined, {
+    campaign: { hole: shore, roster, anglerRanks: { line: 0, rhythm: 0, hook: 0 } },
+  });
+  const [fish] = publicRun(r).candidates;
+  const eye = { x: 1000 * fish.x / 100, y: bands[fish.depth].top + 4 * fish.y };
+  swim(r, 3950, 'spoon', eye);
+  for (let count = 0; count < 3; count++) {
+    const now = 4000 + count * 400;
+    jig(r, now, 'spoon');
+    assert.equal(swim(r, now + 16, 'spoon', eye).fish[0].mood, count === 2 ? 'flee' : 'away');
+  }
+  assert.deepEqual(publicRun(r).candidates, []);
+  assert.equal(r.committed, false);
+  assert.equal(r.index, 0);
+  assert.throws(() => jig(r, 5500, 'jig'), /quiet/);
+});
+
 test('release a hooked fish before moving; six shared attempts finish the outing', () => {
   const r = setup();
   for (let n = 0; n < 6; n++) {

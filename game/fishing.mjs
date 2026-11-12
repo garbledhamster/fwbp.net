@@ -1,6 +1,6 @@
 import { openCampaignMap, mapCells, firstShoreHole, confirmEndAttempt } from './campaign-map.mjs?v=mobile-map';
 import { createSuspensionClock } from './suspension.mjs';
-import { moveToHole, stepCampaignFish, abandonHoleFish, advanceCampaignBite, advanceLineFight, apply, campaignDepthBand, campaignPhase, lakes, lineBalanceLimits, lineEffort, lures, practiceLevelXp, practiceSkills, publicRun, skills, start, starterArea, startTutorial } from './rules.mjs?v=angler-1';
+import { moveToHole, stepCampaignFish, abandonHoleFish, advanceCampaignBite, advanceLineFight, apply, campaignDepthBand, campaignPhase, lakes, lineBalanceLimits, lineEffort, lures, practiceLevelXp, practiceSkills, publicRun, skills, start, starterArea, startTutorial } from './rules.mjs?v=campaign-tackle';
 import { areaPermit, hasAreaAccess, campaignGoal, campaignProgress, anglerSkills, anglerSkillLimits, anglerSkillRanks, anglerProgress, shopAvailability, applyProfile, campaignMilestone, loadProfile, shopItems } from './profile.mjs?v=angler-1';
 import { lureTip } from './species-catalog.mjs';
 import { openYourLake } from './collection.mjs?v=angler-1';
@@ -235,6 +235,7 @@ tray.innerHTML = `
       <div class="fishing-row fishing-tools">
         <div class="fishing-lures" role="group" aria-label="Lures">
           ${Object.entries(lures).map(([id, name]) => `<button type="button" data-lure="${id}">${icon(id)}<span>${name}</span></button>`).join('')}
+          <button type="button" data-reel-up hidden>${icon('reel')}<span>Reel up</span></button>
         </div>
         <div class="fishing-actions" role="group" aria-label="Fishing actions">
           <button type="button" class="fishing-action"></button>
@@ -371,6 +372,7 @@ const phaseLabel = tray.querySelector('[data-phase]');
 const countdown = tray.querySelector('.fishing-countdown');
 const practiceButtons = [...practiceChoice.querySelectorAll('button')];
 const slots = [...tray.querySelectorAll('[data-lure]')];
+const reelUp = tray.querySelector('[data-reel-up]');
 let launch, previousScroll, run, state, token, target, busy, failed, biteAt, frame;
 let mode, rigFrame, fightFrame, jigAt = -Infinity;
 let tutorial = false;
@@ -1154,7 +1156,7 @@ function searchRig(water, hole, start = iceHole(hole)) {
     : 12 * Math.sin(Math.PI * elapsed) : 0;
   if (mode === 'campaign') {
     const iceDepth = start.y - water.top;
-    depthPosition ??= Math.max(minimumHookDepth, cameraCenter().y - iceDepth);
+    depthPosition ??= anglerOuting() ? minimumHookDepth : Math.max(minimumHookDepth, cameraCenter().y - iceDepth);
     return { x: start.x - water.left, y: iceDepth + Math.max(7, depthPosition - bounce) };
   }
   const end = searchEye(hole);
@@ -1438,7 +1440,7 @@ function renderDialogue(linePhysics, baitOnly) {
   if (linePhysics) {
     const name = state?.stage === 'landed' ? 'walleye-portrait'
       : state?.reaction === 'timer' ? 'headshot'
-        : ['slipped-hook', 'wrong-lure', 'spooked', 'snapped'].includes(state?.reaction) ? 'leaning-in'
+        : ['slipped-hook', 'wrong-lure', 'spooked', 'snapped', 'escaped'].includes(state?.reaction) ? 'leaning-in'
           : 'front-facing';
     const img = portrait.firstElementChild;
     if (img.dataset.portrait !== name) {
@@ -1474,7 +1476,7 @@ function renderDialogue(linePhysics, baitOnly) {
 }
 
 function focusPrimaryControl() {
-  const control = action.hidden ? slots.find(slot => slot.dataset.lure === lure) : action;
+  const control = action.hidden ? (reelUp.hidden ? slots.find(slot => slot.dataset.lure === lure) : reelUp) : action;
   control?.focus({ preventScroll: true });
 }
 
@@ -1515,6 +1517,21 @@ function resetDepth() {
   depthPosition = reelMotion = lineKick = undefined;
   cameraLag = 0;
   if (mode !== 'campaign') window.scrollTo({ top: 0, behavior: 'instant' });
+}
+
+function rigSubmerged() {
+  return anglerOuting() && depthPosition > minimumHookDepth;
+}
+
+function renderTackleControls() {
+  const seeking = state?.stage === 'seek';
+  const submerged = rigSubmerged();
+  const blocked = busy || !seeking;
+  const returned = seeking && !submerged && document.activeElement === reelUp;
+  for (const slot of slots) slot.disabled = blocked || submerged;
+  reelUp.hidden = !seeking || !submerged;
+  reelUp.disabled = blocked;
+  if (returned) slots.find(slot => slot.dataset.lure === lure)?.focus({ preventScroll: true });
 }
 
 function advanceDepth(now) {
@@ -1630,6 +1647,8 @@ function updateSearch() {
     action.removeAttribute('aria-disabled');
     bobber.hidden = true;
     positionFishingLine();
+    renderTackleControls();
+    if (anglerOuting() && !rigSubmerged()) run.waterJig = undefined;
     renderCampaignSearch();
     return;
   }
@@ -1958,9 +1977,9 @@ function render() {
     slot.setAttribute('aria-label', slot.title);
     slot.querySelector('span').textContent = bait ? `${lures[slot.dataset.lure]} + bait` : lures[slot.dataset.lure];
     slot.hidden = !linePhysics && !pressure.hidden;
-    slot.disabled = busy || state?.stage !== 'seek';
     slot.setAttribute('aria-pressed', String(slot.dataset.lure === lure));
   });
+  renderTackleControls();
   const showCatch = linePhysics && state?.stage === 'landed';
   if (state?.stage === 'bite' && !state.hole) target?.removeAttribute('data-facing-right');
   target?.classList.toggle('is-biting', showCatch || ['bite', 'fight'].includes(state?.stage));
@@ -2199,6 +2218,7 @@ document.addEventListener('keydown', event => {
     if (event.repeat || busy) return;
     if (key === 'j' && state?.stage === 'seek' && !action.disabled) action.click();
     if (key === 'r' && ['bite', 'fight'].includes(state?.stage) && !action.disabled) action.click();
+    if (key === 'r' && !reelUp.hidden && !reelUp.disabled) reelUp.click();
     if (key === 'l' && !anglerOuting() && state?.stage === 'fight' && !loosen.disabled) loosen.click();
     const slot = slots[Number(key) - 1];
     if (slot && !slot.disabled) slot.click();
@@ -2444,6 +2464,13 @@ slots.forEach(slot => slot.addEventListener('click', () => {
   render();
   positionLine();
 }));
+reelUp.addEventListener('click', () => {
+  if (gameBlocked() || reelUp.hidden || reelUp.disabled) return;
+  run.waterJig = undefined;
+  jigAt = -Infinity;
+  stopDepthMotion();
+  nudgeDepth(-depthPosition);
+});
 
 async function saveLanding(current) {
   const key = `${outingId}:${state.index}`;
@@ -2497,6 +2524,7 @@ function anglerDepth() {
 
 async function perform(move, input = {}, { reelEffort, keepDepth } = {}) {
   if (busy || outingTime.suspended || !state) return;
+  if (move === 'jig' && anglerOuting() && !rigSubmerged()) return;
   if (move === 'next') {
     campaignMilestoneNotice = false;
     settledCatch = undefined;
@@ -2851,15 +2879,17 @@ function startCampaignSwimmers() {
 }
 
 function renderCampaignSearch(eye) {
-  if (quietHole()) return setStatus('This hole is quiet for today. Try another spot.');
+  if (quietHole()) return setStatus('This hole is quiet. Try another spot.');
   const fish = swimPositions?.fish ?? [];
   if (anglerOuting()) {
     const approaching = fish.some(swimmer => swimmer.mood === 'approach');
     const nearby = fish.some(swimmer => swimmer.near);
     const backedOff = fish.some(swimmer => swimmer.mood === 'away');
-    showBryanCue(approaching ? 'watch' : state.reaction === 'slipped-hook' ? 'missed' : undefined);
-    setStatus(practiceError ?? (approaching ? 'It’s coming to the jig.'
-      : backedOff ? 'It backed off. Try a different lure.'
+    showBryanCue(approaching ? 'watch' : rigSubmerged() && state.reaction === 'slipped-hook' ? 'missed' : undefined);
+    setStatus(practiceError ?? (!rigSubmerged() ? 'Choose a lure, then drag or scroll down.'
+      : approaching ? 'It’s coming to the jig.'
+        : state.reaction === 'spooked' ? 'That fish spooked and swam off. Reel up to change lures.'
+          : backedOff ? 'It backed off. Reel up to change lures.'
         : state.reaction === 'slipped-hook' ? 'It slipped the hook. Tap to jig again.'
         : nearby ? 'Tap to jig.' : 'Drag or scroll to a fish’s depth.'));
     return;
@@ -2903,6 +2933,11 @@ function animateCampaignFish() {
   });
   const now = outingTime.dateNow();
   swimPositions = stepCampaignFish(run, now, { width: water.width, bands, lure, eye, reducedMotion: reducedMotion() });
+  if (swimPositions.spooked) state = publicRun(run);
+  for (const slot of swimPositions.departed) {
+    campaignSwimmers.get(slot)?.remove();
+    campaignSwimmers.delete(slot);
+  }
   for (const { slot, x, y, right, facing, mood } of swimPositions.fish) {
     const fish = campaignSwimmers.get(slot);
     if (!fish) continue;

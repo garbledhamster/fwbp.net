@@ -525,6 +525,7 @@ body.fishing:has(.fishing-tray[data-mode="campaign"]) .fishing-target[data-candi
   gap: clamp(4px, .65vw, 11px);
 }
 [data-line-physics] .fishing-lures { grid-area: lures; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+[data-line-physics] .fishing-lures:has([data-reel-up]:not([hidden])) { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 [data-line-physics] .fishing-actions { grid-area: actions; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .fishing-tray[data-line-physics] button {
   border: 2px solid var(--tackle-olive);
@@ -539,13 +540,13 @@ body.fishing:has(.fishing-tray[data-mode="campaign"]) .fishing-target[data-candi
   padding-inline: 10px;
   white-space: nowrap;
 }
-.fishing-tray[data-line-physics] :is([data-lure], .fishing-action, [data-loosen]) {
+.fishing-tray[data-line-physics] :is([data-lure], .fishing-action, [data-loosen], [data-reel-up]) {
   flex-direction: column;
   min-height: clamp(58px, 7.65vw, 119px);
   font-size: clamp(.7rem, 1.4vw, 1.35rem);
   line-height: 1.15;
 }
-.fishing-tray[data-line-physics] :is([data-lure], .fishing-action, [data-loosen]) .tackle-icon {
+.fishing-tray[data-line-physics] :is([data-lure], .fishing-action, [data-loosen], [data-reel-up]) .tackle-icon {
   width: clamp(23px, 3.7vw, 57px);
   height: auto;
 }
@@ -622,7 +623,7 @@ body.fishing:has(.fishing-tray[data-mode="campaign"]) .fishing-target[data-candi
     padding: 9px;
   }
   [data-line-physics] .fishing-pressure { border: 0; padding-inline: 2px; }
-  .fishing-tray[data-line-physics] :is([data-lure], .fishing-action, [data-loosen]) { padding-inline: 0; }
+  .fishing-tray[data-line-physics] :is([data-lure], .fishing-action, [data-loosen], [data-reel-up]) { padding-inline: 0; }
   .fishing-tray[data-line-physics] [data-exit] { padding-inline: 6px; font-size: .8rem; }
 }
 
@@ -672,11 +673,11 @@ body.fishing:has(.fishing-tray[data-mode="campaign"]) .fishing-target[data-candi
     padding: 6px 8px;
   }
   [data-line-physics] .fishing-pressure { padding-inline: 7px; }
-  .fishing-tray[data-line-physics] :is([data-lure], .fishing-action, [data-loosen]) {
+  .fishing-tray[data-line-physics] :is([data-lure], .fishing-action, [data-loosen], [data-reel-up]) {
     min-height: 44px;
     font-size: .72rem;
   }
-  .fishing-tray[data-line-physics] :is([data-lure], .fishing-action, [data-loosen]) .tackle-icon { width: 18px; }
+  .fishing-tray[data-line-physics] :is([data-lure], .fishing-action, [data-loosen], [data-reel-up]) .tackle-icon { width: 18px; }
 }
 
 [data-campaign-bait-only] .fishing-rack {

@@ -5,6 +5,11 @@ async function playfieldInput(browser, viewport, mobile) {
   const { page, enter, tick, errors } = await practicePage(browser, { viewport, mobile });
   await enter('Campaign');
   const surface = page.locator('.fishing-route');
+  const spoon = page.getByRole('button', { name: 'Spoon', exact: true });
+  const minnow = page.getByRole('button', { name: 'Minnow', exact: true });
+  const reelUp = page.getByRole('button', { name: 'Reel up', exact: true });
+  await spoon.click();
+  assert.equal(await spoon.getAttribute('aria-pressed'), 'true');
   const start = await lineDepth(page);
   if (mobile) {
     const cdp = await page.context().newCDPSession(page);
@@ -41,6 +46,15 @@ async function playfieldInput(browser, viewport, mobile) {
   }));
   assert.ok(Math.abs(framing.y - framing.target) < 2);
   assert.equal(framing.scroll, 0);
+  assert.equal(await minnow.isEnabled(), false);
+  await page.keyboard.press('3');
+  assert.equal(await spoon.getAttribute('aria-pressed'), 'true', 'keyboard shortcuts cannot swap a submerged lure');
+  await reelUp.click();
+  await tick(2000);
+  assert.ok(Math.abs(await lineDepth(page) - start) < 1, 'the line returns to the ice before the lure unlocks');
+  assert.equal(await reelUp.isVisible(), false);
+  await minnow.click();
+  assert.equal(await minnow.getAttribute('aria-pressed'), 'true');
   assert.deepEqual(errors, []);
   await page.close();
 }
@@ -51,7 +65,7 @@ await withBrowser(async browser => {
   console.log('PASS: Campaign entry, mouse drag, wheel, touch flick and hook-following camera');
 });
 
-async function catchPerch(browser, { viewport, mobile = false, trophy = false, saveEvidence = false }) {
+async function catchPerch(browser, { viewport, mobile = false, trophy = false, saveEvidence = false, escape = false }) {
   const { page, enter, findFish, waitForBite, tick, timing, press, closeDialog, errors } = await practicePage(browser, { viewport, mobile });
   const spot = trophy ? 'C4' : 'A3';
   await page.evaluate(async ({ spot, trophy }) => {
@@ -99,6 +113,17 @@ async function catchPerch(browser, { viewport, mobile = false, trophy = false, s
   await meter.waitFor();
   assert.equal(await timing.isVisible(), false);
   await callout.getByText('Keep jigging!', { exact: true }).waitFor();
+  if (escape) {
+    await page.evaluate(() => { Math.random = () => .1; });
+    await tick(4000);
+    await page.getByText('The fish got away.', { exact: true }).waitFor();
+    assert.equal(await meter.isVisible(), false);
+    assert.equal(await page.locator('.fishing-catch-popup').isVisible(), false);
+    await page.getByRole('button', { name: 'Next fish', exact: true }).click();
+    assert.match(await page.locator('[data-run-progress]').textContent(), /0 pts · 2\/6/);
+    await page.close();
+    return;
+  }
   await capture(trophy ? 'trophy-fight' : viewport.width > viewport.height ? 'landscape-fight' : 'standard-fight');
 
   const attachment = () => page.locator('.fishing-target').evaluate(fish => {
@@ -168,6 +193,7 @@ await withBrowser(async browser => {
   const standard = await catchPerch(browser, { viewport: { width: 360, height: 740 }, mobile: true, saveEvidence: true });
   const trophy = await catchPerch(browser, { viewport: { width: 1200, height: 800 }, trophy: true, saveEvidence: true });
   await catchPerch(browser, { viewport: { width: 740, height: 360 }, mobile: true, saveEvidence: true });
+  await catchPerch(browser, { viewport: { width: 390, height: 700 }, mobile: true, escape: true });
   assert.ok(trophy > standard * 1.4, `the trophy needs more taps (${trophy} vs ${standard})`);
   console.log(`PASS: standard (${standard} taps) and trophy (${trophy} taps) through Campaign, catch and My Lake on desktop and phone`);
 });

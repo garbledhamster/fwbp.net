@@ -156,6 +156,12 @@ export function advanceLineFight(run, now) {
       if (stepCampaignFight(fight, fightStepMs)) {
         const encounter = run.encounters[run.index];
         land(run, lakes[run.lake].fish[encounter.species]);
+      } else if (campaignFishEscapes(fight, run.campaignReelRandom)) {
+        const saved = run.holes?.[run.campaign.holeId];
+        const hooked = saved?.candidates[saved.active];
+        if (hooked?.motion) hooked.motion.fled = true;
+        miss(run, 'escaped');
+        run.cue = run.stage === 'done' ? 'The fish got away. Outing complete.' : 'The fish got away.';
       }
     } else sampleFight(run);
     changed = true;
@@ -298,9 +304,9 @@ export function publicRun(run) {
     ...(run.holes && {
       hole: run.campaign.hole, committed: run.committed,
       activeFishKey: run.holes[run.campaign.holeId].candidates[run.holes[run.campaign.holeId].active]?.key,
-      candidates: run.holes[run.campaign.holeId].candidates.map((fish, slot) => ({
+      candidates: run.holes[run.campaign.holeId].candidates.flatMap((fish, slot) => fish.motion?.flee || fish.motion?.fled ? [] : [{
         ...lakes[run.lake].fish[fish.species], key: fish.key, slot, depth: fish.depth, x: fish.x, y: fish.y, ...(fish.specimen && { specimen: { ...fish.specimen } }),
-      })),
+      }]),
     }),
     ...((run.campaign || run.practice) && {
       lineStrength: run.campaign?.lineStrength ?? starterLineStrength,
@@ -314,7 +320,7 @@ export function apply(run, input, now, { campaignElapsedMs = run.campaign?.elaps
   if (!input || Object.keys(input).some(key => !['action', 'lure', 'skill'].includes(key))) throw Error('Invalid action.');
   if (now >= run.expires) throw Error('This outing expired.');
   const jig = input.action === 'jig' && run.stage === 'seek' && Object.hasOwn(lures, input.lure);
-  if (jig && run.holes && !run.holes[run.campaign.holeId].candidates.length) throw Error('This hole is quiet for today.');
+  if (jig && run.holes && !run.holes[run.campaign.holeId].candidates.some(fish => !fish.motion?.flee && !fish.motion?.fled)) throw Error('This hole is quiet for today.');
   if (run.stage === 'seek' && seekExpired(run, now) && (jig || input.action === 'expire')) {
     miss(run);
     run.version++;
@@ -580,6 +586,8 @@ export function stepCampaignFish(run, now, { width, bands, lure, eye, reducedMot
   const horizontalScale = Math.max(1, width / 1200);
   const reach = width * .55;
   let first;
+  let spooked = false;
+  const departed = [];
   const fish = saved.candidates.flatMap((candidate, slot) => {
     if (slot === saved.active && run.stage !== 'seek') return [];
     const band = bands[candidate.depth];
@@ -589,16 +597,26 @@ export function stepCampaignFish(run, now, { width, bands, lure, eye, reducedMot
     const verticalReach = Math.max(64, Math.min(98, band.height * .18));
     const lane = candidate.lane;
     const fish = candidate.motion ??= { x: centerX, y: centerY, right: lane !== 2, turn: lane === 2 ? 0 : 1 };
+    if (fish.fled) return [];
     const dx = eye.x - fish.x;
     const dy = eye.y - fish.y;
-    if (newJig && seeking && lure === jig.lure && Math.abs(dx) <= reach && Math.abs(dy) <= verticalReach) {
-      const likesLure = lakes[run.lake].fish[candidate.species].lure === lure;
+    const species = lakes[run.lake].fish[candidate.species];
+    if (!fish.flee && newJig && seeking && lure === jig.lure && Math.abs(dx) <= reach && Math.abs(dy) <= verticalReach) {
+      const likesLure = species.lure === lure;
       if (likesLure && (saved.active === undefined || saved.active === slot)) {
         fish.approach = jig;
         fish.away = undefined;
+        fish.wrongJigs = 0;
       } else if (!likesLure) {
         fish.approach = undefined;
         fish.away = { until: now + 480, x: fish.x + (dx < 0 ? 40 : -40), y: fish.y + (dy < 0 ? 22 : -22) };
+        if (run.campaign.anglerRanks) {
+          fish.wrongJigs = (fish.wrongJigs ?? 0) + 1;
+          if (fish.wrongJigs >= (species.rarity === 'Rare' ? 2 : 3)) {
+            fish.flee = { x: dx < 0 ? width + 160 : -160, y: fish.away.y };
+            spooked = true;
+          }
+        }
       }
     }
     const approaching = seeking && fish.approach && fish.approach === jig && lure === jig.lure
@@ -610,9 +628,10 @@ export function stepCampaignFish(run, now, { width, bands, lure, eye, reducedMot
       x: centerX + width * .18 * amplitude * Math.sin(t * (.82 + lane * .07) * (lane === 2 ? -1 : 1)),
       y: centerY + Math.min(42, band.height * .085) * amplitude * Math.sin(t * (1.32 + lane * .13)),
     };
-    const next = approaching ? eye : away ?? path;
+    const next = fish.flee ?? (approaching ? eye : away ?? path);
     const distance = Math.hypot((next.x - fish.x) / horizontalScale, next.y - fish.y);
-    const speed = approaching ? Math.max(.17, Math.min(.32, width * .00032))
+    const speed = fish.flee ? Math.max(.52, width * .0012)
+      : approaching ? Math.max(.17, Math.min(.32, width * .00032))
       : away ? .13 : Math.max(.085, width * .00021);
     // Ease between cruising, chasing and backing away. Cap the step at the
     // destination so the fish cannot overshoot the lure.
@@ -626,12 +645,17 @@ export function stepCampaignFish(run, now, { width, bands, lure, eye, reducedMot
     const turnTarget = Number(fish.right);
     const turnStep = elapsed / 360;
     fish.turn = Math.max(fish.turn - turnStep, Math.min(fish.turn + turnStep, turnTarget));
+    if (fish.flee && amount === 1) {
+      fish.fled = true;
+      departed.push(slot);
+      return [];
+    }
     if (approaching && amount === 1 && fish.turn === turnTarget && (!first || distance < first.distance)) {
       first = { slot, candidate, band, distance };
     }
     return [{ slot, x: fish.x, y: fish.y, right: fish.right, facing: Math.cos(fish.turn * Math.PI),
-      mood: approaching ? 'approach' : away ? 'away' : null,
-      near: Math.abs(eye.x - fish.x) <= reach && Math.abs(eye.y - fish.y) <= verticalReach,
+      mood: fish.flee ? 'flee' : approaching ? 'approach' : away ? 'away' : null,
+      near: !fish.flee && Math.abs(eye.x - fish.x) <= reach && Math.abs(eye.y - fish.y) <= verticalReach,
     }];
   });
   if (first) {
@@ -650,7 +674,8 @@ export function stepCampaignFish(run, now, { width, bands, lure, eye, reducedMot
     startBite(run, now);
     run.version++;
   }
-  return { fish, contact: Boolean(first), slot: first?.slot };
+  if (spooked && !first) run.reaction = 'spooked';
+  return { fish, contact: Boolean(first), slot: first?.slot, spooked, departed };
 }
 export function moveToHole(run, hole, now, elapsedMs = 0, roster) {
   if (!run.holes || !hole?.id || !Object.hasOwn(campaignAreas, hole.area) || !Number.isFinite(hole.depthFt)) throw Error('Choose a valid Campaign hole.');
@@ -680,6 +705,7 @@ export function moveToHole(run, hole, now, elapsedMs = 0, roster) {
   }
   run.waterJig = undefined;
   run.seekUntil = null;
+  if (run.reaction === 'spooked') run.reaction = null;
   run.version++;
   return publicRun(run);
 }
@@ -702,6 +728,19 @@ export const anglerSkills = Object.freeze({ line: 'Line control', rhythm: 'Reel 
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const tapBoost = .24;
+
+function campaignMaxPayout(fight) {
+  return fight.startDepth + (fight.trophy ? 135 : 90);
+}
+
+function campaignFishEscapes(fight, random) {
+  const idleMs = fight.hookedAt + fight.elapsed - (fight.lastTap ?? fight.hookedAt);
+  if (idleMs < 3500 || fight.remaining < campaignMaxPayout(fight) - 1) return false;
+  if (idleMs >= 8000) return true;
+  if (fight.elapsed < (fight.nextEscapeCheck ?? 0)) return false;
+  fight.nextEscapeCheck = fight.elapsed + 1000;
+  return random() < .35;
+}
 
 // Ranges for Campaign specimens. Ranked and Practice keep their own size and score rules.
 const specimenRanges = {
@@ -799,7 +838,7 @@ function stepCampaignFight(fight, ms) {
   const slipPull = fight.feedback === 'slip' ? 16 : 0;
   const runPayout = (idlePull * power + divePull * Math.min(power, 1.5)) * fight.payoutScale;
   const lineTaken = (runPayout + slipPull * Math.min(power, 1.5)) * dt;
-  const maxDepth = fight.startDepth + (trophy ? 135 : 90);
+  const maxDepth = campaignMaxPayout(fight);
   fight.remaining = clamp(fight.remaining + lineTaken - pulledIn, 0, maxDepth);
 
   const room = 1 - Math.max(reeling, holding) * .56;

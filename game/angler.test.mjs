@@ -161,3 +161,27 @@ test('stronger carried line reduces the passive payout from the same hooked fish
   assert.ok(payout(8) > payout(12) + 1);
   assert.ok(payout(12) > payout(18) + 1);
 });
+
+test('a fish can escape an unattended hook and awards nothing', () => {
+  const { run, move, roll } = outing();
+  move('reel', 1850);
+  roll(.1);
+  rules.advanceLineFight(run, 5200);
+  assert.equal(run.stage, 'fight');
+  rules.advanceLineFight(run, 5500);
+  assert.equal(run.stage, 'missed');
+  assert.equal(run.reaction, 'escaped');
+  assert.equal(run.catch, null);
+  assert.equal(run.score, 0);
+  move('next', 5600);
+  assert.equal(run.index, 1);
+});
+
+test('a fish can survive the first escape check but cannot stay hooked indefinitely', () => {
+  const { run, move } = outing();
+  move('reel', 1850);
+  rules.advanceLineFight(run, 5500);
+  assert.equal(run.stage, 'fight', 'a failed escape roll keeps it on the hook');
+  rules.advanceLineFight(run, 10000);
+  assert.equal(run.reaction, 'escaped');
+});
