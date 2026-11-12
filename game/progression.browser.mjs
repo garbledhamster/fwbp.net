@@ -1,60 +1,43 @@
 import assert from 'node:assert/strict';
 import { withBrowser, practicePage } from './browser-qa.mjs';
+
 await withBrowser(async browser => {
   for (const viewport of [{ width: 1200, height: 720 }, { width: 320, height: 720 }, { width: 720, height: 320 }]) {
-  const qa = await practicePage(browser, { viewport, mobile: viewport.width < 900, campaignLiveButtons: true });
-  const { page, enter, findFish, press, action, tick, waitForBite, reelToHole } = qa;
-  const result = await page.evaluate(async () => {
-    const m = await import('./game/profile.mjs?v=connected-rpg');
-    let saved = await m.loadProfile();
-    await m.applyProfile({ type: 'award', key: 'legacy:0', outcome: 'landed', catch: { points: 100 }, speciesId: 'perch' });
-    saved = await m.loadProfile();
-    const before = m.campaignProgress(saved);
-    const learned = await m.applyProfile({ type: 'learn', id: 'control', revision: saved.revision, betweenOutings: true });
-    const stale = await m.applyProfile({ type: 'learn', id: 'lure', revision: saved.revision, betweenOutings: true });
-    const blocked = await m.applyProfile({ type: 'reset-skills', revision: learned.profile.revision, betweenOutings: false });
-    const reset = await m.applyProfile({ type: 'reset-skills', revision: learned.profile.revision, betweenOutings: true });
-    return { before, learned, stale, blocked, reset, after: m.campaignProgress(reset.profile) };
-  });
-  assert.equal(result.learned.status, 'learned');
-  assert.equal(result.stale.status, 'stale');
-  assert.equal(result.blocked.status, 'outing-active');
-  assert.equal(result.reset.profile.coins, result.learned.profile.coins);
-  assert.equal(result.after.points, result.before.points);
-  await qa.openGame();
-  await page.locator('[data-open-skills]').click();
-  await page.getByRole('dialog', { name: 'Campaign Skills' }).waitFor();
-  await page.screenshot({ path: `../../evidence/progression/skills-${viewport.width}x${viewport.height}.png` });
-  await page.locator('[data-technique="lure"]').click();
-  await page.locator('[data-skill-message]').filter({ hasText: 'Rank added' }).waitFor();
-  await page.keyboard.press('Escape');
-  await page.keyboard.press('Escape');
-  const sizeRoll = viewport.width === 1200 ? .4 : viewport.width === 320 ? .75 : .95;
-  await page.evaluate(sizeRoll => { const seed = Array(6).fill(0).flatMap(() => [.05, .2, .5, sizeRoll, .1]); let i = 0; Math.random = () => seed[i++ % seed.length]; }, sizeRoll);
-  await enter('Campaign');
-  await findFish({ species: 'perch' });
-  await press(action);
-  await waitForBite();
-  await tick(700);
-  await press(page.getByRole('button', { name: 'Set hook', exact: true }));
-  await reelToHole();
-  await press(action);
-  const popup = page.locator('.fishing-catch-popup');
-  await popup.waitFor();
-  assert.match(await popup.locator('.fishing-reward-quality').textContent(), new RegExp(viewport.width === 1200 ? 'Bronze' : viewport.width === 320 ? 'Silver' : 'Gold'));
-  assert.match(await popup.textContent(), /XP/);
-  await page.screenshot({ path: `../../evidence/progression/catch-${viewport.width}x${viewport.height}.png` });
-  const bounds = await popup.boundingBox();
-  assert.ok(bounds.x >= 0 && bounds.y >= 0 && bounds.x + bounds.width <= viewport.width + 1 && bounds.y + bounds.height <= viewport.height + 1, 'catch frame fits viewport');
-  const key = await popup.getAttribute('data-key');
-  await popup.locator('[data-reward-lake]').click();
-  await page.locator('#your-lake [data-close]').click();
-  assert.equal(await popup.getAttribute('data-key'), key);
-  assert.equal(await popup.isVisible(), true);
-  await popup.locator('[data-reward-next]').click();
-  await page.waitForFunction(() => !document.querySelector('.fishing-catch-popup[open]'));
-  assert.deepEqual(qa.errors, []);
-  await page.close();
+    const { page, openGame, press, closeDialog, errors } = await practicePage(browser, { viewport, mobile: viewport.width < 900 });
+    const result = await page.evaluate(async () => {
+      const { applyProfile, anglerProgress, loadProfile } = await import('./game/profile.mjs');
+      const landing = { type: 'award', key: 'legacy:0', outcome: 'landed', catch: { points: 100 }, speciesId: 'perch' };
+      const { profile } = await applyProfile(landing);
+      const before = anglerProgress(profile);
+      const learned = await applyProfile({ type: 'learn-angler', id: 'line', revision: profile.revision, betweenOutings: true });
+      const stale = await applyProfile({ type: 'learn-angler', id: 'hook', revision: profile.revision, betweenOutings: true });
+      const blocked = await applyProfile({ type: 'reset-angler', revision: learned.profile.revision, betweenOutings: false });
+      const reset = await applyProfile({ type: 'reset-angler', revision: learned.profile.revision, betweenOutings: true });
+      const replay = await applyProfile(landing);
+      return { before, learned, stale, blocked, reset, replay, after: anglerProgress(await loadProfile()) };
+    });
+    assert.equal(result.learned.status, 'learned');
+    assert.equal(result.stale.status, 'stale');
+    assert.equal(result.blocked.status, 'outing-active');
+    assert.equal(result.reset.profile.coins, result.learned.profile.coins);
+    assert.equal(result.replay.status, 'duplicate-award');
+    assert.equal(result.after.points, result.before.points);
+    await openGame();
+    const entry = page.getByRole('button', { name: 'Angler Skills', exact: true });
+    await press(entry, 'Enter');
+    const sheet = page.getByRole('dialog', { name: 'Angler Skills', exact: true });
+    for (const name of ['Line control', 'Reel rhythm', 'Hook timing']) {
+      const control = sheet.getByRole('button', { name: `Add one rank to ${name}` });
+      await control.waitFor();
+      const box = await control.boundingBox();
+      assert.ok(box && box.width >= 44 && box.height >= 44);
+    }
+    await press(sheet.getByRole('button', { name: 'Add one rank to Hook timing' }), 'Enter');
+    await sheet.getByText('Rank added.', { exact: true }).waitFor();
+    await closeDialog(sheet, sheet.getByRole('button', { name: 'Back', exact: true }));
+    assert.equal(await entry.evaluate(el => el === document.activeElement), true);
+    assert.deepEqual(errors, []);
+    await page.close();
   }
-  console.log('PASS: desktop/portrait/landscape Campaign skill transactions, saved reward popup and same-catch collection return');
+  console.log('PASS: Angler skill transactions, focus and touch targets on desktop, portrait and landscape');
 });

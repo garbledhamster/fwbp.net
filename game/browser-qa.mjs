@@ -32,7 +32,12 @@ export async function practicePage(browser, { mobile = false, viewport, configur
     isMobile: mobile,
     reducedMotion: mobile ? 'reduce' : 'no-preference',
   });
-  page.setDefaultTimeout(3000);
+  page.setDefaultTimeout(5000);
+  // Game fixtures own Math.random. The site's YouTube widget otherwise
+  // consumes it asynchronously before an outing. Site player tests mock it.
+  await page.route('https://www.youtube.com/iframe_api', route => route.fulfill({
+    contentType: 'application/javascript', body: '',
+  }));
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.clock.install({ time: clockStart });
@@ -44,7 +49,7 @@ export async function practicePage(browser, { mobile = false, viewport, configur
   await configure?.(page);
   const url = new URL(process.env.FISHING_QA_URL ?? defaultUrl);
   if (campaignLiveButtons) url.searchParams.set('campaign-live-buttons', '1');
-  const response = await page.goto(url.href, { waitUntil: 'domcontentloaded' });
+  const response = await page.goto(url.href, { waitUntil: 'domcontentloaded', timeout: 15000 });
   assert.ok(response?.ok(), 'the site must load');
   const tray = page.getByRole('region', { name: 'Fishing controls' });
   const button = name => tray.getByRole('button', { name, exact: true });
@@ -183,8 +188,8 @@ export async function practicePage(browser, { mobile = false, viewport, configur
           if (Math.abs(depthGap) > tolerance) {
             const surface = document.querySelector('.fishing-route');
             const wheel = deltaY => surface.dispatchEvent(new WheelEvent('wheel', { deltaY, bubbles: true, cancelable: true }));
-            // Start a downward burst so aiming upward does not also jig.
-            if (depthGap < 0) wheel(.01);
+            // The tutorial still uses a legacy upward wheel stroke to jig.
+            if (depthGap < 0 && !document.body.hasAttribute('data-campaign-angler')) wheel(.01);
             wheel(depthGap / .54);
           }
           return { depthGap, horizontalGap: Math.abs(nearest.x - lure.x), width: lake.width, species: nearest.species };
@@ -217,6 +222,30 @@ export async function practicePage(browser, { mobile = false, viewport, configur
   }
 
   async function reelToHole({ keyboard = false } = {}) {
+    if (await page.locator('body[data-campaign-angler]').count()) {
+      const meter = page.locator('.fishing-angler-meter');
+      const random = await page.evaluateHandle(() => Math.random);
+      await page.evaluate(() => { Math.random = () => .95; });
+      try {
+        let taps = 0;
+        while (await meter.isVisible() && taps < 180) {
+          await page.clock.runFor(260);
+          if (!await meter.isVisible()) break;
+          if (keyboard) await page.keyboard.press('r');
+          else {
+            const y = (await tray.boundingBox()).y * .42;
+            if (mobile) await page.touchscreen.tap(32, y);
+            else await page.mouse.click(32, y);
+          }
+          taps++;
+        }
+        assert.equal(await meter.isVisible(), false, 'the Campaign fish reached the hole');
+        return taps;
+      } finally {
+        await page.evaluate(value => { Math.random = value; }, random);
+        await random.dispose();
+      }
+    }
     let reels = 0;
     for (let move = 0; move < 24; move++) {
       await page.clock.runFor(300);

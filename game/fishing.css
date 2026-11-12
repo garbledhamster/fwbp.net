@@ -1196,19 +1196,8 @@ body[data-reduced] .fishing-auger-scene svg { transition: none; transform: none;
 .fishing-skill-level h3 { margin: 0; }
 .fishing-skill-level button { align-self: start; margin-top: auto; }
 .fishing-campaign-skills footer, .fishing-catch-popup footer { position: sticky; bottom: -1px; display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 0; background: #142d3b; }
-.fishing-catch-popup { width: min(560px, calc(100vw - 20px)); text-align: center; --quality: #c48a5a; }
-.fishing-catch-popup[data-quality="silver"] { --quality: #d5e4ec; }
-.fishing-catch-popup[data-quality="gold"] { --quality: #ffd56b; }
-.fishing-reward-art { position: relative; border: 3px solid var(--quality); border-radius: 14px; background: #08212d; padding: 24px; }
-.fishing-reward-art svg { display: block; width: 100%; height: 110px; }
-.fishing-reward-quality, .fishing-reward-sparks { color: var(--quality); font-size: 1.35rem; font-weight: 800; }
-.fishing-reward-sparks { display: block; letter-spacing: 18px; animation: reward-sparks 1.6s ease-in-out 2; }
-@keyframes reward-sparks { 50% { opacity: .45; transform: translateY(-5px); } }
 @media (min-width: 900px) { .fishing-dialogue { font-size: 1.12rem; line-height: 1.45; } }
 @media (max-width: 620px) { .fishing-skill-level { grid-template-columns: 1fr; } }
-@media (max-width: 480px) { .fishing-catch-popup { padding: 12px; } }
-@media (max-height: 420px) { .fishing-reward-art svg { height: 55px; } .fishing-reward-art { padding: 8px; } }
-@media (prefers-reduced-motion: reduce) { .fishing-reward-sparks { animation: none; } }
 /* Shared Field Comic menu frame: ice-blue steel, brass fittings and cream lettering. */
 :is(.fishing-frame, .fishing-map, .fishing-drill, .fishing-permit, .fishing-catch-popup) {
   --frame-ink: #fff0ce;
@@ -1339,8 +1328,6 @@ body[data-reduced] .fishing-auger-scene svg { transition: none; transform: none;
 @media (max-width: 599px) { .fishing-shop form button { padding: 5px 8px; font-size: .8rem; } }
 @media (max-height: 420px) { .fishing-frame-footer { padding-top: 5px; margin-top: 5px; } }
 .fishing-catch-popup [data-bryan-video] { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; color: #bcebf3; }
-.fishing-catch-popup[open] { display: flex; flex-direction: column; overflow: hidden; }
-.fishing-catch-popup > header, .fishing-catch-popup > footer { flex-shrink: 0; }
 .fishing-catch-popup > footer { position: static; }
 .fishing-catch-popup [data-reward-body] { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 /* Gear uses the same inventory and inspector rhythm as Marnie's shop. */
@@ -1420,3 +1407,249 @@ body[data-reduced] .fishing-auger-scene svg { transition: none; transform: none;
     linear-gradient(90deg, #0b252bee 12%, #0b252b78 66%, #0b252b40),
     #0b252b url('../assets/branding/tent-cutaway.webp') 49% 94% / cover;
 }
+
+/* Campaign catches use a Phaser rig over the existing lake and a DOM HUD. */
+.fishing[data-campaign-angler] .fishing-route { touch-action: pinch-zoom; user-select: none; }
+.campaign-scene { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.campaign-scene canvas { display: block; }
+.fishing-route:has(.campaign-scene[data-ready]) :is(.fishing-line-path, .fishing-line-eye) { opacity: 0; }
+.fishing[data-campaign-angler] .fishing-target.is-hooked svg { scale: var(--fight-facing, 1) 1; }
+.fishing-angler-meter {
+  --fight-color: #76dfa3;
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: max(12px, env(safe-area-inset-top));
+  width: min(178px, 44vw);
+  padding: 3px;
+  translate: -50%;
+  border: 1px solid #f5e7bd;
+  border-radius: 6px;
+  background: #132e30;
+  pointer-events: none;
+}
+.fishing-angler-meter[data-outcome="hold"] { --fight-color: #78cfff; }
+.fishing-angler-meter[data-outcome="slip"] { --fight-color: #ff8580; }
+.fishing-angler-meter i {
+  display: block;
+  height: 8px;
+  border-radius: 3px;
+  width: calc(var(--reel-meter, 0) * 100%);
+  background: var(--fight-color);
+}
+
+:root {
+  --angler-gold: #ffcf68;
+  --angler-gold-ink: #172d29;
+  --angler-star: polygon(0 50%, 13% 33%, 8% 7%, 35% 15%, 49% 0%, 64% 13%, 94% 6%,
+    88% 33%, 100% 50%, 87% 68%, 93% 94%, 65% 86%, 50% 100%, 33% 86%, 9% 92%, 13% 68%);
+}
+:is(.fishing-frame, .fishing-map, .fishing-drill, .fishing-permit) {
+  --frame-edge: #e0ad59;
+  border-color: var(--frame-edge);
+}
+.fishing-picker.fishing-title { border-color: var(--frame-edge); }
+.fishing-version { color: #f5e3ba; font-size: .73rem; font-variant-numeric: tabular-nums; }
+.fishing-title .fishing-version { position: absolute; inset: auto 14px 10px auto; }
+.fishing-pause .fishing-version { align-self: center; margin-inline-start: auto; }
+.fishing-starburst {
+  position: relative;
+  display: grid;
+  place-content: center;
+  min-height: 2.1rem;
+  padding: 4px 15px;
+  background: var(--angler-gold);
+  color: var(--angler-gold-ink);
+  clip-path: var(--angler-star);
+  font: 850 .91rem/1.08 system-ui, sans-serif;
+  text-align: center;
+}
+.fishing-bryan-callout {
+  position: absolute;
+  z-index: 4;
+  inset: auto auto calc(var(--tray-inset, 125px) + 6px) 50%;
+  display: grid;
+  width: min(156px, calc(100% - 24px));
+  translate: -50%;
+  pointer-events: none;
+}
+.fishing-bryan-callout[hidden] { display: none; }
+.fishing-bryan-portrait {
+  position: relative;
+  display: block;
+  height: 2.55rem;
+  margin-bottom: -.35rem;
+  border: 1px solid var(--angler-gold);
+  border-radius: 7px 7px 4px 4px;
+  background: linear-gradient(150deg, #326272, #143542 80%);
+  clip-path: inset(-5rem 0 0);
+}
+.fishing-bryan-portrait img {
+  position: absolute;
+  inset: auto auto 0 50%;
+  width: var(--bryan-width, 210px);
+  height: var(--bryan-height, 78px);
+  max-width: none;
+  translate: calc(-50% + var(--bryan-offset, 0px)) 0;
+  object-fit: cover;
+  object-position: center top;
+  filter: drop-shadow(0 3px 3px #081b2499);
+}
+.fishing-bryan-callout[data-cue="hook"] { --bryan-width: 156px; --bryan-height: 74px; }
+.fishing-bryan-callout[data-cue="reel"] { --bryan-width: 217px; --bryan-offset: -4px; }
+.fishing-bryan-callout[data-cue="reel"] .fishing-starburst {
+  min-height: 2.35rem;
+  padding-inline: 27px;
+  font-size: .75rem;
+}
+.fishing-starburst small { margin-top: 2px; font-size: .67rem; font-weight: 750; }
+
+.fishing-catch-popup[open] {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  justify-items: center;
+  gap: 8px;
+  overflow: hidden;
+  width: 100%;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: max(14px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
+    max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  border: 0;
+  border-radius: 0;
+  background: linear-gradient(#0b2636a6, #0a202de8 56%, #0b2636fa),
+    #102c3a url('../assets/fishing/mille-lacs-dawn.webp') center / cover;
+  color: #fff0ce;
+}
+.fishing-catch-popup > * { width: min(100%, 620px); }
+.fishing-catch-header { display: grid; justify-items: center; gap: 5px; }
+.fishing-catch-header h2 {
+  margin: 0;
+  font-size: clamp(1.45rem, 5vw, 2.25rem);
+  line-height: 1.05;
+}
+.fishing-catch-bryan {
+  width: min(250px, 70vw);
+  padding-top: 37px;
+  --bryan-height: 100px;
+  --bryan-width: 250px;
+  --bryan-offset: -21px;
+}
+.fishing-catch-bryan .fishing-bryan-portrait { height: 58px; border-width: 2px; }
+.fishing-catch-bryan .fishing-starburst { min-height: 43px; font-size: 1.15rem; }
+.fishing-catch-popup [data-reward-body] {
+  padding: 0 3px 5px;
+  scrollbar-color: #d2ad69 #102d3c;
+}
+.fishing-catch-popup .fishing-reward-art {
+  position: relative;
+  padding: clamp(8px, 2vw, 20px);
+  border: 3px ridge #e0ad59;
+  border-radius: 10px;
+  background: linear-gradient(140deg, #236073d9, #0f3448f5 74%);
+}
+.fishing-catch-popup .fishing-reward-art svg {
+  display: block;
+  width: 100%;
+  height: clamp(74px, 14vh, 140px);
+  filter: drop-shadow(0 7px 7px #0318219e);
+}
+.fishing-catch-popup[data-grade="trophy"] .fishing-reward-art svg,
+.fishing-catch-popup[data-grade="record"] .fishing-reward-art svg {
+  animation: fishing-catch-pop 650ms cubic-bezier(.2,.74,.21,1) both;
+}
+.fishing-catch-flashes { position: absolute; inset: 0; pointer-events: none; }
+.fishing-catch-flashes i {
+  position: absolute;
+  top: var(--y, 28%);
+  left: var(--x, 16%);
+  width: var(--size, 16px);
+  aspect-ratio: 1;
+  background: #ffdd87;
+  clip-path: polygon(50% 0, 60% 39%, 100% 50%, 60% 61%, 50% 100%, 40% 61%, 0 50%, 40% 39%);
+  animation: fishing-catch-glint 650ms ease-out both;
+}
+.fishing-catch-flashes i:nth-child(2) { --x: 78%; --y: 63%; --size: 12px; }
+.fishing-catch-flashes i:nth-child(3) { --x: 84%; --y: 18%; --size: 25px; }
+.fishing-catch-flashes i:nth-child(4) { --x: 21%; --y: 67%; --size: 21px; }
+.fishing-catch-popup[data-grade="standard"] .fishing-catch-flashes i:nth-child(n+3) { display: none; }
+.fishing-catch-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px 6px;
+  margin: 12px 0;
+  font-variant-numeric: tabular-nums;
+}
+.fishing-catch-stats div { padding: 4px; border-bottom: 1px solid #c8a36570; }
+.fishing-catch-stats dt { font-size: .74rem; color: #f7d894; }
+.fishing-catch-stats dd { margin: 1px 0 0; font-size: .92rem; font-weight: 700; overflow-wrap: anywhere; }
+.fishing-catch-credit { margin: 8px 0; font-weight: 750; }
+.fishing-catch-popup [data-reward-goal] { margin: 6px 0; }
+.fishing-catch-popup [data-reward-goal]:empty { display: none; }
+.fishing-catch-popup [data-reward-video] { margin: 6px auto 0; max-width: 370px; }
+.fishing-catch-popup footer {
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 0 0;
+  border-top: 1px solid #d8ab60a0;
+  background: transparent;
+}
+.fishing-catch-popup [data-reward-next] {
+  background: var(--angler-gold);
+  border-color: #f3b95b;
+  color: var(--angler-gold-ink);
+  font-weight: 800;
+}
+.fishing-catch-popup [data-reward-next]:enabled:hover { background: #ffdd91; }
+
+@keyframes fishing-catch-pop {
+  0% { transform: scale(.86); }
+  42% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+@keyframes fishing-catch-glint {
+  0% { opacity: 0; transform: scale(.4); }
+  44% { opacity: .9; transform: scale(1.12); }
+  100% { opacity: .4; transform: scale(1); }
+}
+@media (max-width: 420px) {
+  .fishing-catch-popup footer { display: grid; grid-template-columns: 1fr 1fr; }
+}
+@media (max-height: 450px) and (orientation: landscape) {
+  .fishing-bryan-callout { bottom: calc(var(--tray-inset, 125px) + 2px); }
+  .fishing-bryan-callout .fishing-bryan-portrait { height: 22px; --bryan-height: 56px; }
+  .fishing-catch-popup[open] { gap: 4px; padding-block: 6px; }
+  .fishing-catch-header { grid-template-columns: auto 1fr; align-items: end; }
+  .fishing-catch-header h2 { justify-self: start; align-self: center; }
+  .fishing-catch-bryan { width: 150px; padding-top: 17px; --bryan-height: 50px; --bryan-width: 145px; --bryan-offset: -13px; }
+  .fishing-catch-bryan .fishing-bryan-portrait { height: 32px; }
+  .fishing-catch-bryan .fishing-starburst { min-height: 29px; font-size: .84rem; }
+  .fishing-catch-popup .fishing-reward-art svg { height: 62px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fishing-catch-popup .fishing-reward-art svg, .fishing-catch-popup .fishing-catch-flashes i { animation: none; }
+}
+body[data-reduced] .fishing-catch-popup .fishing-reward-art svg,
+body[data-reduced] .fishing-catch-popup .fishing-catch-flashes i { animation: none; }
+
+.fishing-hook-fallback { fill: none; stroke: #ffedbd; stroke-width: 1.7; }
+.fishing-route:has(.campaign-scene[data-ready]) .fishing-hook-fallback { opacity: 0; }
+[data-angler-active] .fishing-tray-inner > .fishing-dialogue {
+  grid-column: 1 / -1;
+  display: block;
+  width: auto;
+}
+[data-angler-active] .fishing-speech {
+  width: fit-content;
+  min-width: 0;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: 3px;
+  background: #142c28e6;
+  color: #fff0ce;
+  box-shadow: none;
+}
+[data-angler-active] .fishing-speech::before { display: none; }
+[data-angler-active] .fishing-words { font-size: .8rem; }

@@ -19,34 +19,14 @@ No timestamp has been reviewed. Embeds and public links start at the beginning.
 
 Yellow perch (`perch`) remains unmapped. The muskie upload identifies only “perch.” The existing library’s [Ice Castle perch upload](https://www.youtube.com/watch?v=sXRoaFLDS10) also returned usable official watch metadata, but its title and description do not name Yellow perch. The library’s existing editorial description alone does not establish an exact-species association. Rock bass (`rock-bass`) also has no verified exact-species match. Both retain the species reference without a contextual Watch Bryan action.
 
-## Integration interface
+## Contextual cards
 
-Import `getBryanVideo` and `openBryanVideo` from `game/bryan-videos.mjs`. `getBryanVideo(speciesId)` returns immutable video metadata or `null`. Metadata includes `label`, `url`, `id`, `title`, `description`, `relationship`, channel identity, verification date and a short evidence note.
+`renderSpeciesVideo(speciesId, container)` from `game/species-video.mjs` renders a thumbnail and **Watch now** for a verified match. The link opens the direct YouTube watch page in a new tab. The catch or collection stays open, with its existing pause in effect. Yellow perch and rock bass use the species sources already in the fish guide. Pass `{ reference: false }` when the parent card already links to that reference.
 
-Render a public anchor when metadata exists so modified clicks keep normal navigation. On ordinary activation, acquire the caller’s local suspension, then call:
+The site library shares the thumbnail layout with the game cards. It retains the site player, filters and featured hero playback. YouTube oEmbed reconfirmed all four contextual titles and Bryan’s channel on November 12, 2026.
 
-```js
-const opened = openBryanVideo(speciesId, {
-  trigger: watchLink,
-  onClose: releaseVideoSuspension,
-});
-if (opened) event.preventDefault();
-else releaseVideoSuspension();
-```
+## Verification
 
-`openBryanVideo` returns `true` only when the modal opens. An unsupported species or an already-open player returns `false` without a close callback. Callers release a hold they acquired if opening fails. A live-catch caller holds the outing suspension while watching. A collection caller preserves its parent collection suspension when the player closes. Offer game playback only after a local catch has settled; live Ranked timing stays authoritative.
-
-The shared `game/video-player.mjs` module owns the existing `#player` dialog. Native modal stacking keeps a species card open underneath it. The player removes its iframe on close, calls `onClose` once, then focuses the connected trigger without scrolling. Escape belongs to the top modal. Integration also guards game shortcuts while a dialog owns input. The player does not award progress, mutate a profile, or own any game clocks.
-
-A viewer can close the player or use its public YouTube link even if an embed fails. Cross-origin iframe load events do not reliably report playback success, so the fallback stays visible without guessing whether the video played.
-
-## Regression checks for the fresh test wave
-
-Builders wrote these cases without running automated verification, following Joe’s Code for Me phase order:
-
-- `node --test game/bryan-videos.test.mjs` covers supported and unsupported associations, provenance and the absence of guessed timestamps.
-- `node game/videos.browser.mjs` covers all four exact embeds, stacked card return, keyboard and touch close, iframe cleanup, public fallback during blocked embeds, and modified library clicks at desktop, 320 px and short landscape sizes.
-- `node library.browser.mjs` retains the existing library filter, presenter, Short warning and keyboard player checks.
-- The integrated game checks must cover live catch suspension, day/night and expiry boundaries, unchanged wallet/collection state, and the same catch and card after return.
-
-Run the full relevant rule and browser suites only after the five slices and art are integrated. Public playback remains a separate source check from controlled browser regression fixtures.
+- `node --test game/bryan-videos.test.mjs` checks species associations, provenance and watch links.
+- `node game/videos.browser.mjs` checks thumbnail cards, exact links, new tabs, reference fallback and modified library clicks at desktop, 320 px and short landscape sizes.
+- `node library.browser.mjs` checks library filters, featured cards, Short warnings and keyboard playback.

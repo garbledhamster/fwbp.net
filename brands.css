@@ -95,8 +95,6 @@
   min-height: clamp(385px, 52svh, 560px);
   padding-block: clamp(70px, 7vw, 86px) clamp(34px, 6vw, 68px);
 }
-.library .episode-trigger { background: #192d27f5; border-radius: 14px 4px 4px; padding-bottom: 10px; }
-.library .episode-meta, .library .episode-name { padding-inline: 8px; }
 /* Keep these swimmers in the open water even as cards change height. */
 .lake > :is(.library, .field-notes, .merch), .lakebed-feature {
   --water-space-start: clamp(58px, 7vw, 85px);

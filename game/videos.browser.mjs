@@ -1,67 +1,93 @@
 import assert from 'node:assert/strict';
+import { mkdir } from 'node:fs/promises';
+import { join } from 'node:path';
 import { test } from 'node:test';
 import { withBrowser } from './browser-qa.mjs';
 
 const url = process.env.FISHING_QA_URL ?? 'http://127.0.0.1:9867/';
 const viewports = [{ width: 1200, height: 800 }, { width: 320, height: 720 }, { width: 720, height: 320 }];
+const matched = [
+  ['walleye', 'Elu9m3JcOEM'], ['pike', 'gIUtx-C9pKs'],
+  ['smallmouth', 'KL0F_23RvBo'], ['muskie', 'W41Btej9DnI'],
+];
+const references = [
+  ['perch', 'https://www.dnr.state.mn.us/minnaqua/speciesprofile/yellowperch.html'],
+  ['rock-bass', 'https://mdc.mo.gov/discover-nature/field-guide/northern-rock-bass'],
+];
 
-async function videoPage(browser, viewport) {
-  const page = await browser.newPage({ viewport, hasTouch: viewport.width === 320, reducedMotion: 'reduce' });
-  await page.route('https://www.youtube-nocookie.com/**', route => route.abort());
-  await page.goto(url, { waitUntil: 'domcontentloaded' });
-  await page.evaluate(async () => {
-    const { openBryanVideo } = await import('./game/bryan-videos.mjs');
-    window.closedVideoCount = 0;
-    const trigger = document.createElement('button');
-    trigger.id = 'context-watch';
-    trigger.textContent = 'Watch Bryan';
-    trigger.addEventListener('click', () => {
-      window.videoOpened = openBryanVideo(trigger.dataset.species || 'walleye', {
-        trigger, onClose: () => window.closedVideoCount++,
-      });
-    });
-    document.querySelector('#fish-card').append(trigger);
-    document.querySelector('#fish-card').showModal();
-  });
-  return page;
-}
-
-// Removing cleanup, callback, source URL or trigger restoration must fail this case.
-test('contextual footage stacks above a card and closes cleanly even when embeds fail', async () => {
+test('a game video card opens exact footage in a new tab and keeps its parent dialog open', async () => {
   await withBrowser(async browser => {
     for (const viewport of viewports) {
-      const page = await videoPage(browser, viewport);
+      const page = await browser.newPage({ viewport, hasTouch: viewport.width === 320, reducedMotion: 'reduce' });
+      page.setDefaultTimeout(4000);
       try {
-        const trigger = page.locator('#context-watch');
-        for (const [species, id] of [['walleye', 'Elu9m3JcOEM'], ['pike', 'gIUtx-C9pKs'], ['smallmouth', 'KL0F_23RvBo'], ['muskie', 'W41Btej9DnI']]) {
-          await trigger.evaluate((button, species) => button.dataset.species = species, species);
-          await trigger.click();
-          const player = page.locator('#player');
-          assert.equal(await player.isVisible(), true);
-          assert.equal(await page.evaluate(async () => {
-            const { openBryanVideo } = await import('./game/bryan-videos.mjs');
-            return openBryanVideo('muskie', { onClose: () => window.closedVideoCount += 100 });
-          }), false, 'an active player keeps its original session and callback');
-          assert.equal(await page.locator('#fish-card').evaluate(card => card.open), true);
-          assert.equal(await player.locator('iframe').count(), 1);
-          assert.equal(new URL(await player.locator('iframe').getAttribute('src')).pathname, '/embed/' + id);
-          assert.equal(await player.locator('#player-source').getAttribute('href'), 'https://www.youtube.com/watch?v=' + id);
-          assert.equal(await player.locator('#player-source').isVisible(), true);
-          // Keyboard Escape and touch close both retain the parent card.
-          if (viewport.width === 320) await player.getByRole('button', { name: 'Close video' }).tap();
-          else await page.keyboard.press('Escape');
-          await player.waitFor({ state: 'hidden' });
-          await player.locator('iframe').waitFor({ state: 'detached' });
-          assert.equal(await player.locator('iframe').count(), 0);
-          assert.equal(await page.locator('#fish-card').evaluate(card => card.open), true);
-          assert.equal(await trigger.evaluate(button => document.activeElement === button), true);
+        await page.context().route('https://www.youtube.com/watch?**', route =>
+          route.fulfill({ body: '<title>YouTube watch page</title>', contentType: 'text/html' }));
+        await page.route('https://www.youtube-nocookie.com/**', route => route.abort());
+        await page.goto(url, { waitUntil: 'domcontentloaded' });
+        const dialog = page.locator('#fish-card');
+        await dialog.evaluate(async el => {
+          const { fillSpeciesCard } = await import('./game/collection.mjs');
+          const frame = el.querySelector('.fish-card-frame');
+          frame.innerHTML = '<div data-species-card></div>';
+          fillSpeciesCard(frame.firstElementChild, 'walleye', { profile: { caughtSpecies: ['walleye'] } });
+          el.showModal();
+        });
+        const resources = dialog.locator('[data-video]');
+        async function render(species, options) {
+          await resources.evaluate(async (container, { species, options }) => {
+            const { renderSpeciesVideo } = await import('./game/species-video.mjs');
+            renderSpeciesVideo(species, container, options);
+          }, { species, options });
         }
-        assert.equal(await page.evaluate(() => window.closedVideoCount), 4);
-        await trigger.evaluate(button => button.dataset.species = 'perch');
-        await trigger.click();
-        assert.equal(await page.evaluate(() => window.videoOpened), false);
+
+        const card = resources.locator('[data-bryan-video]');
+        for (const [species, id] of matched) {
+          await render(species);
+          assert.equal(await card.getAttribute('target'), '_blank');
+          assert.equal(await card.getAttribute('rel'), 'noopener');
+          assert.equal(await card.getAttribute('href'), 'https://www.youtube.com/watch?v=' + id);
+          assert.equal(await card.getByText('Watch now', { exact: true }).count(), 1);
+          assert.match(await card.locator('img').getAttribute('src'), new RegExp('/' + id + '/'));
+        }
+        await render('walleye');
+        await card.scrollIntoViewIfNeeded();
+        const box = await card.boundingBox();
+        const thumbnail = await card.locator('.episode-art').boundingBox();
+        assert.ok(box && box.width >= 44 && box.height >= 44 && box.x + box.width <= viewport.width);
+        assert.ok(thumbnail?.width >= 64 && thumbnail.height >= 36, 'the thumbnail remains visible in the fish card');
+        assert.equal(
+          await card.evaluate(el => getComputedStyle(el).color),
+          await page.locator('.hero-video').evaluate(el => getComputedStyle(el).color),
+        );
+        if (process.env.FISHING_EVIDENCE_DIR) {
+          await mkdir(process.env.FISHING_EVIDENCE_DIR, { recursive: true });
+          await dialog.screenshot({ path: join(process.env.FISHING_EVIDENCE_DIR, `species-video-${viewport.width}x${viewport.height}.png`) });
+        }
+        const [tab] = await Promise.all([
+          page.waitForEvent('popup'),
+          viewport.width === 320 ? card.tap() : card.press('Enter'),
+        ]);
+        await tab.waitForLoadState('domcontentloaded');
+        assert.equal(tab.url(), 'https://www.youtube.com/watch?v=Elu9m3JcOEM');
+        assert.equal(await tab.evaluate(() => window.opener), null);
+        await tab.close();
+        assert.equal(await dialog.evaluate(el => el.open), true);
         assert.equal(await page.locator('#player').isVisible(), false);
-        assert.equal(await page.evaluate(() => window.closedVideoCount), 4);
+        assert.equal(await page.locator('#player iframe').count(), 0);
+
+        for (const [species, href] of references) {
+          await render(species);
+          const fallback = resources.locator('[data-species-reference]');
+          assert.equal(await card.count(), 0);
+          assert.equal(await fallback.getAttribute('href'), href);
+          assert.equal(await fallback.getAttribute('target'), '_blank');
+          assert.equal(await fallback.getAttribute('rel'), 'noopener');
+        }
+        await render('perch', { reference: false });
+        assert.equal(await resources.locator('a').count(), 0, 'a guide that already provides a reference can suppress the fallback');
+        await render('__proto__');
+        assert.equal(await resources.locator('a').count(), 0);
       } finally { await page.close(); }
     }
   });

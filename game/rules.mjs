@@ -74,6 +74,14 @@ export function reelWindow(levels) {
 function hookWindow(run, fish) {
   if (!run.campaign) return reelWindow(run.skills);
   const { hook, line, lineControlRank = 0 } = run.campaign;
+  if (run.campaign.anglerRanks) {
+    const ranks = run.biteRanks ?? run.campaign.anglerRanks;
+    const window = { from: 520, until: 2920 + 180 * ranks.hook + (run.campaign.paidHookTimingMs ?? 0), buffer: 220 };
+    for (const item of [hook, line, ...(run.campaign.baits ?? [])]) {
+      if (fish && item?.lure === fish.lure) window.until += item.windowMs ?? 0;
+    }
+    return window;
+  }
   const window = reelWindow({ ...run.skills, control: lineControlRank, quick: run.campaign.lureWorkRank ?? 0 });
   window.from -= run.campaign.hookEarlyMs ?? 0;
   window.until += run.campaign.hookLateMs ?? 0;
@@ -144,7 +152,12 @@ export function advanceLineFight(run, now) {
   let changed = false;
   while (run.fight === fight && fight.elapsed < elapsed) {
     fight.elapsed += fightStepMs;
-    sampleFight(run);
+    if (run.campaign?.anglerRanks) {
+      if (stepCampaignFight(fight, fightStepMs)) {
+        const encounter = run.encounters[run.index];
+        land(run, lakes[run.lake].fish[encounter.species]);
+      }
+    } else sampleFight(run);
     changed = true;
   }
   if (run.stage === 'fight' && now >= run.expires) {
@@ -238,6 +251,7 @@ export function start(now, random = Math.random, lake = 'mille-lacs', { practice
     version: 0, submitted: false,
     ...(practice && { practice: true, landed: 0 }),
     ...(usesLineFight && { snap: null, wrongLures: 0, reaction: null }),
+    ...(campaign?.anglerRanks && { campaignReelRandom: random }),
     ...(campaign && {
       campaign: { ...campaign, area, line: campaign.line && { ...campaign.line }, hook: campaign.hook && { ...campaign.hook }, baits: campaign.baits?.map(item => ({ ...item })), lineStrength: campaign.lineStrength ?? starterLineStrength },
     }),
@@ -270,7 +284,10 @@ export function publicRun(run) {
     && encounter && lakes[run.lake].fish[encounter.species];
   const xp = (run.landed ?? (run.index + Number(run.stage === 'landed'))) * practiceCatchXp;
   return {
-    fish: target ? { id: target.id, art: target.art, depth: encounter.depth ?? searchDepths[run.index], x: encounter.x, y: encounter.y, gilded: encounter.colorRoll >= .97 } : null,
+    fish: target ? {
+      id: target.id, art: target.art, depth: encounter.depth ?? searchDepths[run.index], x: encounter.x, y: encounter.y,
+      gilded: encounter.colorRoll >= .97, ...(run.campaign?.anglerRanks && { specimen: encounter.specimen ?? campaignSpecimen(target, encounter) }),
+    } : null,
     lake: lakes[run.lake].name, skills: run.skills, skillPoints: run.skillPoints, fight: run.fight, window: hookWindow(run, target),
     index: run.index, count: run.encounters.length, score: run.score, stage: run.stage,
     version: run.version, discoveries: run.discoveries, catch: run.catch, cue: run.cue,
@@ -282,7 +299,7 @@ export function publicRun(run) {
       hole: run.campaign.hole, committed: run.committed,
       activeFishKey: run.holes[run.campaign.holeId].candidates[run.holes[run.campaign.holeId].active]?.key,
       candidates: run.holes[run.campaign.holeId].candidates.map((fish, slot) => ({
-        ...lakes[run.lake].fish[fish.species], key: fish.key, slot, depth: fish.depth, x: fish.x, y: fish.y,
+        ...lakes[run.lake].fish[fish.species], key: fish.key, slot, depth: fish.depth, x: fish.x, y: fish.y, ...(fish.specimen && { specimen: { ...fish.specimen } }),
       })),
     }),
     ...((run.campaign || run.practice) && {
@@ -293,7 +310,7 @@ export function publicRun(run) {
   };
 }
 
-export function apply(run, input, now, { campaignElapsedMs = run.campaign?.elapsedMs, reelEffort } = {}) {
+export function apply(run, input, now, { campaignElapsedMs = run.campaign?.elapsedMs, reelEffort, depthPx } = {}) {
   if (!input || Object.keys(input).some(key => !['action', 'lure', 'skill'].includes(key))) throw Error('Invalid action.');
   if (now >= run.expires) throw Error('This outing expired.');
   const jig = input.action === 'jig' && run.stage === 'seek' && Object.hasOwn(lures, input.lure);
@@ -308,7 +325,8 @@ export function apply(run, input, now, { campaignElapsedMs = run.campaign?.elaps
     advanceLineFight(run, now);
     if (run.stage !== 'fight') return publicRun(run);
   }
-  const paced = ['jig', 'lift', 'loosen'].includes(input.action) || (lineFight && input.action === 'reel');
+  const tapCampaign = Boolean(run.campaign?.anglerRanks);
+  const paced = input.action === 'jig' || (!tapCampaign && (['lift', 'loosen'].includes(input.action) || (lineFight && input.action === 'reel')));
   if (paced && now - run.last < moveIntervalMs) throw Error('Give the line a moment.');
   const encounter = run.encounters[run.index];
   const target = lakes[run.lake].fish[encounter?.species];
@@ -330,6 +348,12 @@ export function apply(run, input, now, { campaignElapsedMs = run.campaign?.elaps
     } else {
       run.cue = 'Keep on jigging! It looked, but try a different lure.';
     }
+  } else if (input.action === 'reel' && tapCampaign && run.stage === 'bite') {
+    const elapsed = now - run.biteAt;
+    const { from, until, buffer } = hookWindow(run, target);
+    if (elapsed >= from && elapsed <= until) hookCampaignFish(run, target, encounter, now, depthPx);
+    else if (elapsed >= from - buffer && elapsed < from) run.hookPending = true;
+    else if (elapsed > until) missCampaignHook(run, now);
   } else if (input.action === 'reel' && run.stage === 'bite') {
     const elapsed = now - run.biteAt;
     const { from, until } = hookWindow(run, target);
@@ -360,6 +384,10 @@ export function apply(run, input, now, { campaignElapsedMs = run.campaign?.elaps
       if (run.campaign || run.practice) run.reaction = 'slipped-hook';
       run.cue = 'It slipped the hook. Jig again to bring it back.';
     }
+  } else if (lineFight && tapCampaign && input.action === 'reel') {
+    tapCampaignReel(run.fight, now, run.campaignReelRandom());
+  } else if (lineFight && tapCampaign) {
+    throw Error('That action is unavailable.');
   } else if (lineFight && ['reel', 'lift', 'loosen'].includes(input.action)) {
     moveLineFight(run, input.action, target, reelEffort);
   } else if (run.stage === 'fight' && ['lift', 'loosen'].includes(input.action)) {
@@ -394,6 +422,7 @@ export function apply(run, input, now, { campaignElapsedMs = run.campaign?.elaps
       run.skillPoints = 0;
     }
     run.index++;
+    if (tapCampaign) delete run.biteRanks;
     run.catch = null;
     if (run.campaign || run.practice) {
       run.snap = null;
@@ -417,11 +446,61 @@ export function apply(run, input, now, { campaignElapsedMs = run.campaign?.elaps
   return publicRun(run);
 }
 
+function hookCampaignFish(run, target, encounter, now, depthPx) {
+  const specimen = encounter.specimen ?? campaignSpecimen(target, encounter);
+  const gilded = encounter.colorRoll >= .97;
+  const points = target.points + (specimen.grade === 'Record' ? 60 : specimen.grade === 'Trophy' ? 20 : 0) + (gilded ? 30 : 0);
+  const { hook, line, lineStrength } = run.campaign;
+  run.catch = {
+    ...specimen, speciesId: target.id, name: target.name, rarity: target.rarity, points, lure: target.lure, gilded,
+    hook: { id: hook?.id ?? 'starter-hook', name: hook?.name ?? 'Standard hooks' },
+    line: { id: line?.id ?? 'starter-line', name: line?.name ?? 'Starter line' },
+    ...(encounter.key && { fishKey: encounter.key }),
+  };
+  const depth = Math.max(12, Number.isFinite(depthPx) ? depthPx : 132 * (encounter.depth + 1 + encounter.y / 100));
+  run.fight = startCampaignFight(specimen, run.biteRanks, depth, now, lineStrength, encounter.facing);
+  run.hookPending = false;
+  run.stage = 'fight';
+  run.last = now;
+  run.cue = 'Keep jigging! Tap fast to reel.';
+}
+
+function missCampaignHook(run, now) {
+  run.stage = 'seek';
+  run.hookPending = false;
+  run.reaction = 'slipped-hook';
+  run.cue = 'It slipped the hook. Jig again to bring it back.';
+  if (seekExpired(run, now)) miss(run);
+}
+
+export function advanceCampaignBite(run, now, { depthPx } = {}) {
+  if (!run.campaign?.anglerRanks || run.stage !== 'bite') return false;
+  const encounter = run.encounters[run.index];
+  const target = lakes[run.lake].fish[encounter.species];
+  const elapsed = now - run.biteAt;
+  const { from, until } = hookWindow(run, target);
+  if (now >= run.expires) {
+    run.stage = 'done';
+    run.hookPending = false;
+    run.cue = 'This outing expired.';
+  } else if (run.hookPending && elapsed >= from) {
+    hookCampaignFish(run, target, encounter, run.biteAt + from, depthPx);
+  } else if (elapsed > until) {
+    missCampaignHook(run, now);
+  } else return false;
+  run.version++;
+  return true;
+}
+
 function startBite(run, now) {
   if (run.campaign || run.practice) run.reaction = null;
   run.stage = 'bite';
   run.biteAt = now;
-  run.cue = 'Yeah, reel it! Wait for the marker to reach the gold band.';
+  if (run.campaign?.anglerRanks) {
+    run.hookPending = false;
+    run.biteRanks = { ...run.campaign.anglerRanks };
+    run.cue = 'Watch for the hook cue.';
+  } else run.cue = 'Yeah, reel it! Wait for the marker to reach the gold band.';
 }
 
 function seekExpired(run, now) {
@@ -561,6 +640,7 @@ export function stepCampaignFish(run, now, { width, bands, lure, eye, reducedMot
     const band = bands[depth] ?? first.band;
     const { motion, ...encounter } = first.candidate;
     run.encounters[run.index] = { ...encounter, depth: depth < 0 ? first.candidate.depth : depth,
+      ...(run.campaign.anglerRanks && { facing: Math.cos(motion.turn * Math.PI) }),
       y: Math.min(100, Math.max(0, (eye.y - band.top) / band.height * 100)) };
     if (!run.committed) {
       run.committed = true;
@@ -583,10 +663,17 @@ export function moveToHole(run, hole, now, elapsedMs = 0, roster) {
   const saved = run.holes[holeId];
   if (!saved) {
     const fish = roster ?? buildHoleRoster(run.lake, hole, elapsedMs, run.holeSeed, run.campaign.goalId);
-    run.holes[holeId] = { candidates: fish.map(({ speciesId, lane, ...candidate }) => ({
-      ...candidate, lane, species: lakes[run.lake].fish.findIndex(entry => entry.id === speciesId),
-      depth: Math.max(0, campaignDepthBand(hole.depthFt) - lane), x: [27, 50, 73][lane], y: 35 + lane * 10,
-    })) };
+    const deepest = campaignDepthBand(hole.depthFt);
+    run.holes[holeId] = { candidates: fish.map(({ speciesId, lane, ...candidate }) => {
+      const species = lakes[run.lake].fish.findIndex(entry => entry.id === speciesId);
+      const specimen = run.campaign.anglerRanks && campaignSpecimen(lakes[run.lake].fish[species], candidate);
+      const trophy = specimen && specimen.grade !== 'Standard';
+      return {
+        ...candidate, lane, species, ...(specimen && { specimen }),
+        depth: trophy ? deepest : Math.max(0, deepest - lane),
+        x: [27, 50, 73][lane], y: trophy ? 65 + lane * 5 : 35 + lane * 10,
+      };
+    }) };
   } else {
     if (roster) saved.candidates = saved.candidates.filter(fish => roster.some(entry => entry.key === fish.key));
     if (saved.swimming) saved.swimming.last = now;
@@ -608,4 +695,138 @@ export function abandonHoleFish(run, now) {
   run.cue = run.stage === 'done' ? 'Outing complete.' : 'Attempt ended. Jig near another fish.';
   run.version++;
   return publicRun(run);
+}
+
+export const anglerSkillLimits = Object.freeze({ line: 5, rhythm: 3, hook: 3 });
+export const anglerSkills = Object.freeze({ line: 'Line control', rhythm: 'Reel rhythm', hook: 'Hook timing' });
+
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+const tapBoost = .24;
+
+// Ranges for Campaign specimens. Ranked and Practice keep their own size and score rules.
+const specimenRanges = {
+  perch: { length: [7.5, 12], age: [3, 8], offense: [8, 18], rating: 1 },
+  'rock-bass': { length: [8, 11], age: [4, 7], offense: [12, 23], rating: 1.15 },
+  walleye: { length: [17, 30], age: [5, 11], offense: [19, 34], rating: 1.45 },
+  pike: { length: [20, 44], age: [4, 15], offense: [21, 38], rating: 1.6 },
+  smallmouth: { length: [10, 21], age: [4, 10], offense: [18, 31], rating: 1.35 },
+  muskie: { length: [30, 55], age: [6, 18], offense: [24, 45], rating: 1.8 },
+};
+
+function campaignSpecimen(fish, encounter) {
+  const { length: [min, max], age: [young, old], offense: [low, high], rating } = specimenRanges[fish.id];
+  const size = clamp(encounter.sizeRoll ?? 0, 0, 1);
+  const trophyAt = .86;
+  const trophySize = fish.size[2];
+  const upper = size >= trophyAt;
+  const position = upper ? (size - trophyAt) / (1 - trophyAt) : (size / trophyAt) ** 2;
+  const roundedLength = Math.round((upper ? trophySize + position * (max - trophySize)
+    : min + position * (trophySize - .25 - min)) * 4) / 4;
+  const length = fish.size[3] && size >= .995 ? fish.size[3] : roundedLength;
+  const grade = length === fish.size[3] ? 'Record' : upper ? 'Trophy' : 'Standard';
+  const age = upper ? old - Math.round((1 - position) * (old - young) / 3)
+    : young + Math.floor(position * (old - young) / 2);
+  const offense = upper ? high : low;
+  const quality = length / 8 + .18 * (rating - 1) + .075 * (age - 3) + .016 * (offense - 8);
+  return { length, age, offense, quality, grade, typeRating: rating };
+}
+
+export function campaignReelOdds(offense, lineRank) {
+  const pressure = Math.max(0, offense - 8);
+  return {
+    hold: 40 + Math.round(pressure * .30) - 5 * lineRank,
+    slip: 10 + Math.round(pressure * .15) - lineRank,
+  };
+}
+
+function startCampaignFight(specimen, ranks, depth, now, lineStrength, facing) {
+  const trophy = specimen.grade !== 'Standard';
+  const power = Math.sqrt(specimen.quality);
+  return {
+    startDepth: depth, remaining: depth, distance: depth, paidOut: depth,
+    lineStrength, hookedAt: now, elapsed: 0, x: 0, y: 0, heading: Math.PI / 2, facing: facing ?? 1,
+    pull: power, slack: 0, tension: 1.1, tight: false, pullUp: false,
+    feedback: 'reel', meterLevel: .81,
+    rhythmRank: ranks.rhythm, odds: campaignReelOdds(specimen.offense, ranks.line), trophy,
+    pace: .54, tapRate: clamp(1.2 + .9 * specimen.quality, 1.6, 3.2),
+    payoutScale: Math.sqrt(starterLineStrength / Math.max(starterLineStrength, lineStrength)),
+    lastTap: null, outcome: 'reel', lineToReel: 0,
+  };
+}
+
+function tapCampaignReel(fight, now, roll) {
+  const { hold, slip } = fight.odds;
+  const percent = roll * 100;
+  const outcome = percent < hold ? 'hold' : percent < hold + slip ? 'slip' : 'reel';
+  fight.lastTap = now;
+  fight.feedback = fight.outcome = outcome;
+  fight.pace = Math.min(1, fight.pace + tapBoost);
+  if (outcome === 'slip') fight.lineToReel = 0;
+  if (outcome === 'reel') {
+    const distance = (fight.trophy ? 30 : 72) / Math.min(1.5, fight.pull);
+    const rhythm = Math.min(1, fight.pace / .60);
+    fight.lineToReel = Math.min(distance * 2, fight.lineToReel + distance * (.35 + .65 * rhythm));
+  }
+  updateMeter(fight);
+}
+
+function updateMeter(fight) {
+  fight.meterLevel = fight.feedback === 'hold' ? .46 : fight.feedback === 'slip' ? .15
+    : fight.pace < .3 && fight.elapsed > 500 ? .21 : .62 + .36 * fight.pace;
+}
+
+// Returns true once both the line and the fish reach the ice hole.
+function stepCampaignFight(fight, ms) {
+  const dt = ms / 1000;
+  const { elapsed, pull: power, trophy } = fight;
+  const cycle = elapsed % 3300;
+  const right = cycle < 1570;
+  const burst = cycle - (right ? 240 : 1700);
+  const surge = Math.min(clamp(burst / 150, 0, 1), clamp((720 - burst) / 480, 0, 1));
+  const sinceTap = fight.lastTap === null ? Infinity : fight.hookedAt + elapsed - fight.lastTap;
+  const beat = 1000 / fight.tapRate;
+  const winding = clamp((beat + 20 + 35 * fight.rhythmRank - sinceTap) / 60, 0, 1);
+  const holding = fight.outcome === 'hold' ? winding : 0;
+  const reeling = fight.outcome === 'reel' && fight.lineToReel > 0 ? winding : 0;
+  if (!winding) fight.lineToReel = 0;
+  const reelSpeed = (trophy ? 80 : 144) * reeling * (1 - .34 * surge);
+  const pulledIn = Math.min(fight.lineToReel, fight.remaining, reelSpeed * dt);
+  fight.lineToReel -= pulledIn;
+  fight.feedback = sinceTap < 380 ? fight.outcome : 'reel';
+  // A slip pays out its own line. The idle run starts once the beat expires.
+  const idlePull = (1 - winding) * (34 + 36 * surge);
+  const divePull = surge * (trophy ? 20 : 9) * (1 - holding);
+  const slipPull = fight.feedback === 'slip' ? 16 : 0;
+  const runPayout = (idlePull * power + divePull * Math.min(power, 1.5)) * fight.payoutScale;
+  const lineTaken = (runPayout + slipPull * Math.min(power, 1.5)) * dt;
+  const maxDepth = fight.startDepth + (trophy ? 135 : 90);
+  fight.remaining = clamp(fight.remaining + lineTaken - pulledIn, 0, maxDepth);
+
+  const room = 1 - Math.max(reeling, holding) * .56;
+  const lateral = (right ? 1 : -1) * Math.min(70, 62 * power) * surge * room;
+  const dive = (8 + 90 * surge) * power * room;
+  const blend = 1 - Math.exp(-ms / 82);
+  const previousX = fight.x * 82;
+  const previousDepth = fight.distance;
+  const x = previousX + (lateral - previousX) * blend;
+  const desiredDepth = Math.min(maxDepth, fight.remaining + dive);
+  fight.distance = Math.max(previousDepth - (trophy ? 145 : 188) * dt,
+    previousDepth + (desiredDepth - previousDepth) * blend);
+  fight.paidOut = fight.remaining;
+  fight.x = x / 82;
+  fight.y = (fight.distance - fight.remaining) / 16;
+
+  const runningFacing = right ? -1 : 1;
+  const desiredFacing = reeling ? Math.abs(x) > 1 ? Math.sign(x) : -runningFacing : runningFacing;
+  fight.facing += (desiredFacing - fight.facing) * (1 - Math.exp(-ms / 120));
+  const dx = x - previousX;
+  const dy = fight.distance - previousDepth;
+  if (Math.hypot(dx, dy) >= .04) {
+    const turn = Math.atan2(dy, dx) - fight.heading;
+    fight.heading += Math.atan2(Math.sin(turn), Math.cos(turn)) * (1 - Math.exp(-ms / 85));
+  }
+  fight.tension = Math.min(fight.lineStrength, 1.1 + power * surge * (1 + .6 * reeling));
+  fight.pace = Math.max(0, fight.pace - tapBoost * fight.tapRate * dt);
+  updateMeter(fight);
+  return reeling > 0 && fight.remaining <= 1 && fight.distance <= 18 && Math.abs(x) < 18;
 }

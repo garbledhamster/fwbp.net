@@ -1,14 +1,14 @@
-import { applyProfile, loadProfile } from './profile.mjs?v=campaign-ranks';
-import { renderSpeciesVideo } from './species-video.mjs';
+import { applyProfile, dailyLakeQuest, loadProfile } from './profile.mjs?v=angler-1';
+import { renderSpeciesVideo } from './species-video.mjs?v=angler-1';
 import { collectibleSpecies, speciesArt, fishProfiles, lureTip } from './species-catalog.mjs';
 import { spriteHref } from './lake-sprites.mjs';
 
 const stylesheet = document.createElement('link');
 stylesheet.rel = 'stylesheet';
-stylesheet.href = new URL('./collection.css?v=campaign-map-discovery', import.meta.url).href;
+stylesheet.href = new URL('./collection.css?v=angler-1', import.meta.url).href;
 document.head.append(stylesheet);
 
-export const collectionIntroduction = 'Land fish in Campaign or Practice to add them to Your Lake. Open a caught fish and learn its lure tip for your next encounter.';
+export const collectionIntroduction = 'Open a fish to collect your Campaign reward or learn its lure tip.';
 const portrait = '<img class="collection-guide-portrait" src="./assets/branding/bryan-front-facing.webp" alt="Bryan" width="72" height="72">';
 const svg = id => {
   const [sheet, symbol, viewBox] = speciesArt[id];
@@ -16,7 +16,7 @@ const svg = id => {
 };
 
 // The site card and paused-outing card share the same content and explicit study action.
-export function fillSpeciesCard(container, id, { profile, onChange, onVideo, showCatchSpots = false } = {}) {
+export function fillSpeciesCard(container, id, { profile, onChange, showCatchSpots = false } = {}) {
   const fish = fishProfiles[id];
   const tip = lureTip(id);
   container.innerHTML = `<div class="collection-guide">${portrait}<div><p class="collection-eyebrow">Bryan’s fish guide</p><h2></h2><p data-family></p></div></div>
@@ -82,36 +82,101 @@ export function fillSpeciesCard(container, id, { profile, onChange, onVideo, sho
       study.disabled = false;
     }
   });
-  // The video lane provides the exact-species availability and a modal above this card.
-  const videoContainer = container.querySelector('[data-video]');
-  if (onVideo) onVideo(id, videoContainer);
-  else renderSpeciesVideo(id, videoContainer);
+  renderSpeciesVideo(id, container.querySelector('[data-video]'), { reference: false });
 }
 
 /** Caller holds its local pause until onClose. Nested cards never close the collection. */
-export function openYourLake({ onClose, onVideo, initialSpecies } = {}) {
+export function openYourLake({ onClose, initialSpecies } = {}) {
   const opener = document.activeElement;
   const dialog = document.createElement('dialog');
   dialog.id = 'your-lake';
   dialog.className = 'collection-dialog fishing-frame';
-  dialog.setAttribute('aria-label', 'Your Lake');
-  dialog.innerHTML = '<div class="collection-top"><button type="button" data-back hidden>Back to Your Lake</button><button type="button" data-close>Return to outing</button></div><div data-content></div>';
+  dialog.setAttribute('aria-label', 'My Lake');
+  dialog.innerHTML = '<div class="collection-top"><button type="button" data-back hidden>Back to My Lake</button><output class="collection-wallet" data-lake-wallet aria-label="Coin balance"></output><button type="button" data-close>Return to outing</button></div><div data-content></div>';
   const content = dialog.querySelector('[data-content]');
   const back = dialog.querySelector('[data-back]');
-  let profile, active = true, cardOpener, request = 0;
+  const wallet = dialog.querySelector('[data-lake-wallet]');
+  let profile, active = true, cardOpener, request = 0, rewardSaving = false;
+  const coins = amount => `${amount} ${amount === 1 ? 'coin' : 'coins'}`;
+  const syncWallet = () => { wallet.textContent = coins(profile.coins); };
+  const refreshRewards = () => {
+    for (const tag of content.querySelectorAll('[data-reward-ready]')) {
+      const { species } = tag.closest('[data-species]').dataset;
+      tag.hidden = !profile.fishRewards?.[species]?.coins;
+    }
+    const fishReward = content.querySelector('[data-fish-reward]');
+    if (fishReward) {
+      const reward = profile.fishRewards?.[fishReward.dataset.fishReward];
+      fishReward.querySelector('[data-reward-summary]').textContent = reward?.coins
+        ? `${coins(reward.coins)} to collect${reward.discovery ? ' · Includes first catch bonus' : ''}`
+        : fishReward.dataset.claimedCoins ? `${coins(Number(fishReward.dataset.claimedCoins))} collected.` : 'Reward collected';
+      fishReward.querySelector('[data-collect-fish]').disabled = rewardSaving || !reward?.coins;
+    }
+    const questReward = content.querySelector('[data-quest-reward]');
+    if (questReward) {
+      const quest = dailyLakeQuest(profile);
+      questReward.querySelector('[data-reward-summary]').textContent = quest.claimed
+        ? `Catch two yellow perch · ${coins(quest.coins)} collected`
+        : `Catch two yellow perch in Campaign · ${quest.count}/${quest.target} · ${coins(quest.coins)}`;
+      questReward.querySelector('[data-collect-quest]').disabled = rewardSaving || quest.claimed || quest.count < quest.target;
+    }
+  };
+  const collectReward = async (panel, command) => {
+    if (rewardSaving) return;
+    const notice = panel.querySelector('[data-reward-notice]');
+    const summary = panel.querySelector('[data-reward-summary]');
+    const button = panel.querySelector('button');
+    const restoreFocus = document.activeElement === button;
+    rewardSaving = true;
+    refreshRewards();
+    notice.textContent = '';
+    try {
+      const result = await applyProfile(command);
+      profile = result.profile;
+      if (result.status === 'claimed') {
+        if (command.type === 'collect-fish') panel.dataset.claimedCoins = result.coins;
+        document.dispatchEvent(new CustomEvent('fishing:profile-changed', { detail: { profile } }));
+      } else if (result.status !== 'nothing-to-claim') {
+        notice.textContent = 'Couldn’t collect this reward. Try again.';
+      }
+    } catch {
+      notice.textContent = 'Couldn’t collect this reward. Try again.';
+    } finally {
+      rewardSaving = false;
+      if (active) {
+        syncWallet();
+        refreshRewards();
+        if (restoreFocus && notice.isConnected && [document.body, button].includes(document.activeElement)) {
+          (button.disabled ? summary : button).focus({ preventScroll: true });
+        }
+      }
+    }
+  };
   const card = id => {
     cardOpener = dialog.querySelector(`[data-species="${id}"]`);
     back.hidden = false;
-    fillSpeciesCard(content, id, { profile, onChange: saved => { profile = saved; }, onVideo, showCatchSpots: true });
+    fillSpeciesCard(content, id, { profile, onChange: saved => { profile = saved; }, showCatchSpots: true });
+    if (profile.fishRewards?.[id]) {
+      const reward = document.createElement('section');
+      reward.className = 'collection-reward';
+      reward.dataset.fishReward = id;
+      reward.innerHTML = '<div><h3>Catch reward</h3><p data-reward-summary role="status" tabindex="-1"></p></div><button type="button" data-collect-fish>Collect Reward</button><p data-reward-notice role="status"></p>';
+      content.querySelector('.collection-fish-art').after(reward);
+      reward.querySelector('button').addEventListener('click', () => collectReward(reward, { type: 'collect-fish', speciesId: id }));
+      refreshRewards();
+    }
     back.focus({ preventScroll: true });
   };
   const list = () => {
     back.hidden = true;
-    content.innerHTML = `<div class="collection-guide">${portrait}<div><p class="collection-eyebrow">Mille Lacs collection</p><h2>Your Lake</h2><p data-count></p></div></div><p data-intro></p><p data-legacy></p><div class="collection-grid"></div>`;
+    content.innerHTML = `<div class="collection-guide">${portrait}<div><h2>My Lake</h2><p data-count></p></div></div><p data-intro></p>
+      <section class="collection-reward" data-quest-reward><div><h3>Daily quest</h3><p data-reward-summary role="status" tabindex="-1"></p></div>
+      <button type="button" data-collect-quest>Collect Quest Reward</button><p data-reward-notice role="status"></p></section>
+      <div class="collection-grid"></div>`;
     content.querySelector('[data-intro]').textContent = collectionIntroduction;
     content.querySelector('[data-count]').textContent = `${profile.caughtSpecies.length} / 6 species caught`;
-    content.querySelector('[data-legacy]').textContent = profile.caughtSpecies.length ? ''
-      : 'Your tackle and coins stay with you. Species tracking starts with a saved landing in this version.';
+    const quest = content.querySelector('[data-quest-reward]');
+    quest.querySelector('button').addEventListener('click', () => collectReward(quest, { type: 'collect-quest' }));
     const grid = content.querySelector('.collection-grid');
     for (const fish of collectibleSpecies) {
       const button = document.createElement('button');
@@ -124,9 +189,15 @@ export function openYourLake({ onClose, onVideo, initialSpecies } = {}) {
       const name = document.createElement('span');
       name.textContent = caught ? fishProfiles[fish.id].name : 'Undiscovered species';
       button.append(name);
+      const ready = document.createElement('small');
+      ready.dataset.rewardReady = '';
+      ready.textContent = 'Reward ready';
+      button.append(ready);
       button.addEventListener('click', () => card(fish.id));
       grid.append(button);
     }
+    syncWallet();
+    refreshRewards();
     if (cardOpener) dialog.querySelector(`[data-species="${cardOpener.dataset.species}"]`)?.focus({ preventScroll: true });
   };
   const load = async () => {

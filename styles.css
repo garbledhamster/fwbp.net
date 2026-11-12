@@ -8,6 +8,10 @@
   --foam: #f0f7eb;
   --muted: #b9d3cb;
   --lamp: #f4cb84;
+  --video-frame: #102e35;
+  --video-frame-border: #68918d;
+  --video-screen: #1e3b36;
+  --video-screen-border: #9a9e79;
   --paper: #efe9d5;
   --ink: #213b32;
   --rule: #46666a;
@@ -183,9 +187,9 @@ button, a, summary { -webkit-tap-highlight-color: transparent; }
   margin-left: auto;
   min-width: 0;
   padding: 12px;
-  border: 1px solid #68918d;
+  border: 1px solid var(--video-frame-border);
   border-radius: 12px;
-  background: #102e35;
+  background: var(--video-frame);
   color: var(--foam);
 }
 .hero-video-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin-bottom: 9px; }
@@ -196,9 +200,9 @@ button, a, summary { -webkit-tap-highlight-color: transparent; }
   position: relative;
   overflow: hidden;
   aspect-ratio: 16 / 9;
-  border: 1px solid #9a9e79;
+  border: 1px solid var(--video-screen-border);
   border-radius: 11px;
-  background: #1e3b36;
+  background: var(--video-screen);
 }
 .hero-player > :is(iframe, a) { position: absolute; inset: 0; display: block; width: 100%; height: 100%; border: 0; }
 .hero-cover > img { display: block; width: 100%; height: 100%; object-fit: cover; }
@@ -320,6 +324,57 @@ a.presenter-footage span { display: flex; align-items: center; min-height: 44px;
 .episode-meta { display: block; color: var(--muted); font-size: .77rem; margin: 8px 0 2px; font-weight: 650; }
 .episode-name { display: block; font-size: clamp(.92rem, 1.8vw, 1.22rem); line-height: 1.25; }
 .episode-trigger:hover .episode-name { text-decoration: underline; }
+.video-thumbnail > a.episode-trigger {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: clamp(7px, 1.15vw, 12px);
+  border: 1px solid var(--video-frame-border);
+  border-radius: 12px;
+  background: var(--video-frame);
+  color: var(--foam);
+}
+.video-thumbnail .episode-art {
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--video-screen-border);
+  border-radius: 9px;
+  background: var(--video-screen);
+}
+.video-thumbnail .episode-copy { display: block; min-width: 0; padding: 0 2px 3px; }
+.video-thumbnail .episode-meta { margin: 0 0 4px; color: var(--lamp); line-height: 1.3; }
+.video-thumbnail > a.episode-trigger:hover { border-color: var(--lamp); }
+.fishing-video-card { width: min(100%, 440px); margin: 10px auto 4px; }
+.fishing-video-card > .episode-trigger[data-bryan-video] {
+  display: grid;
+  grid-template-columns: minmax(64px, 32%) minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  margin: 0;
+  padding: 7px;
+  color: var(--foam);
+  text-align: start;
+  font: 650 .86rem/1.25 system-ui, sans-serif;
+}
+.fishing-video-card .episode-copy { padding: 0 2px 0 0; }
+.fishing-video-card .episode-name { font-size: inherit; }
+.fishing-video-card .episode-art .play-mark { width: 28px; height: 28px; inset: auto 4px 4px auto; }
+.fishing-video-card .play-mark svg { width: 14px; height: 14px; }
+.episode-watch { display: block; margin-top: 4px; color: var(--lamp); font-size: .8rem; }
+a.species-reference-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-block: 4px;
+  padding: 6px 12px;
+  border: 1px solid var(--video-frame-border);
+  border-radius: 7px;
+  background: var(--video-frame);
+  color: var(--foam);
+  font: 650 .85rem/1.35 system-ui, sans-serif;
+}
+a.species-reference-link:hover { border-color: var(--lamp); }
+.fishing-catch-actions .fishing-video-card { flex: 1 1 200px; width: auto; margin: 0; }
 .library { padding: clamp(35px, 7vw, 76px) 0 clamp(45px, 9vw, 100px); }
 .section-heading { display: flex; align-items: end; justify-content: space-between; flex-wrap: wrap; gap: 14px 25px; }
 .section-heading p { margin-top: 10px; color: var(--muted); }

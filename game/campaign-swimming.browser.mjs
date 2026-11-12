@@ -41,7 +41,7 @@ await withBrowser(async browser => {
   await reward.waitFor();
   await page.evaluate(() => { window.fishBeforeNext = [...document.querySelectorAll('.fishing-swimmer')]; });
   await closeDialog(reward, reward.locator('[data-reward-next]'));
-  await page.getByRole('button', { name: 'Jig lure' }).waitFor();
+  await page.locator('.fishing-tray [data-lure=jig]:enabled').waitFor();
   const survivors = await page.evaluate(() => window.fishBeforeNext.map(fish => fish.isConnected));
   console.log(JSON.stringify({ biggestStep, width, survivors }));
   assert.ok(biggestStep < 18, `the fish body should never jump during a turn: ${biggestStep.toFixed(1)}px`);

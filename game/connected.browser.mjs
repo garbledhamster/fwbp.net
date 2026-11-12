@@ -6,25 +6,37 @@ import { practicePage, withBrowser } from './browser-qa.mjs';
 // Catches broken catch→card→video return, premature credit, lost study state,
 // parent-pause release, duplicate payouts and accidental next-outing gear application.
 async function connected(browser, viewport, mobile) {
-  const { page, tray, action, status, launch, enter, leave, press, closeDialog, tick, findFish, waitForBite, reelToHole, errors } =
-    await practicePage(browser, { mobile, viewport, campaignLiveButtons: true, configure: async page => {
-      // Playback availability is separately audited against public YouTube. Here a
-      // blocked embed exercises our real dialog, public fallback and cleanup.
-      await page.route('https://www.youtube-nocookie.com/embed/**', route => route.abort());
+  const { page, tray, action, status, launch, enter, leave, press, closeDialog, tick, findFish, waitForBite, errors } =
+    await practicePage(browser, { mobile, viewport, configure: async page => {
+      // Verify native navigation while keeping the test independent of playback.
+      await page.context().route('https://www.youtube.com/watch?**', route =>
+        route.fulfill({ body: '<title>YouTube watch page</title>', contentType: 'text/html' }));
     } });
   const saved = () => page.evaluate(async () =>
     (await import('./game/profile.mjs?v=connected-rpg')).loadProfile());
   const seed = roll => page.evaluate(roll => {
     const values = (roll === .6 ? [.6, .267, .933, .6, .267, .933] : Array(6).fill(roll)).flatMap(value => [value, .2, .5, .4, .1]);
     let index = 0;
-    Math.random = () => values[index++ % values.length];
+    window.connectedReelRoll = undefined;
+    Math.random = () => window.connectedReelRoll ?? values[index++ % values.length];
   }, roll);
   const selected = () => tray.locator('[data-lure][aria-pressed="true"]').getAttribute('data-lure');
   const lake = page.locator('#your-lake');
   const player = page.locator('#player');
   const pause = page.locator('.fishing-pause');
   const reward = page.locator('.fishing-catch-popup');
-  const view = reward.getByRole('button', { name: 'View in Your Lake', exact: true });
+  const view = reward.getByRole('button', { name: 'My Lake', exact: true });
+  const tap = () => mobile ? page.touchscreen.tap(38, 95) : page.mouse.click(38, 95);
+  const watchVideo = async (link, dialog) => {
+    await onscreen(link);
+    assert.equal(await link.getAttribute('target'), '_blank');
+    const [tab] = await Promise.all([page.waitForEvent('popup'), press(link, 'Enter')]);
+    await tab.waitForLoadState('domcontentloaded');
+    assert.equal(tab.url(), 'https://www.youtube.com/watch?v=Elu9m3JcOEM');
+    await tab.close();
+    assert.equal(await dialog.isVisible(), true);
+    assert.equal(await player.locator('iframe').count(), 0, 'the parent contains no embedded player');
+  };
   const capture = async name => {
     if (!process.env.FISHING_EVIDENCE_DIR) return;
     await mkdir(process.env.FISHING_EVIDENCE_DIR, { recursive: true });
@@ -41,23 +53,30 @@ async function connected(browser, viewport, mobile) {
   async function land(lure = 'Minnow', fail = false) {
     await press(tray.getByRole('group', { name: 'Lures' }).getByRole('button', { name: lure, exact: true }));
     await findFish({ species: lure === 'Minnow' ? 'walleye' : 'perch' });
-    await press(action);
+    await tap();
     await waitForBite();
     await tick(700);
-    await press(page.getByRole('button', { name: 'Set hook', exact: true }));
-    await reelToHole();
+    await tap();
+    await page.getByRole('meter', { name: 'Reel feedback' }).waitFor();
+    await page.evaluate(() => { window.connectedReelRoll = .99; });
     if (fail) await page.evaluate(() => {
-      const transaction = IDBDatabase.prototype.transaction;
-      IDBDatabase.prototype.transaction = function (...args) {
-        const tx = transaction.apply(this, args);
-        if (args[1] === 'readwrite') {
-          IDBDatabase.prototype.transaction = transaction;
-          queueMicrotask(() => tx.abort());
+      const put = IDBObjectStore.prototype.put;
+      IDBObjectStore.prototype.put = function (value, ...args) {
+        const request = put.call(this, value, ...args);
+        if (Object.keys(value?.landedFish ?? {}).length) {
+          IDBObjectStore.prototype.put = put;
+          queueMicrotask(() => this.transaction.abort());
         }
-        return tx;
+        return request;
       };
     });
-    await press(action);
+    const saveRetry = action.filter({ hasText: 'Save catch' });
+    const result = fail ? saveRetry : reward;
+    for (let attempts = 0; attempts < 190 && !await result.isVisible(); attempts++) {
+      await tick(280);
+      if (!await result.isVisible()) await tap();
+    }
+    await result.waitFor();
   }
 
   // The empty collection is reached from the site's ordinary player entry.
@@ -78,7 +97,9 @@ async function connected(browser, viewport, mobile) {
   await view.waitFor();
   assert.equal(await action.textContent(), 'Next fish');
   const credited = await saved();
-  assert.equal(credited.coins, 12);
+  assert.equal(credited.coins, 0);
+  const pendingCoins = credited.fishRewards.walleye.coins;
+  assert.ok(pendingCoins > 10, 'discovery reward covers the stronger line');
   assert.deepEqual(credited.caughtSpecies, ['walleye']);
   assert.equal(Object.keys(credited.awards).length, 1);
   const result = await status.textContent();
@@ -91,45 +112,34 @@ async function connected(browser, viewport, mobile) {
   await lake.getByRole('heading', { name: 'Walleye', exact: true }).waitFor();
   await press(lake.getByRole('button', { name: 'Learn this tip', exact: true }));
   await lake.getByRole('button', { name: 'Tip learned', exact: true }).waitFor();
+  await press(lake.getByRole('button', { name: 'Collect Reward', exact: true }), 'Enter');
+  await lake.locator('[data-lake-wallet]').filter({ hasText: `${pendingCoins} coins` }).waitFor();
+  assert.equal(await tray.locator('[data-wallet]').textContent(), `${pendingCoins} coins`);
   await capture('studied-card');
   const watch = lake.locator('[data-bryan-video]');
-  await onscreen(watch);
-  await press(watch, 'Enter');
-  await player.waitFor();
-  assert.match(await player.locator('iframe').getAttribute('src'), /Elu9m3JcOEM/);
-  assert.match(await player.locator('#player-source').getAttribute('href'), /watch\?v=Elu9m3JcOEM/);
+  await watchVideo(watch, lake);
   await tick(60000);
-  await capture('video-fallback');
-  await closeDialog(player, player.getByRole('button', { name: 'Close video', exact: true }));
-  await player.locator('iframe').waitFor({ state: 'detached' });
-  assert.equal(await player.locator('iframe').count(), 0);
-  assert.equal(await watch.evaluate(el => el === document.activeElement), true);
-  assert.equal(await lake.getByRole('heading', { name: 'Walleye', exact: true }).isVisible(), true);
   await closeDialog(lake, lake.getByRole('button', { name: 'Back to catch', exact: true }));
   await lake.waitFor({ state: 'detached' });
   assert.equal(await view.evaluate(el => el === document.activeElement), true);
   assert.equal(await status.textContent(), result, 'return keeps the same landed result');
   assert.equal(await selected(), 'minnow');
   assert.deepEqual((await saved()).awards, credited.awards);
-  assert.equal((await saved()).coins, credited.coins);
+  assert.equal((await saved()).coins, pendingCoins);
   assert.equal((await saved()).elapsedMs, credited.elapsedMs, 'nested browsing consumes no Campaign time');
 
-  // Catch entry uses the same player and returns to its own exact trigger.
-  const catchWatch = reward.locator('[data-bryan-video]');
-  await press(catchWatch, 'Enter');
-  await closeDialog(player, player.getByRole('button', { name: 'Close video', exact: true }));
-  await player.locator('iframe').waitFor({ state: 'detached' });
-  assert.equal(await catchWatch.evaluate(el => el === document.activeElement), true);
+  // The catch and the fish card link to the same verified video.
+  await watchVideo(reward.locator('[data-bryan-video]'), reward);
   await closeDialog(reward, reward.locator('[data-reward-next]')); // Later fish, same outing and lure; newly studied cue appears.
   await tick(300);
   await findFish({ species: 'walleye' });
   await page.locator('.fishing-studied-cue').filter({ hasText: /Minnow/ }).waitFor();
   assert.equal(await selected(), 'minnow');
   await press(tray.getByRole('button', { name: 'Menu', exact: true }));
-  const pauseLake = pause.getByRole('button', { name: 'Your Lake', exact: true });
+  const pauseLake = pause.getByRole('button', { name: 'My Lake', exact: true });
   const timer = await tray.locator('[role=timer]').textContent();
   await press(pauseLake);
-  await lake.getByRole('heading', { name: 'Your Lake', exact: true }).waitFor();
+  await lake.getByRole('heading', { name: 'My Lake', exact: true }).waitFor();
   await tick(60000);
   await closeDialog(lake, lake.getByRole('button', { name: 'Return to outing', exact: true }));
   await lake.waitFor({ state: 'detached' });
@@ -157,7 +167,7 @@ async function connected(browser, viewport, mobile) {
   await leave();
   await page.reload({ waitUntil: 'domcontentloaded' });
   const returning = await saved();
-  assert.equal(returning.coins, 2);
+  assert.equal(returning.coins, pendingCoins - 10);
   assert.equal(returning.equipped.line, 'stronger-line');
   assert.deepEqual(returning.studiedSpecies, ['walleye']);
   assert.deepEqual(returning.awards, credited.awards);
@@ -165,11 +175,7 @@ async function connected(browser, viewport, mobile) {
   await page.locator('.fish-mode-hint').filter({ hasText: /1 \/ 6/ }).waitFor();
   await press(page.locator('.fish-target[data-fish="walleye"]:visible').first(), 'Enter');
   const siteCard = page.locator('#fish-card');
-  const siteWatch = siteCard.locator('[data-bryan-video]');
-  await press(siteWatch, 'Enter');
-  await closeDialog(player, player.getByRole('button', { name: 'Close video', exact: true }));
-  await player.locator('iframe').waitFor({ state: 'detached' });
-  assert.equal(await siteWatch.evaluate(el => el === document.activeElement), true);
+  await watchVideo(siteCard.locator('[data-bryan-video]'), siteCard);
   assert.equal(await siteCard.getByRole('heading', { name: 'Walleye', exact: true }).isVisible(), true);
   await closeDialog(siteCard, siteCard.getByRole('button', { name: 'Close fish card', exact: true }));
   await press(page.locator('#fish-guide-toggle'), 'Enter');
@@ -177,7 +183,8 @@ async function connected(browser, viewport, mobile) {
   await enter('Campaign');
   await land('Jig');
   await view.waitFor();
-  assert.equal(await tray.locator('[data-bryan-video]').count(), 0);
+  assert.equal(await reward.locator('[data-bryan-video]').count(), 0);
+  assert.match(await reward.locator('[data-species-reference]').getAttribute('href'), /dnr\.state\.mn\.us/);
   await press(view);
   await lake.getByRole('heading', { name: 'Yellow perch', exact: true }).waitFor();
   assert.equal(await lake.locator('[data-bryan-video]').count(), 0);

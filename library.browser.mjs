@@ -144,3 +144,30 @@ test('the random button plays the selected category and loops its queue', async 
     assert.match(await source.getAttribute('href'), /3dmUMd9oR88$/);
   });
 });
+
+test('library thumbnail cards use the latest-video frame and keep their watch action', async () => {
+  await checkLibrary(async (page, library) => {
+    const card = library.locator('#video-grid a[data-watch]').first();
+    await card.scrollIntoViewIfNeeded();
+    const styles = await card.evaluate(link => {
+      const hero = document.querySelector('.hero-video');
+      const thumb = link.querySelector('.episode-art');
+      return {
+        frame: getComputedStyle(link).backgroundColor,
+        heroFrame: getComputedStyle(hero).backgroundColor,
+        thumbBorder: getComputedStyle(thumb).borderColor,
+        heroThumbBorder: getComputedStyle(hero.querySelector('.hero-player')).borderColor,
+      };
+    });
+    assert.equal(styles.frame, styles.heroFrame);
+    assert.equal(styles.thumbBorder, styles.heroThumbBorder);
+    const id = await card.getAttribute('data-watch');
+    await card.press('Enter');
+    const player = page.locator('#player');
+    await player.waitFor({ state: 'visible' });
+    assert.equal(new URL(await player.locator('iframe').getAttribute('src')).pathname, '/embed/' + id);
+    await page.keyboard.press('Escape');
+    await player.waitFor({ state: 'hidden' });
+    assert.equal(await card.evaluate(link => document.activeElement === link), true);
+  });
+});

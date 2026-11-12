@@ -43,9 +43,32 @@ body[data-fish-mode] .fish-target[hidden] { display: none !important; }
 #fish-card [data-species-card] dl { font-size: .87rem; line-height: 1.45; }
 #fish-card [data-species-card] dt { font-weight: bold; margin-top: 10px; }
 #fish-card [data-species-card] dd { margin: 3px 0; }
-:is(.collection-dialog, #fish-card) [data-bryan-video] {
-  display: flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 10px;
-  color: #354f3a; font-weight: bold; line-height: 1.4;
-}
-:is(.collection-dialog, #fish-card) [data-bryan-video] .tackle-icon { flex: none; width: 24px; height: 24px; }
 .collection-dialog :focus-visible { outline: 3px solid #654916; outline-offset: 2px; }
+
+.collection-wallet {
+  margin-inline-start: auto;
+  align-self: center;
+  padding-inline: 8px;
+  color: #ffdb8f;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.collection-reward {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  margin-block: 12px;
+  background: #203f4d;
+  border: 1px solid #bb9657;
+  border-radius: 6px;
+}
+.collection-reward h3 { margin: 0; font-size: 1rem; }
+.collection-reward p { margin: 2px 0 0; }
+.collection-reward [data-reward-notice] { flex: 0 0 100%; }
+.collection-reward [data-reward-notice]:empty { display: none; }
+.collection-dialog .collection-reward button:not(:disabled) { background: #ffcf68; color: #172d29; }
+.collection-dialog .collection-reward button:enabled:hover { background: #ffe1a2; }
+.collection-grid [data-reward-ready] { color: #ffdb8f; font-weight: bold; }

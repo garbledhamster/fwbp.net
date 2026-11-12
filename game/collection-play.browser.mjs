@@ -59,7 +59,7 @@ await withBrowser(async browser => {
       const { openYourLake } = await import('./game/collection.mjs');
       openYourLake({ initialSpecies: 'perch' });
     });
-    const collection = page.getByRole('dialog', { name: 'Your Lake', exact: true });
+    const collection = page.getByRole('dialog', { name: 'My Lake', exact: true });
     await collection.getByRole('button', { name: 'Learn this tip', exact: true }).click();
     await collection.getByRole('button', { name: 'Tip learned', exact: true }).waitFor();
     await page.keyboard.press('Escape');

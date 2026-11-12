@@ -2,8 +2,12 @@ import assert from 'node:assert/strict';
 import { practicePage, withBrowser } from './browser-qa.mjs';
 
 await withBrowser(async browser => {
-  const { leave, page, tray, openGame, action, button, status, press, enter, tick, findFish, waitForBite, errors, reelToHole } =
-    await practicePage(browser);
+  const { leave, page, tray, openGame, action, status, press, enter, tick, findFish, waitForBite, errors, reelToHole } =
+    await practicePage(browser, { configure: async page => {
+      await page.route('https://www.youtube-nocookie.com/**', route => route.abort());
+      await page.route('https://www.youtube.com/iframe_api', route => route.abort());
+    } });
+  page.setDefaultTimeout(8000);
   const label = tray.locator('[data-phase]');
   const lake = page.locator('.lake');
   const color = () => lake.evaluate(el => getComputedStyle(el,
@@ -17,6 +21,12 @@ await withBrowser(async browser => {
     return loadProfile();
   });
 
+  // Keep a second perch in the saved hole for the expiry check after reload.
+  await page.evaluate(() => {
+    const rolls = [.05, .72, .05].flatMap(species => [species, .2, .5, .4, .1]);
+    let draw = 0;
+    Math.random = () => rolls[draw++ % rolls.length];
+  });
   await enter('Campaign');
   assert.equal(await label.isVisible(), true, 'the phase is shown in the Campaign tray');
   await expectPhase('Day');
@@ -32,11 +42,12 @@ await withBrowser(async browser => {
   await expectPhase('Dusk');
   const dusk = await color();
   assert.notEqual(dusk, daylight);
-  assert.match(await status.textContent(), /yeah, reel it/i, 'the phase change keeps the active bite window');
+  assert.match(await status.textContent(), /tap to hook/i, 'the phase change keeps the active bite window');
   await page.keyboard.press('r');
+  await page.getByRole('meter', { name: 'Reel feedback' }).waitFor();
   await reelToHole({ keyboard: true });
-  await page.keyboard.press('r');
-  await status.filter({ hasText: /yellow perch.*10 coins/i }).waitFor();
+  const catchDialog = page.getByRole('dialog', { name: 'Yellow perch', exact: true });
+  await catchDialog.locator('.fishing-catch-credit').filter({ hasText: /\+10 XP.*coins to collect/ }).waitFor();
   await leave();
 
   await openGame();
@@ -85,8 +96,10 @@ await withBrowser(async browser => {
   await findFish({ species: 'perch' });
   await page.keyboard.press('j');
   await waitForBite();
-  await page.keyboard.press('r'); // An early hook attempt returns to searching after committing the fish.
-  await tick(31000);
+  await tick(3500);
+  await status.filter({ hasText: /slipped the hook/i }).waitFor();
+  assert.equal(await tray.getByRole('timer').isVisible(), true, 'an expired hook window starts the committed search countdown');
+  await tick(27500);
   await action.getByText('Next fish', { exact: true }).waitFor();
   await page.clock.fastForward(20 * 60 * 1000);
   assert.match(await action.textContent(), /Fish again/i, 'an idle campaign outing ends at expiry');

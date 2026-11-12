@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { getBryanVideo, openBryanVideo } from './bryan-videos.mjs';
+import { getBryanVideo } from './bryan-videos.mjs';
 
 // Catch a guessed association, mismatched upload or unsupported species fallback.
 test('only verified exact species have contextual Bryan footage', () => {
@@ -20,6 +20,5 @@ test('only verified exact species have contextual Bryan footage', () => {
   }
   for (const species of ['perch', 'rock-bass', 'bass', 'unknown', '__proto__', null, undefined]) {
     assert.equal(getBryanVideo(species), null);
-    assert.equal(openBryanVideo(species), false);
   }
 });

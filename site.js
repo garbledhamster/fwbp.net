@@ -1,4 +1,4 @@
-import { spriteHref } from "./game/lake-sprites.mjs";
+import { createVideoCard } from "./game/species-video.mjs?v=angler-1";
 import { loadYouTubeApi, openVideo } from './game/video-player.mjs?v=tent-library';
 
 import { iceFishingVideos } from "./assets/ice-fishing-videos.mjs";
@@ -32,39 +32,10 @@ function pickRandom(pool, previousId) {
 }
 
 function makeEpisode(episode) {
-  const article = document.createElement("article");
-  article.className = "episode";
-  const link = document.createElement("a");
-  link.className = "episode-trigger";
-  link.href = episode.url;
-  link.dataset.watch = episode.id;
-  link.setAttribute("aria-label", "Watch " + episode.title);
-  const art = document.createElement("span");
-  art.className = "episode-art";
-  art.setAttribute("aria-hidden", "true");
-  art.innerHTML = '<svg class="artwork" viewBox="0 0 400 154" preserveAspectRatio="xMidYMid slice"><use/></svg>';
-  art.querySelector("use").setAttribute("href", spriteHref("scenes", "bi-cover-" + episode.art));
-  const image = document.createElement("img");
-  image.alt = "";
-  image.loading = "lazy";
-  image.decoding = "async";
-  image.addEventListener("error", () => image.remove(), { once: true });
-  image.src = "https://i.ytimg.com/vi/" + episode.id + "/mqdefault.jpg";
-  art.append(image);
-  const play = document.createElement("span");
-  play.className = "play-mark";
-  play.innerHTML = '<svg viewBox="0 0 20 20"><path d="m6 3 11 7-11 7z"/></svg>';
-  art.append(play);
-  const meta = document.createElement("span");
-  meta.className = "episode-meta";
   const label = episode.tags.join(" · ") || "Ice fishing";
-  meta.textContent = episode.short ? label + " · Short" : label;
-  const title = document.createElement("strong");
-  title.className = "episode-name";
-  title.textContent = episode.title;
-  link.append(art, meta, title);
-  article.append(link);
-  return article;
+  return createVideoCard({
+    ...episode, artwork: episode.art, caption: episode.short ? label + " · Short" : label,
+  });
 }
 
 function showMore() {

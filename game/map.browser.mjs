@@ -51,6 +51,7 @@ await withBrowser(async browser => {
     const moveHole = tray.locator('[data-open-map]');
     const confirm = page.locator('.fishing-end-attempt');
     const progress = tray.locator('[data-run-progress]');
+    const feedback = page.getByRole('meter', { name: 'Reel feedback' });
 
     await enter('Campaign');
     await findFish({ species: 'perch' });
@@ -82,13 +83,13 @@ await withBrowser(async browser => {
     await waitForBite();
     await tick(700);
     await page.keyboard.press('r');
-    assert.match(await status.textContent(), /reel it up toward the hole/i);
+    assert.match(await status.textContent(), /tap to reel/i);
     await press(moveHole, 'Enter');
     await confirm.waitFor();
     assert.match(await confirm.textContent(), /Release this fish/);
     await press(confirm.locator('[data-end-cancel]'), 'Enter');
     assert.match(await progress.textContent(), /1\/6/);
-    assert.equal(await tray.getByRole('meter').isVisible(), true, 'cancel keeps the same hooked fish');
+    assert.equal(await feedback.isVisible(), true, 'cancel keeps the same hooked fish');
 
     await press(moveHole, 'Enter');
     await press(confirm.locator('[data-end-confirm]'), 'Enter');
@@ -96,7 +97,7 @@ await withBrowser(async browser => {
     assert.match(await dialog.locator('[data-map-budget]').textContent(), /5 of 6/);
     await press(dialog.locator('[data-map-back]'), 'Enter');
     assert.match(await progress.textContent(), /2\/6/);
-    assert.equal(await tray.getByRole('meter').isVisible(), false);
+    assert.equal(await feedback.isVisible(), false);
     assert.equal(await tray.locator('[data-wallet]').textContent(), '0 coins', 'release has no catch payout');
     assert.deepEqual(errors, []);
     if (process.env.FISHING_EVIDENCE_DIR) {

@@ -11,8 +11,8 @@ await withBrowser(async browser => {
   const qa = await practicePage(context);
   const { page, press, tray } = qa;
   const picker = page.getByRole('dialog', { name: 'Choose an outing' });
-  const skills = page.getByRole('dialog', { name: 'Campaign Skills' });
-  const drilling = skills.locator('article').filter({ has: page.getByRole('heading', { name: 'Drilling', exact: true }) });
+  const skills = page.getByRole('dialog', { name: 'Angler Skills' });
+  const line = skills.locator('article').filter({ has: page.getByRole('heading', { name: 'Line control', exact: true }) });
   const map = page.locator('.fishing-map');
   const allowance = map.locator('[data-map-allowance]');
   const marks = map.locator('[data-hole-open]');
@@ -21,8 +21,8 @@ await withBrowser(async browser => {
   const drill = page.locator('.fishing-drill');
 
   async function showSkills() {
-    await press(picker.getByRole('button', { name: 'Skills', exact: true }), 'Enter');
-    await drilling.waitFor();
+    await press(picker.getByRole('button', { name: 'Angler Skills', exact: true }), 'Enter');
+    await line.waitFor();
   }
 
   async function showMap() {
@@ -49,7 +49,7 @@ await withBrowser(async browser => {
 
   await qa.openGame();
   await showSkills();
-  assert.equal(await drilling.getByRole('button', { name: 'Add one rank to Drilling' }).isDisabled(), true);
+  assert.equal(await line.getByRole('button', { name: 'Add one rank to Line control' }).isDisabled(), true);
   await qa.closeDialog(skills, skills.locator('[data-skills-close]'));
   const { profile: funded } = await profileCommand(page, { type: 'award', key: 'earlier-outing:0', outcome: 'landed', catch: { points: 35 } });
   await profileCommand(page, { type: 'buy', id: 'starter-license', revision: funded.revision });
@@ -59,24 +59,45 @@ await withBrowser(async browser => {
   assert.equal(first.allowance, 2);
   await press(map.locator('[data-map-back]'), 'Enter');
   await showSkills();
-  assert.match(await skills.textContent(), /Level 2 · 35 XP.*1 available/s);
-  assert.match(await drilling.textContent(), /Next rank.*3 new holes/is);
-  await press(drilling.getByRole('button', { name: 'Add one rank to Drilling' }), 'Enter');
-  await drilling.getByText('Rank 1 / 100').waitFor();
-  assert.match(await skills.textContent(), /0 available/);
+  assert.match(await skills.locator('[data-skill-bank]').textContent(), /1 practice point available/);
+  assert.equal(await skills.getByRole('heading', { name: 'Drilling', exact: true }).count(), 0);
+  await press(line.getByRole('button', { name: 'Add one rank to Line control' }), 'Enter');
+  await line.getByText('Rank 1 / 5').waitFor();
+  assert.match(await skills.textContent(), /0 practice points available/);
   assert.deepEqual((await profileCommand(page)).day, first);
 
-  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.reload({ waitUntil: 'domcontentloaded', timeout: 15000 });
   await qa.openGame();
   await showSkills();
-  await drilling.getByText('Rank 1 / 100').waitFor();
-  assert.match(await skills.textContent(), /0 available/);
+  await line.getByText('Rank 1 / 5').waitFor();
+  assert.match(await skills.textContent(), /0 practice points available/);
   await qa.closeDialog(skills, skills.locator('[data-skills-close]'));
   await showMap();
   assert.match(await allowance.textContent(), /2 of 2 new holes/);
-  await press(map.locator('[data-map-end]'), 'Enter');
+  await press(map.locator('[data-map-back]'), 'Enter');
+  // Give the open day the allowance and turn reduction already earned in a legacy save.
+  await page.evaluate(async () => {
+    await new Promise((resolve, reject) => {
+      const request = indexedDB.open('fwbp-campaign', 1);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const db = request.result;
+        const tx = db.transaction('profile', 'readwrite');
+        const store = tx.objectStore('profile');
+        const saved = store.get('campaign');
+        saved.onsuccess = () => {
+          const profile = saved.result;
+          store.put({ ...profile, skillRanks: { drilling: 20 },
+            day: { ...profile.day, allowance: 3, drillReduction: 1 } }, 'campaign');
+        };
+        tx.oncomplete = () => { db.close(); resolve(); };
+        tx.onabort = () => reject(tx.error);
+      };
+    });
+  });
   await showMap();
   assert.match(await allowance.textContent(), /3 of 3 new holes/);
+  assert.equal((await profileCommand(page)).day.drillReduction, 1);
 
   await fish('A3', true);
   await returnToMap();
@@ -111,12 +132,12 @@ await withBrowser(async browser => {
   const upgraded = (await profileCommand(page)).day;
   assert.deepEqual(upgraded, thirdHole.profile.day, 'the stale fourth drill and reopening saved holes preserve the trained day');
 
-  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.reload({ waitUntil: 'domcontentloaded', timeout: 15000 });
   await qa.openGame();
   await showSkills();
   await press(skills.getByRole('button', { name: 'Reset points for free' }), 'Enter');
-  await drilling.getByText('Rank 0 / 100').waitFor();
-  assert.match(await skills.textContent(), /1 available/);
+  await line.getByText('Rank 0 / 5').waitFor();
+  assert.match(await skills.textContent(), /1 practice point available/);
   assert.deepEqual((await profileCommand(page)).day, upgraded);
   await qa.closeDialog(skills, skills.locator('[data-skills-close]'));
   await showMap();
@@ -126,7 +147,8 @@ await withBrowser(async browser => {
   await showMap();
   assert.equal(await marks.count(), 0);
   assert.match(await allowance.textContent(), /2 of 2 new holes/);
+  assert.equal((await profileCommand(page)).day.drillReduction, 0);
   assert.deepEqual(qa.errors, []);
 });
 
-console.log('Drilling unlock, persisted point spend, three saved holes, stale limit and next-day reset passed.');
+console.log('PASS: Angler ranks leave the drill budget alone, preserve a legacy open day, and use the standard next-day budget');

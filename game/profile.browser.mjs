@@ -24,7 +24,7 @@ await withBrowser(async browser => {
     assert.ok(module.ok(), 'the browser can load the campaign save module');
 
     const starter = await profileCommand(first);
-    assert.equal(starter.version, 2);
+    assert.equal(starter.version, 3);
     assert.equal(starter.coins, 0);
     assert.deepEqual(starter.equipped, { line: 'starter-line', hook: 'starter-hook' });
     assert.ok(!starter.owned.includes('starter-license'));

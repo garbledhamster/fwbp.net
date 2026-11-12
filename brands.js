@@ -1,9 +1,8 @@
 import { fishProfiles } from "./assets/fish-profiles.js";
 
 import { speciesArt as species } from "./game/species-catalog.mjs";
-import { loadProfile } from "./game/profile.mjs?v=campaign-map-discovery";
-import { renderSpeciesVideo } from "./game/species-video.mjs?v=tent-library";
-import { fillSpeciesCard } from "./game/collection.mjs?v=campaign-ranks";
+import { loadProfile } from "./game/profile.mjs?v=angler-1";
+import { fillSpeciesCard } from "./game/collection.mjs?v=angler-1";
 import { spriteHref } from "./game/lake-sprites.mjs";
 
 const debris = {
@@ -212,7 +211,6 @@ document.addEventListener("click", event => {
   fillSpeciesCard(frame.querySelector('[data-species-card]'), key, {
     profile: collection,
     onChange: profile => { collection = profile; },
-    onVideo: renderSpeciesVideo,
   });
   const title = frame.querySelector('h2');
   title.id = 'fish-card-name';

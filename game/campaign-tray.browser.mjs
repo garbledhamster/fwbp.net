@@ -8,14 +8,14 @@ const luresBySpecies = {
   pike: 'Spoon', smallmouth: 'Minnow', muskie: 'Spoon',
 };
 
-async function checkOuting(browser, mobile) {
-  const { page, tray, launch, button, press, enter, findFish, waitForBite, tick, closeDialog, errors } =
-    await practicePage(browser, { mobile });
-  const touch = mobile && await page.context().newCDPSession(page);
-  const marker = page.locator('[data-line-gesture-marker]');
-  const up = marker.locator('[data-line-gesture-up]');
-  const down = marker.locator('[data-line-gesture-down]');
-  const lureAction = marker.locator('button');
+async function checkOuting(browser) {
+  const { page, tray, launch, button, press, enter, findFish, waitForBite, tick, closeDialog, reelToHole, errors } =
+    await practicePage(browser);
+  const meter = page.getByRole('meter', { name: 'Reel feedback' });
+  const tapWater = async () => {
+    const box = await tray.boundingBox();
+    await page.mouse.click(30, box.y * .42);
+  };
   const liveActions = tray.locator('.fishing-action, [data-loosen]');
   const lures = tray.getByRole('group', { name: 'Lures' });
   const lureButton = name => lures.getByRole('button', { name, exact: true });
@@ -24,8 +24,7 @@ async function checkOuting(browser, mobile) {
   const reward = page.locator('.fishing-catch-popup');
   const map = page.locator('.fishing-map');
   const nextFish = reward.locator('[data-reward-next]');
-  const viewCatch = reward.getByRole('button', { name: 'View in Your Lake', exact: true });
-  const advanceInput = () => Promise.all([tick(300), page.waitForTimeout(180)]);
+  const viewCatch = reward.getByRole('button', { name: 'My Lake', exact: true });
   const evidence = process.env.FISHING_EVIDENCE_DIR;
   const savedDay = () => page.evaluate(async () => {
     const { loadProfile } = await import('./game/profile.mjs');
@@ -35,27 +34,7 @@ async function checkOuting(browser, mobile) {
   async function capture(label) {
     if (!evidence) return;
     await mkdir(evidence, { recursive: true });
-    await page.screenshot({ path: join(evidence, `campaign-tray-${mobile ? 'phone' : 'desktop'}-${label}.png`) });
-  }
-
-  async function stroke(direction) {
-    const box = await tray.boundingBox();
-    assert.ok(box, 'the stroke has a visible start area');
-    const x = 30;
-    const y = Math.max(75, box.y * .52);
-    if (!touch) {
-      await page.mouse.move(x, y);
-      await page.mouse.wheel(0, direction * 100);
-      await page.waitForTimeout(25);
-      return;
-    }
-    const dispatch = (type, touchPoints) => touch.send('Input.dispatchTouchEvent', { type, touchPoints });
-    await dispatch('touchStart', [{ x, y }]);
-    for (let step = 1; step <= 4; step++) {
-      await page.waitForTimeout(23);
-      await dispatch('touchMove', [{ x, y: y + direction * 16 * step }]);
-    }
-    await dispatch('touchEnd', []);
+    await page.screenshot({ path: join(evidence, `campaign-tray-desktop-${label}.png`) });
   }
 
   async function assertLiveControlsHidden() {
@@ -98,7 +77,7 @@ async function checkOuting(browser, mobile) {
     });
     const saves = () => page.evaluate(() => window.campaignTraySaves);
 
-    if (!mobile) {
+    {
       await button('Menu').focus();
       const visited = new Set();
       for (let step = 0; step < 12; step++) {
@@ -115,55 +94,42 @@ async function checkOuting(browser, mobile) {
 
     await press(button('Menu'), 'Enter');
     await press(pause.getByRole('button', { name: 'Controls', exact: true }), 'Enter');
-    assert.match(await pause.innerText(), /click or tap the jig.*set the hook/i);
-    assert.match(await pause.locator('dl').innerText(), /R\s+Set the hook.*reel.*pull up/i);
+    assert.match(await pause.innerText(), /tap the water to jig.*keep tapping to reel/i);
+    assert.match(await pause.locator('dl').innerText(), /R\s+Set the hook.*reel/i);
     await press(pause.getByRole('button', { name: 'Back to Pause', exact: true }), 'Enter');
     await closeDialog(pause, pause.getByRole('button', { name: 'Resume fishing', exact: true }));
 
     for (let attempt = 1; attempt <= 6; attempt++) {
       assert.match(await tray.locator('[data-run-progress]').innerText(), new RegExp(`${attempt}/6$`));
       const species = await findFish();
-      await marker.getByRole('button', { name: 'Jig lure' }).waitFor();
-      assert.equal(await up.isVisible(), false, 'the jig has no callout');
       const lure = luresBySpecies[species];
       assert.ok(lure, `the current fish has a known bait: ${species}`);
       if (attempt === 1) await press(lureButton(lure === 'Spoon' ? 'Jig' : 'Spoon'));
       await press(lureButton(lure));
       assert.equal(await lureButton(lure).getAttribute('aria-pressed'), 'true');
       if (attempt === 1) await capture('jig');
-      await (mobile ? lureAction.tap() : lureAction.click());
+      await tapWater();
       await waitForBite();
-      assert.equal(await lureAction.getAttribute('aria-disabled'), 'true', 'the lure waits for gold');
       await tick(700);
-      await marker.getByRole('button', { name: 'Set hook' }).waitFor();
-      await (mobile ? lureAction.tap() : lureAction.click());
+      await tapWater();
+      await meter.waitFor();
       assert.equal(await lureButton(lure).isDisabled(), true, 'bait locks once hooked');
       await assertLiveControlsHidden();
-
-      for (let strokeCount = 0; strokeCount < 30; strokeCount++) {
-        await advanceInput();
-        assert.equal(await up.isVisible() || await down.isVisible(), true,
-          `catch ${attempt}, stroke ${strokeCount}: ${await tray.getByRole('status').textContent()}`);
-        if (await up.isVisible() && /Pull up/.test(await up.innerText())) break;
-        await stroke(await up.isVisible() ? -1 : 1);
-      }
-      await up.filter({ hasText: /Pull up/ }).waitFor();
       if (attempt === 1) {
-        await capture('pull-up');
+        await capture('fight');
         await page.evaluate(() => {
-          const original = IDBDatabase.prototype.transaction;
-          IDBDatabase.prototype.transaction = function (stores, mode, ...options) {
-            const transaction = original.call(this, stores, mode, ...options);
-            if (mode === 'readwrite') {
-              IDBDatabase.prototype.transaction = original;
-              queueMicrotask(() => transaction.abort());
+          const put = IDBObjectStore.prototype.put;
+          IDBObjectStore.prototype.put = function (value, ...args) {
+            const request = put.call(this, value, ...args);
+            if (Object.keys(value?.landedFish ?? {}).length) {
+              IDBObjectStore.prototype.put = put;
+              queueMicrotask(() => this.transaction.abort());
             }
-            return transaction;
+            return request;
           };
         });
       }
-      await stroke(-1);
-      await marker.waitFor({ state: 'hidden' });
+      await reelToHole();
       if (attempt === 1) {
         const save = resultButton('Save catch');
         await save.waitFor();
@@ -181,13 +147,13 @@ async function checkOuting(browser, mobile) {
         await capture('saved');
         const species = await reward.getByRole('heading').innerText();
         await press(viewCatch, 'Enter');
-        const lake = page.getByRole('dialog', { name: 'Your Lake', exact: true });
+        const lake = page.getByRole('dialog', { name: 'My Lake', exact: true });
         await lake.getByRole('heading', { name: species, exact: true }).waitFor();
-        await capture('your-lake');
+        await capture('my-lake');
         await closeDialog(lake, lake.getByRole('button', { name: 'Back to catch', exact: true }));
         await nextFish.waitFor();
         assert.equal(await viewCatch.evaluate(el => el === document.activeElement), true,
-          'Your Lake returns to the same catch');
+          'My Lake returns to the same catch');
       }
       await closeDialog(reward, nextFish);
       if (attempt === 3) {
@@ -199,7 +165,7 @@ async function checkOuting(browser, mobile) {
         await map.waitFor({ state: 'hidden' });
         await tray.locator('[data-water]').filter({ hasText: 'E4' }).waitFor();
       }
-      await advanceInput();
+      await tick(300);
     }
     await tray.getByRole('status').filter({ hasText: 'Outing complete.' }).waitFor();
     const deadline = Date.now() + 3000;
@@ -224,9 +190,5 @@ async function checkOuting(browser, mobile) {
   }
 }
 
-await withBrowser(async browser => {
-  for (const mobile of [false, true]) {
-    await checkOuting(browser, mobile);
-    console.log(`PASS: six Campaign catches with hidden live buttons, save retry and Your Lake return (${mobile ? '320×720 touch' : '1200×720 wheel'})`);
-  }
-});
+await withBrowser(checkOuting);
+console.log('PASS: six Campaign catches, tap-only fights, save retry, My Lake focus and outing finish');

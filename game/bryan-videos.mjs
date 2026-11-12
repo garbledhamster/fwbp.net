@@ -1,5 +1,3 @@
-import { openVideo } from './video-player.mjs?v=tent-library';
-
 // Editorial associations only. Verify the exact species before adding a match.
 // Audit and public fallback evidence: docs/bryan-videos.md. No reviewed timestamps.
 const channel = {
@@ -47,12 +45,7 @@ const videos = new Map([
   evidence: Object.freeze(video.evidence),
 })]));
 
-/** null means keep the species reference and omit a contextual video action. */
+/** null means offer the species reference. */
 export function getBryanVideo(speciesId) {
   return videos.get(speciesId) ?? null;
-}
-
-/** Caller holds local suspension and releases its own hold in onClose. */
-export function openBryanVideo(speciesId, options = {}) {
-  return openVideo(getBryanVideo(speciesId), options);
 }

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { practicePage, withBrowser } from './browser-qa.mjs';
+import { lineDepth, practicePage, withBrowser } from './browser-qa.mjs';
 
 // Keep the search part of the playthrough on the same controls a player uses.
 async function search(page, tray, action, mobile) {
@@ -31,8 +31,12 @@ async function search(page, tray, action, mobile) {
 }
 
 async function checkShop(browser, mobile) {
-  const { leave, page, openGame, tray, action, status, button, enter, press, tick, findFish, waitForBite, errors, reelToHole, closeSavedCatch } =
-    await practicePage(browser, { mobile, campaignLiveButtons: true });
+  const { leave, page, openGame, tray, action, button, enter, press, closeDialog, tick, findFish, waitForBite, errors, reelToHole, closeSavedCatch } =
+    await practicePage(browser, { mobile, configure: async page => {
+      await page.route('https://www.youtube-nocookie.com/**', route => route.abort());
+      await page.route('https://www.youtube.com/iframe_api', route => route.abort());
+    } });
+  page.setDefaultTimeout(8000);
   const picker = page.getByRole('dialog', { name: 'Choose an outing' });
   const shop = page.getByRole('dialog', { name: 'Tackle shop' });
   const stronger = shop.locator('[data-item="stronger-line"]');
@@ -40,7 +44,9 @@ async function checkShop(browser, mobile) {
   const buy = stronger.getByRole('button', { name: 'Buy Stronger line' });
   const equip = item => item.getByRole('button', { name: /^Equip / });
   const balance = shop.locator('[data-shop-balance]');
-  const meter = tray.getByRole('meter');
+  const practiceMeter = tray.getByRole('meter');
+  const feedback = page.getByRole('meter', { name: 'Reel feedback' });
+  const popup = page.locator('.fishing-catch-popup[open]');
   const wallet = tray.locator('[data-wallet]');
   const phase = tray.locator('[data-phase]');
   const evidence = process.env.FISHING_EVIDENCE_DIR;
@@ -70,61 +76,84 @@ async function checkShop(browser, mobile) {
   }
 
   async function startWith(species, lure, mode = 'Campaign') {
-    await page.evaluate(species => {
-      const rolls = [species, .2, .5, .4, .1];
+    await page.evaluate(() => {
+      const rolls = [.05, .2, .5, .4, .1];
       let draw = 0;
       Math.random = () => rolls[draw++ % rolls.length];
-    }, species);
+    });
     await enter(mode);
     if (mode === 'Practice') await search(page, tray, action, mobile);
     await press(tray.getByRole('group', { name: 'Lures' }).getByRole('button', { name: lure, exact: true }));
-    if (mode === 'Campaign') await findFish({ species: lure === 'Spoon' ? 'muskie' : 'perch' });
-    await press(action);
-    if (mode === 'Campaign') await waitForBite();
+    if (mode === 'Practice') {
+      await press(action);
+      await tick(700);
+      await press(action);
+      return;
+    }
+    await findFish({ species });
+    const tap = async () => {
+      const y = (await tray.boundingBox()).y * .42;
+      if (mobile) await page.touchscreen.tap(32, y);
+      else await page.mouse.click(32, y);
+    };
+    await tap();
+    await waitForBite();
     await tick(700);
-    await press(mode === 'Campaign' ? page.getByRole('button', { name: 'Set hook', exact: true }) : action);
+    await tap();
+    await feedback.waitFor();
+  }
+
+  async function idleDive() {
+    // Allow the render frame after the 200 ms simulation sample to paint.
+    const initialDepth = await lineDepth(page);
+    await tick(216);
+    return (await lineDepth(page)) - initialDepth;
   }
 
   await openShop();
   assert.match(await balance.textContent(), /0 coins/);
   assert.match(await shop.locator('[data-shop-select="starter-line"]').textContent(), /Equipped/is);
-  assert.match(await stronger.textContent(), /12 lb.*10 coins/is);
+  assert.match(await stronger.textContent(), /12 lb line.*fish take less line.*10 coins/is);
   assert.equal(await buy.isDisabled(), true, 'a new profile cannot spend coins it has yet to earn');
   await press(shop.getByRole('button', { name: 'Back to outings' }));
   await press(picker.getByRole('button', { name: 'Back to the site' }));
 
-  await startWith(.05, 'Jig');
+  await startWith('perch', 'Jig');
   await reelToHole();
-  await press(action);
-  await textVisible(tray, /Yellow perch.*\+10 coins/i);
-  const popup = page.locator('.fishing-catch-popup');
   await popup.locator('.fishing-reward-art svg').waitFor();
-  assert.match(await popup.textContent(), /Yellow perch.*10 coins/s, 'show the fish with its saved payout');
-  assert.equal(await button('Loosen').isHidden(), true, 'a landed catch leaves the outcome action in Bryan’s bubble');
-  assert.match(await wallet.textContent(), /10 coins/);
+  assert.equal(await popup.locator('h2').textContent(), 'Yellow perch');
+  const credit = await popup.locator('.fishing-catch-credit').textContent();
+  assert.match(credit, /\+10 XP.*coins to collect/);
+  const reward = Number(credit.match(/(\d+) coins to collect/)[1]);
+  assert.equal(await button('Loosen').isHidden(), true, 'reeling only needs taps in Campaign');
+  assert.equal(await wallet.textContent(), '0 coins', 'catch coins wait for an explicit claim');
   assert.equal(await phase.count(), 1, 'the Campaign tray names the current light phase');
   assert.equal(await phase.textContent(), 'Day');
   await capture('catch');
+
+  await press(popup.getByRole('button', { name: 'My Lake', exact: true }));
+  const lake = page.getByRole('dialog', { name: 'My Lake', exact: true });
+  await press(lake.getByRole('button', { name: 'Collect Reward', exact: true }));
+  await wallet.filter({ hasText: `${reward} coins` }).waitFor({ state: 'attached' });
+  await closeDialog(lake, lake.locator('[data-close]'));
   await closeSavedCatch();
   await tick(30000);
   await phase.filter({ hasText: 'Dusk' }).waitFor();
   await leave();
 
-  await startWith(.98, 'Spoon');
+  // Reopen the same hole and let the same unlanded pike run on each setup.
+  await startWith('pike', 'Spoon');
   assert.equal(await phase.textContent(), 'Dusk');
-  assert.equal(await meter.evaluate(el => el.max), 8);
-  await tick(800);
-  assert.equal(await meter.evaluate(el => el.value), 6.7);
-  await press(action);
-  assert.match(await status.textContent(), /line snapped.*9\.7 lb.*8 lb/i);
-  assert.match(await wallet.textContent(), /10 coins/, 'a snap pays no coins');
-  await capture('snap');
+  const starterDive = await idleDive();
+  assert.ok(starterDive > 10, 'a fish takes line as soon as the angler stops tapping');
+  assert.equal(await wallet.textContent(), `${reward} coins`);
+  await capture('starter-dive');
   await leave();
 
   await openShop();
   await press(buy);
   await textVisible(stronger, /^Owned$/i);
-  assert.match(await balance.textContent(), /0 coins/);
+  assert.equal(await balance.textContent(), `${reward - 10} coins`);
   await press(equip(stronger));
   await textVisible(stronger, /^Equipped for next outing$/i);
   await press(shop.locator('[data-shop-category="line"]'));
@@ -138,31 +167,31 @@ async function checkShop(browser, mobile) {
 
   await page.reload({ waitUntil: 'domcontentloaded' });
   await openShop();
-  assert.match(await balance.textContent(), /0 coins/);
+  assert.equal(await balance.textContent(), `${reward - 10} coins`);
   assert.match(await stronger.textContent(), /Equipped/i);
   assert.equal(await buy.count(), 0, 'reloading does not make an owned line buyable again');
   await capture('shop');
   await press(shop.getByRole('button', { name: 'Back to outings' }));
   await press(picker.getByRole('button', { name: 'Back to the site' }));
 
-  await startWith(.98, 'Spoon');
+  await startWith('pike', 'Spoon');
   assert.equal(await phase.textContent(), 'Dusk', 'reload preserves the light phase for the matched surge');
-  assert.equal(await meter.evaluate(el => el.max), 12);
-  await tick(800);
-  assert.equal(await meter.evaluate(el => el.value), 6.7);
-  await press(action);
-  assert.match(await status.textContent(), /line’s tight.*loosen/i);
-  assert.equal(await meter.evaluate(el => el.value), 9.7, 'the same surge holds on 12 lb line');
-  assert.match(await wallet.textContent(), /0 coins/);
-  await capture('held');
+  const strongerDive = await idleDive();
+  assert.ok(strongerDive > 0 && strongerDive < starterDive,
+    `the same run takes less line on the 12 lb setup (${strongerDive} vs ${starterDive})`);
+  assert.equal(await wallet.textContent(), `${reward - 10} coins`);
+  await capture('stronger-dive');
+  await reelToHole();
+  await popup.locator('.fishing-catch-stats').getByText('Stronger line', { exact: true }).waitFor();
+  assert.equal(await wallet.textContent(), `${reward - 10} coins`, 'the second catch also waits for a claim');
   await leave();
   const savedProfile = () => page.evaluate(async () => {
     const { loadProfile } = await import('./game/profile.mjs?v=16');
     return loadProfile();
   });
   const beforePractice = await savedProfile();
-  await startWith(.05, 'Jig', 'Practice');
-  assert.equal(await meter.evaluate(el => el.max), 8, 'Practice uses starter line even with 12 lb line equipped');
+  await startWith('perch', 'Jig', 'Practice');
+  assert.equal(await practiceMeter.evaluate(el => el.max), 8, 'Practice uses starter line even with 12 lb line equipped');
   assert.equal(await wallet.isHidden(), true, 'the campaign wallet stays outside Practice');
   await reelToHole();
   await press(action);
@@ -173,7 +202,7 @@ async function checkShop(browser, mobile) {
   for (const field of ['coins', 'owned', 'equipped', 'elapsedMs', 'awards']) {
     assert.deepEqual(afterPractice[field], beforePractice[field], `Practice preserves Campaign ${field}`);
   }
-  assert.ok(afterPractice.caughtSpecies.includes('perch'), 'Practice keeps the landed species in Your Lake');
+  assert.ok(afterPractice.caughtSpecies.includes('perch'), 'Practice keeps the landed species in My Lake');
   assert.deepEqual(errors, []);
   await page.close();
 }
@@ -181,6 +210,6 @@ async function checkShop(browser, mobile) {
 await withBrowser(async browser => {
   for (const mobile of [false, true]) {
     await checkShop(browser, mobile);
-    console.log(`PASS: Campaign catch, shop, reload and matched dusk surge (${mobile ? '320 px touch' : 'desktop keyboard'})`);
+    console.log(`PASS: Campaign catch, shop, reload and matched dusk run (${mobile ? '320 px touch' : 'desktop keyboard'})`);
   }
 });

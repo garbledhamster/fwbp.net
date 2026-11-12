@@ -37,9 +37,7 @@ await withBrowser(async browser => {
   assert.ok(maxBend > 8, 'lowering the hook puts a visible flick into the line');
   const lead = frames.map(frame => frame.y - frame.tray / 2);
   const maxLead = Math.max(...lead);
-  assert.ok(maxLead > 16 && maxLead < 42, `the hook leads the pan by a little: ${maxLead}px`);
-  assert.ok(frames.some(frame => frame.y > initial.y + 5 && Math.abs(frame.holeY - initial.holeY) < 1),
-    'the hook drops before the scenery starts to pan');
+  assert.ok(Math.max(...lead.map(Math.abs)) < 2, `the camera follows depth throughout the move: ${maxLead}px`);
   const travel = frames.at(-1).line - initial.line;
   assert.ok(travel > 180 && travel < 320, `line travel is slower than the 500px wheel input: ${travel}`);
   const steps = frames.map((frame, i) => frame.line - (frames[i - 1] ?? initial).line);

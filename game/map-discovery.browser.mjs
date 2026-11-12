@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import { practicePage, withBrowser } from './browser-qa.mjs';
 
 await withBrowser(async browser => {
-  const qa = await practicePage(browser, { campaignLiveButtons: true });
-  const { page, tray, action, openGame, press, closeDialog, findFish, waitForBite, tick, reelToHole, errors } = qa;
+  const qa = await practicePage(browser);
+  const { page, tray, openGame, press, closeDialog, findFish, waitForBite, tick, reelToHole, errors } = qa;
   const map = page.locator('.fishing-map');
   const spotId = 'A3';
   const spot = map.locator(`[data-map-cell="${spotId}"]`);
@@ -76,19 +76,21 @@ await withBrowser(async browser => {
     assert.doesNotMatch(await fishInfo.textContent(), /pike/i);
     await press(drillButton, 'Enter');
     await findFish({ species: 'perch' });
-    await press(action);
+    await page.keyboard.press('j');
     await waitForBite();
     await tick(700);
-    await press(page.getByRole('button', { name: 'Set hook', exact: true }));
-    await reelToHole();
-    await press(action);
+    await page.keyboard.press('r');
+    await reelToHole({ keyboard: true });
 
     const reward = page.locator('.fishing-catch-popup');
-    const view = reward.getByRole('button', { name: 'View in Your Lake' });
+    const view = reward.getByRole('button', { name: 'My Lake', exact: true });
     await press(view, 'Enter');
-    const lake = page.getByRole('dialog', { name: 'Your Lake', exact: true });
+    const lake = page.getByRole('dialog', { name: 'My Lake', exact: true });
     await lake.getByRole('heading', { name: 'Yellow perch', exact: true }).waitFor();
     assert.match(await lake.locator('[data-catch-spots]').innerText(), /A3.*1 catch/s);
+    const reference = lake.locator('[data-source]');
+    assert.match(await reference.getAttribute('href'), /dnr\.state\.mn\.us.*yellowperch/);
+    assert.equal(await reference.getAttribute('target'), '_blank');
     const caught = await save();
     const [[key, location]] = Object.entries(caught.catchLocations);
     assert.deepEqual(location, { cellId: spotId, speciesId: 'perch' });
@@ -96,7 +98,7 @@ await withBrowser(async browser => {
     assert.equal(remaining.length, roster.length - 1);
     const removed = roster.find(fish => !remaining.some(entry => entry.key === fish.key));
     assert.equal((await save({ ...landing(key, 'perch'), dayId: opened.id, cellId: spotId, fishKey: removed.key })).status,
-      'duplicate-award', 'retrying the landed fish keeps its one saved payout');
+      'duplicate-award', 'retrying the landed fish keeps its one saved receipt');
 
     await page.reload({ waitUntil: 'domcontentloaded' });
     await openMap();

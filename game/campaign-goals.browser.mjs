@@ -81,17 +81,16 @@ async function verifySettlement(browser) {
 }
 
 async function catchFish(qa, species, lure) {
-  const { page, tray, press, findFish, waitForBite, tick, reelToHole, action } = qa;
+  const { page, tray, press, findFish, waitForBite, tick, reelToHole } = qa;
   await press(tray.locator(`[data-lure="${lure}"]`));
   await findFish({ species });
   await page.keyboard.press('j');
   await waitForBite();
-  assert.match(await qa.status.textContent(), /bite|gold/i);
+  assert.match(await qa.status.textContent(), /bite|tap to hook/i);
   await tick(700);
   await page.keyboard.press('r');
-  assert.equal(await action.textContent(), 'Reel', 'a hook set in gold starts the fight');
+  await page.getByRole('meter', { name: 'Reel feedback' }).waitFor();
   await reelToHole({ keyboard: true });
-  await page.keyboard.press('r');
   const reward = page.locator('.fishing-catch-popup[open]');
   await reward.waitFor();
   return reward;
@@ -123,6 +122,7 @@ async function drillSelected(qa, map) {
   await press(map.locator('[data-map-drill]'), 'Enter');
   await press(page.locator('[data-drill-skip]'), 'Enter');
   await tray.locator('[data-exit]:enabled').waitFor();
+  await tray.locator('[data-fishing-goal]').waitFor();
 }
 
 async function nextDay(qa) {
@@ -141,15 +141,48 @@ async function assertGoalClue(locator, expected) {
   assert.doesNotMatch(clue, /\b[A-E][1-5]\b/, 'Bryan leaves the player to choose the spot');
 }
 
+async function assertCatchCredit(reward, saved, species, xp, discovery) {
+  const key = await reward.getAttribute('data-key');
+  const fish = saved.landedFish[key];
+  assert.equal(fish.speciesId, species);
+  const base = Math.round(fish.quality * 12);
+  const pending = base + (discovery ? Math.ceil(base / 2) : 0);
+  assert.equal(saved.awards[key], xp);
+  assert.deepEqual(saved.fishRewards[species], { coins: pending, discovery });
+  assert.equal(await reward.locator('.fishing-catch-credit').textContent(),
+    `+${xp} XP · +1 practice point · ${pending} coins to collect`);
+  return pending;
+}
+
+async function verifyPikeVideo(page, reward) {
+  const url = 'https://www.youtube.com/watch?v=gIUtx-C9pKs';
+  await page.context().route(url, route => route.fulfill({ body: '<title>Bryan on YouTube</title>', contentType: 'text/html' }));
+  const video = reward.getByRole('link', { name: /Watch now on YouTube/ });
+  assert.equal(await video.getAttribute('href'), url);
+  assert.equal(await video.getAttribute('target'), '_blank');
+  const [tab] = await Promise.all([page.waitForEvent('popup'), video.press('Enter')]);
+  await tab.waitForLoadState('domcontentloaded');
+  assert.equal(tab.url(), url);
+  await tab.close();
+  assert.ok(await reward.isVisible());
+  assert.equal(await page.locator('#player iframe').count(), 0);
+}
+
 async function verifyOuting(browser) {
-  const qa = await practicePage(browser);
+  const qa = await practicePage(browser, { configure: async page => {
+    await page.route('https://www.youtube-nocookie.com/**', route => route.abort());
+    await page.route('https://www.youtube.com/iframe_api', route => route.abort());
+  } });
   const { page, tray, press, closeDialog, errors } = qa;
+  page.setDefaultTimeout(10000);
   const map = await openMap(qa);
   await assertGoalClue(map.locator('[data-map-goal]'), /Bryan.*perch.*weed edges.*10–15 ft.*jig/i);
   const hole = map.getByRole('button', { name: /A3, Weed edge/ });
   await press(hole, 'Enter');
   await press(map.locator('[data-map-drill]'), 'Enter');
   await buyPermit(qa, 'starter-license', 'Mille Lacs');
+  // The three A3 lanes turn the fixed roll into a perch and an off-goal pike.
+  await page.evaluate(() => { Math.random = () => .05; });
   await drillSelected(qa, map);
   await tray.locator('[data-exit]:enabled').waitFor();
   assert.match(await tray.locator('[data-fishing-goal]').textContent(), /Goal.*perch/i);
@@ -159,21 +192,30 @@ async function verifyOuting(browser) {
 
   const wrong = await catchFish(qa, 'pike', 'spoon');
   assert.equal(await wrong.locator('h2').textContent(), 'Northern pike');
-  assert.match(await wrong.textContent(), /\+17 coins.*\+17 XP/);
   assert.match(await tray.locator('[data-run-progress]').textContent(), /35 pts/);
   const afterPike = await profileCommand(page);
+  const pikeCoins = await assertCatchCredit(wrong, afterPike, 'pike', 17, true);
+  assert.equal(afterPike.coins, 0, 'the catch defers the reward to My Lake');
+  await verifyPikeVideo(page, wrong);
+  await press(wrong.getByRole('button', { name: 'My Lake', exact: true }), 'Enter');
+  const lake = page.getByRole('dialog', { name: 'My Lake', exact: true });
+  await press(lake.getByRole('button', { name: 'Collect Reward', exact: true }), 'Enter');
+  await lake.locator('[data-reward-summary]').filter({ hasText: `${pikeCoins} coins collected` }).waitFor();
+  assert.equal((await profileCommand(page)).coins, pikeCoins);
+  await closeDialog(lake, lake.locator('[data-close]'));
   assert.deepEqual(afterPike.caughtSpecies, ['pike']);
   assert.equal(afterPike.day.rosters.A3.length, 2);
   assert.deepEqual(Object.values(afterPike.catchLocations), [{ cellId: 'A3', speciesId: 'pike' }]);
   await closeDialog(wrong, wrong.locator('[data-reward-next]'));
   const goal = await catchFish(qa, 'perch', 'jig');
   assert.equal(await goal.locator('h2').textContent(), 'Yellow perch');
-  assert.match(await goal.textContent(), /\+10 coins.*\+10 XP/);
   const pikeClue = /Bryan.*pike.*weed edges.*10–15 ft.*spoon/i;
   await assertGoalClue(goal.locator('[data-reward-goal]'), /goal complete.*pike.*weed edges.*10–15 ft.*spoon/i);
   assert.match(await tray.locator('[data-run-progress]').textContent(), /45 pts/);
 
   const saved = await profileCommand(page);
+  await assertCatchCredit(goal, saved, 'perch', 10, true);
+  assert.equal(saved.coins, pikeCoins);
   assert.equal(saved.day.rosters.A3.length, 1);
   await page.reload({ waitUntil: 'domcontentloaded' });
   const resumed = await openMap(qa);
@@ -188,7 +230,7 @@ async function verifyOuting(browser) {
   assert.match(await tray.locator('[data-fishing-goal]').textContent(), /Goal.*pike/i);
   const pike = await catchFish(qa, 'pike', 'spoon');
   assert.equal(await pike.locator('h2').textContent(), 'Northern pike');
-  assert.match(await pike.textContent(), /\+35 coins.*\+35 XP/);
+  await assertCatchCredit(pike, await profileCommand(page), 'pike', 35, false);
   await assertGoalClue(pike.locator('[data-reward-goal]'), /goal complete.*walleye/i);
 
   await page.reload({ waitUntil: 'domcontentloaded' });
@@ -200,7 +242,7 @@ async function verifyOuting(browser) {
   assert.match(await tray.locator('[data-fishing-goal]').textContent(), /Goal.*walleye/i);
   const walleye = await catchFish(qa, 'walleye', 'minnow');
   assert.equal(await walleye.locator('h2').textContent(), 'Walleye');
-  assert.match(await walleye.textContent(), /\+25 coins.*\+25 XP/);
+  await assertCatchCredit(walleye, await profileCommand(page), 'walleye', 25, true);
   assert.match(await walleye.locator('[data-reward-goal]').textContent(), /Bryan.*goals complete/i);
 
   await page.reload({ waitUntil: 'domcontentloaded' });

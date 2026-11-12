@@ -107,8 +107,8 @@ async function check(browser, engine, gilded) {
         await press(action);
         await reelToHole();
         await press(action);
-        await press(tray.getByRole('button', { name: 'View in Your Lake', exact: true }), 'Enter');
-        const collection = page.getByRole('dialog', { name: 'Your Lake', exact: true });
+        await press(tray.getByRole('button', { name: 'My Lake', exact: true }), 'Enter');
+        const collection = page.getByRole('dialog', { name: 'My Lake', exact: true });
         await collection.getByRole('heading', { name: 'Rock bass', exact: true }).waitFor();
         recordPaint('the saved rock bass', await artwork('caught-your-lake', '#your-lake .collection-fish-art'),
           1, [[125, 170], [110, 150], [55, 105]]);

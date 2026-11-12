@@ -24,29 +24,13 @@ await withBrowser(async browser => {
   await findFish({ species });
   await page.keyboard.press('j');
   await waitForBite();
-  const target = page.getByRole('button', { name: 'Set hook', exact: true });
-  const first = await target.boundingBox();
-  await tick(300);
-  const moving = await target.boundingBox();
-  assert.ok(Math.abs(first.x - moving.x) > 20, 'the jig moves during the wait for gold');
-  await tick(420);
-  const gold = await target.boundingBox();
-  assert.equal(gold.width, 44);
-  await page.mouse.click(gold.x + gold.width / 2 - 25, gold.y + gold.height / 2);
-  assert.match(await qa.status.textContent(), /missed the jig/i);
-  assert.equal(await target.isVisible(), true, 'a missed target leaves the bite active');
-  await page.mouse.move(gold.x + gold.width / 2, gold.y + gold.height / 2);
-  await page.mouse.down();
-  await page.mouse.move(gold.x + gold.width + 20, gold.y + gold.height / 2, { steps: 4 });
-  await page.mouse.up();
-  assert.equal(await target.isVisible(), true, 'dragging the jig does not set the hook');
-  await page.mouse.move(gold.x + gold.width / 2, gold.y + gold.height / 2);
-  await page.mouse.down();
-  await tick(120);
-  assert.ok(Math.abs((await target.boundingBox()).x - gold.x) > 22, 'the jig can leave the pointer before release');
-  await page.mouse.up();
+  const meter = page.getByRole('meter', { name: 'Reel feedback' });
+  await tick(350);
+  await page.mouse.click(38, 114);
+  assert.equal(await meter.isVisible(), false, 'the early tap queues instead of hooking immediately');
+  await tick(230);
+  await meter.waitFor();
   await reelToHole({ keyboard: true });
-  await page.keyboard.press('r');
   const catchDialog = page.locator('.fishing-catch-popup[open]');
   await catchDialog.waitFor();
   const landed = await savedProfile(page);
@@ -54,30 +38,35 @@ await withBrowser(async browser => {
   assert.equal(records.length, 1);
   assert.equal(records[0].cellId, 'A2');
   assert.equal(landed.day.rosters.A2.length, before.day.rosters.A2.length - 1);
+  const [fish] = Object.values(landed.landedFish);
+  assert.equal(fish.line.id, 'starter-line');
+  assert.equal(fish.hook.id, 'starter-hook');
+  assert.equal(fish.speciesId, records[0].speciesId);
+  assert.ok(fish.quality > 0 && fish.age > 0);
 
-  await press(catchDialog.getByRole('button', { name: 'Skills', exact: true }));
-  const skills = page.getByRole('dialog', { name: 'Campaign Skills' });
-  const add = skills.getByRole('button', { name: 'Add one rank to Lure Work' });
+  await press(catchDialog.getByRole('button', { name: 'Angler Skills', exact: true }));
+  const skills = page.getByRole('dialog', { name: 'Angler Skills' });
+  const add = skills.getByRole('button', { name: 'Add one rank to Hook timing' });
   await add.waitFor();
   const bank = skills.locator('[data-skill-bank]');
-  const available = Number((await bank.textContent()).match(/(\d+) available/)[1]);
-  assert.equal(available, 6, 'a Level 7 player can spend all six unspent points');
+  const available = Number((await bank.textContent()).match(/(\d+) practice points? available/)[1]);
+  assert.equal(available, 2, 'the previous catch and the new receipt earn one point each');
   await press(add);
   await skills.getByText('Rank added.', { exact: true }).waitFor();
-  assert.match(await bank.textContent(), new RegExp(`${available - 1} available`));
+  assert.match(await bank.textContent(), new RegExp(`${available - 1} practice point available`));
   await closeDialog(skills, skills.getByRole('button', { name: 'Back', exact: true }));
   assert.equal(await catchDialog.isVisible(), true, 'skills return to the saved catch');
-  await closeDialog(catchDialog, catchDialog.getByRole('button', { name: 'Back to catch' }));
-  await page.reload({ waitUntil: 'domcontentloaded' });
+  await closeDialog(catchDialog, catchDialog.locator('[data-reward-close]'));
+  await page.reload({ waitUntil: 'domcontentloaded', timeout: 15000 });
 
   const reloaded = await savedProfile(page);
   assert.deepEqual(reloaded.catchLocations, landed.catchLocations);
   assert.deepEqual(reloaded.day, landed.day);
-  assert.equal(reloaded.skillRanks.lure, 1);
+  assert.equal(reloaded.angler.ranks.hook, 1);
   await qa.openGame();
-  await press(picker.getByRole('button', { name: 'Skills', exact: true }));
-  await skills.getByText('Rank 1 / 100', { exact: true }).waitFor();
-  assert.match(await bank.textContent(), new RegExp(`${available - 1} available`));
+  await press(picker.getByRole('button', { name: 'Angler Skills', exact: true }));
+  await skills.getByText('Rank 1 / 3', { exact: true }).waitFor();
+  assert.match(await bank.textContent(), new RegExp(`${available - 1} practice point available`));
   await closeDialog(skills, skills.getByRole('button', { name: 'Back', exact: true }));
   await press(picker.getByRole('button', { name: 'Campaign', exact: true }));
   const map = page.locator('.fishing-map');
@@ -86,41 +75,5 @@ await withBrowser(async browser => {
   assert.equal(await reef.getAttribute('data-hole-open'), '');
   assert.equal(await map.locator('[data-map-history]').isVisible(), true);
   assert.deepEqual(qa.errors, []);
-  console.log('PASS one map → deep reef-edge hole → moving Jig → saved catch → skill rank → reload');
-});
-
-await withBrowser(async browser => {
-  for (const [hook, width, viewport] of [
-    ['finesse-hook', 56, { width: 320, height: 720 }],
-    ['pro-hook', 68, { width: 720, height: 320 }],
-  ]) {
-    const qa = await practicePage(browser, { mobile: true, viewport });
-    const { page, tick, findFish, waitForBite } = qa;
-    await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await page.evaluate(async hook => {
-      Math.random = () => .30;
-      const { applyProfile } = await import('./game/profile.mjs');
-      const { profile: funded } = await applyProfile({ type: 'award', key: 'target-fixture:0', outcome: 'landed', catch: { points: 1200 } });
-      const { profile: bought } = await applyProfile({ type: 'buy', id: hook, revision: funded.revision });
-      const { status } = await applyProfile({ type: 'equip', id: hook, revision: bought.revision });
-      if (status !== 'equipped') throw new Error(`Could not equip ${hook}: ${status}`);
-    }, hook);
-    await qa.enter('Campaign', 'A2');
-    await findFish({ species: 'perch' });
-    await page.keyboard.press('j');
-    await waitForBite();
-    await tick(720);
-    const target = page.getByRole('button', { name: 'Set hook', exact: true });
-    const box = await target.boundingBox();
-    assert.equal(box.width, width);
-    assert.ok(box.x >= 0 && box.x + width <= viewport.width);
-    assert.ok(box.y >= 0 && box.y + box.height <= (await qa.tray.boundingBox()).y);
-    // The same 25 px offset is outside the starter target in the full playthrough.
-    await page.touchscreen.tap(box.x + box.width / 2 - 25, box.y + box.height / 2);
-    assert.equal(await qa.action.textContent(), 'Reel');
-    assert.equal(await target.isVisible(), false);
-    assert.deepEqual(qa.errors, []);
-    await page.close();
-  }
-  console.log('PASS Fine-wire and Pro Jig accept a tap outside the starter target on portrait and landscape');
+  console.log('PASS: deep reef catch, buffered hook, saved specimen and gear, one practice point, and rank persistence');
 });
