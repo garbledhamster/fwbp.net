@@ -1653,3 +1653,15 @@ body[data-reduced] .fishing-catch-popup .fishing-catch-flashes i { animation: no
 }
 [data-angler-active] .fishing-speech::before { display: none; }
 [data-angler-active] .fishing-words { font-size: .8rem; }
+
+
+@media (max-height: 420px) and (orientation: landscape) {
+  [data-angler-fight] .fishing-tray-inner > .fishing-dialogue {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+}

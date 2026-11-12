@@ -34,7 +34,7 @@ async function scrollStep(page, direction, mobile) {
       type, touchPoints: y === undefined ? [] : [{ x: 160, y }],
     });
     const from = 220;
-    // Use a short upstroke to check attachment without starting a jig.
+    // The drag moves the lure without triggering a tap.
     const steps = direction > 0 ? [40, 80, 120] : [12, 24, 30];
     await send('touchStart', from);
     for (const delta of steps) await send('touchMove', from + direction * delta);
@@ -54,7 +54,12 @@ async function scrollStep(page, direction, mobile) {
 
 async function checkTray(browser, mobile) {
   const { page, tray, launch, openGame, action, button, status, press, tick, findFish, waitForBite, chooseMode, errors, reelToHole, closeSavedCatch } =
-    await practicePage(browser, { mobile, campaignLiveButtons: true });
+    await practicePage(browser, { mobile });
+  const tapWater = async () => {
+    const y = (await tray.boundingBox()).y * .42;
+    if (mobile) await page.touchscreen.tap(32, y);
+    else await page.mouse.click(32, y);
+  };
   await page.evaluate(() => {
     const rolls = [.05, .72, .39].flatMap(species => [species, .2, .5, .4, .1]);
     let draw = 0;
@@ -68,9 +73,9 @@ async function checkTray(browser, mobile) {
   await chooseMode('Campaign');
   await tray.locator('[data-wallet]').waitFor();
   assert.match(await tray.locator('[data-score]').textContent(), /Mille Lacs.*Campaign/);
-  assert.equal(await action.isEnabled(), true, 'Campaign can jig without selecting a fish first');
+  assert.equal(await action.isHidden(), true, 'live Campaign input stays on the water');
   assert.equal(await tray.getByRole('timer').isVisible(), false, 'looking for fish does not start the attempt');
-  assert.match(await status.textContent(), /click or tap the jig/i);
+  assert.match(await status.textContent(), /tap to jig|drag or scroll/i);
 
   const initial = await assertAttached(page);
   await scrollStep(page, 1, mobile);
@@ -99,37 +104,36 @@ async function checkTray(browser, mobile) {
 
   await press(button('Spoon'));
   const still = await assertAttached(page);
-  await press(action);
+  await tapWater();
   await tick(110);
   const jiggled = await assertAttached(page);
-  if (!mobile) {
-    assert.ok(jiggled.depth < still.depth - 3, 'the lure and line rise together during a jig');
-    assert.ok(Math.abs(jiggled.endY - still.endY) < 1, 'the camera stays centered while jigging');
-  }
+  assert.ok(jiggled.depth < still.depth - 3, 'the lure and line rise together during a jig');
+  assert.ok(Math.abs(jiggled.endY - still.endY) < 1, 'the camera stays centered while jigging');
   assert.match(await status.textContent(), /try a different lure/i);
   assert.equal(await tray.getByRole('timer').isVisible(), false, 'a wrong lure leaves the attempt unspent');
 
   await press(tray.getByRole('group', { name: 'Lures' }).getByRole('button', { name: 'Jig', exact: true }));
   await tick(300);
   await findFish({ species: 'perch' });
-  await press(action);
+  await tapWater();
   await waitForBite();
   const committedAt = await page.evaluate(() => Date.now());
-  await page.keyboard.press('r');
-  await tick(16);
-  assert.match(await status.textContent(), /slipped the hook/i);
-  await tick(mobile ? 28600 : 27800);
-  await findFish({ species: 'perch', depthTolerance: 54 });
+  await tapWater();
+  await tick(3250);
+  assert.match(await status.textContent(), /slipped the hook/i, 'a tap before the buffer leaves the bite to expire');
+  const elapsed = await page.evaluate(start => Date.now() - start, committedAt);
+  await tick(28000 - elapsed);
+  await findFish({ species: 'perch', depthTolerance: 48 });
   assert.match(await tray.getByRole('timer').textContent(), /[1-3]s/);
-  await press(action);
+  await tapWater();
   await waitForBite();
   const secondBite = await page.evaluate(() => Date.now());
   await tick(Math.max(700, committedAt + 30100 - secondBite));
-  assert.match(await status.textContent(), /yeah, reel it/i, 'a late bite keeps its hook window');
-  await press(page.getByRole('button', { name: 'Set hook', exact: true }));
+  assert.match(await status.textContent(), /tap to hook/i, 'a late bite keeps its hook window');
+  await tapWater();
+  await page.getByRole('meter', { name: 'Reel feedback' }).waitFor();
   await reelToHole();
-  await press(action);
-  await tray.getByText(/Yellow perch.*points/i).waitFor();
+  await page.locator('.fishing-catch-popup').getByRole('heading', { name: 'Yellow perch', exact: true }).waitFor();
   await closeSavedCatch();
   if (!mobile) {
     assert.equal(await action.evaluate(el => el === document.activeElement && el.matches(':focus-visible')), true);

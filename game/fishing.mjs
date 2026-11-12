@@ -59,7 +59,7 @@ const bryanCallout = document.createElement('div');
 bryanCallout.className = 'fishing-bryan-callout';
 bryanCallout.hidden = true;
 bryanCallout.setAttribute('aria-hidden', 'true');
-bryanCallout.innerHTML = `<span class="fishing-bryan-portrait"><img alt="" width="240" height="168"></span>
+bryanCallout.innerHTML = `<span class="fishing-bryan-portrait"><img src="./assets/branding/bryan-front-facing.webp" alt="" width="240" height="168" loading="lazy"></span>
   <b class="fishing-starburst"><span></span><small hidden></small></b>`;
 campaignViewport.append(anglerMeter, bryanCallout);
 
@@ -1863,6 +1863,7 @@ function render() {
   tray.toggleAttribute('data-line-physics', linePhysics);
   tray.toggleAttribute('data-campaign-bait-only', baitOnly);
   tray.toggleAttribute('data-angler-active', anglerOuting() && ['seek', 'bite', 'fight'].includes(state?.stage));
+  tray.toggleAttribute('data-angler-fight', anglerOuting() && state?.stage === 'fight');
   actionRack.hidden = baitOnly;
   waterName.textContent = tutorial ? 'Bryan’s practice hole' : state ? `${state.lake}${areaName}` : 'Fishing beneath the ice';
   scoreProgress.hidden = !state;

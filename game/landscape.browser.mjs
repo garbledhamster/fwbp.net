@@ -7,7 +7,9 @@ async function fightView(page) {
   return page.evaluate(() => {
     const target = document.querySelector('.fishing-target');
     const fish = target.getBoundingClientRect();
-    const mouthX = target.hasAttribute('data-facing-right') ? 238 / 245 : 7 / 245;
+    const facing = target.style.getPropertyValue('--fight-facing');
+    const mouthX = facing ? .5 + (7 / 245 - .5) * Number(facing)
+      : target.hasAttribute('data-facing-right') ? 238 / 245 : 7 / 245;
     const tray = document.querySelector('.fishing-tray').getBoundingClientRect();
     const path = document.querySelector('.fishing-line-path');
     const hook = path.getPointAtLength(path.getTotalLength()).matrixTransform(path.getScreenCTM());
@@ -32,34 +34,29 @@ async function checkLandscape(browser, mode) {
   });
 
   const campaign = mode === 'Campaign';
-  const marker = page.locator('[data-line-gesture-marker]');
-  const touch = campaign && await page.context().newCDPSession(page);
-  async function swipe(direction) {
+  const tapWater = async () => {
     const box = await tray.boundingBox();
-    const x = 30;
-    const y = Math.max(75, box.y / 2);
-    const send = (type, touchPoints) => touch.send('Input.dispatchTouchEvent', { type, touchPoints });
-    await send('touchStart', [{ x, y }]);
-    for (let step = 1; step <= 4; step++) await send('touchMove', [{ x, y: y + direction * 16 * step }]);
-    await send('touchEnd', []);
-  }
+    await page.touchscreen.tap(30, box.y * .42);
+  };
+  const anglerMeter = page.getByRole('meter', { name: 'Reel feedback' });
 
   await enter(mode);
   await press(button('Spoon'));
   await findFish({ species: 'muskie' });
   if (campaign) {
-    await marker.getByRole('button', { name: 'Jig lure' }).tap();
+    await tapWater();
     await waitForBite();
   } else await press(action);
   await tick(700);
-  if (campaign) await marker.getByRole('button', { name: 'Set hook', exact: true }).tap();
+  if (campaign) await tapWater();
   else await press(action);
   await tick(800);
-  assert.match(await status.textContent(), /line’s tight/i);
+  if (campaign) await anglerMeter.waitFor();
+  else assert.match(await status.textContent(), /line’s tight/i);
   const portrait = await fightView(page);
   assert.ok(portrait.fishTop >= 0 && portrait.fishBottom < portrait.trayTop);
   const load = tray.locator('meter');
-  const beforeRotation = await load.evaluate(el => el.value);
+  const beforeRotation = campaign ? undefined : await load.evaluate(el => el.value);
   const loosen = button('Loosen');
 
   await page.setViewportSize({ width: 720, height: 320 });
@@ -72,16 +69,17 @@ async function checkLandscape(browser, mode) {
     `rotation keeps the fish above the tray: ${JSON.stringify(landscape)}`);
   assert.ok(landscape.trayTop >= 160, `leave at least half of the short screen for water: ${JSON.stringify(landscape)}`);
   assert.ok(landscape.gap < 1, 'the line stays attached across rotation');
-  assert.equal(await load.evaluate(el => el.value), beforeRotation, 'rotation preserves the load');
   if (campaign) {
     assert.equal(await action.isVisible(), false);
     assert.equal(await loosen.isVisible(), false);
-    const cue = await marker.locator('[data-line-gesture-down]').boundingBox();
-    assert.ok(cue?.y >= 0 && cue.y + cue.height <= landscape.trayTop, 'Loosen guide stays in the visible water');
-    const guide = await marker.locator('[data-fight-guide]').boundingBox();
-    const fish = await page.locator('.fishing-target.is-hooked').boundingBox();
-    assert.ok(guide.x >= 0 && guide.x + guide.width <= fish.x - 11,
-      'rotation keeps the balance meter separated to the left of the fish');
+    for (const overlay of [anglerMeter, page.locator('.fishing-bryan-callout')]) {
+      const bounds = await overlay.boundingBox();
+      assert.ok(bounds && bounds.x >= 0 && bounds.x + bounds.width <= 720 && bounds.y >= 0 &&
+        bounds.y + bounds.height <= landscape.trayTop, 'the meter and Bryan cue stay inside the water');
+      assert.equal(await overlay.evaluate(el => getComputedStyle(el).pointerEvents), 'none');
+    }
+  } else {
+    assert.equal(await load.evaluate(el => el.value), beforeRotation, 'rotation preserves the load');
   }
   const touchTargets = campaign ? [button('Menu'), ...['Jig', 'Spoon', 'Minnow'].map(button)] : [action, loosen];
   for (const control of touchTargets) {
@@ -98,14 +96,17 @@ async function checkLandscape(browser, mode) {
     });
   }
 
-  if (campaign) await swipe(1);
-  else await press(loosen);
-  assert.match(await status.textContent(), /reel it up toward the hole/i);
-  assert.ok(await load.evaluate(el => el.value) < beforeRotation);
   if (campaign) {
+    await page.evaluate(() => { Math.random = () => .95; });
+    await tapWater();
+    assert.equal(await anglerMeter.getAttribute('data-outcome'), 'reel');
+    await tick(180);
     const view = await fightView(page);
     assert.ok(view.centerGap < 1 && view.gap < 1, 'after rotation the camera follows the hook attached to the fish');
   } else {
+    await press(loosen);
+    assert.match(await status.textContent(), /reel it up toward the hole/i);
+    assert.ok(await load.evaluate(el => el.value) < beforeRotation);
     const beforeScroll = await fightView(page);
     await page.evaluate(() => scrollBy(0, 24));
     await tick(32);
@@ -119,7 +120,7 @@ async function checkLandscape(browser, mode) {
   await press(page.getByRole('button', { name: 'Tackle shop', exact: true }));
   const shop = page.getByRole('dialog', { name: 'Tackle shop' });
   const strongerLine = await selectTackle('stronger-line');
-  await strongerLine.getByText('12 lb breaking strength.', { exact: true }).waitFor();
+  await strongerLine.getByText('12 lb line. Fish take less line when they run.', { exact: true }).waitFor();
   await press(shop.getByRole('button', { name: 'Back to outings' }));
   await page.getByRole('dialog', { name: 'Choose an outing' }).waitFor();
   assert.equal(await shop.isHidden(), true);
