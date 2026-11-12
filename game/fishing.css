@@ -1391,3 +1391,28 @@ body[data-reduced] .fishing-auger-scene svg { transition: none; transform: none;
   .fishing-pause [data-pause-panel="gear"] > [data-action="back"] { position: absolute; left: 12px; bottom: 8px; width: calc(50% - 20px); margin: 0; }
   .fishing-pause:has([data-pause-panel="gear"]:not([hidden])) .fishing-frame-footer button { width: calc(50% - 8px); }
 }
+
+.fishing-picker.fishing-title {
+  width: min(880px, calc(100% - 32px));
+  min-height: min(400px, calc(100dvh - 32px));
+  padding: clamp(24px, 6vw, 64px);
+  border-color: #b5b58b;
+  border-radius: 16px;
+  background:
+    linear-gradient(90deg, #101e26f8, #101e26dc 30%, #101e2655 68%, #101e2614),
+    linear-gradient(0deg, #101e26cc, transparent 70%),
+    #101e26 url('../assets/fishing/mille-lacs-dawn.webp') 63% center / cover;
+  box-shadow: 0 22px 70px #0008;
+  align-content: center;
+}
+.fishing-title::backdrop { background: #091912cf; }
+.fishing-title h2 {
+  font-size: clamp(38px, 6.6vw, 81px);
+  font-weight: 600;
+  line-height: .96;
+  letter-spacing: -.048em;
+}
+.fishing-title .fishing-title-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+.fishing-title-actions button { min-width: 105px; font-size: .86rem; font-weight: 750; }
+.fishing-title-actions [data-start-game] { background: #edbc70; color: #192d24; border-color: #a6753e; }
+.fishing-title-actions [data-start-game]:enabled:hover { background: #f7d294; }

@@ -34,12 +34,12 @@ async function checkArt(dialog, file) {
 
 await withBrowser(async browser => {
   for (const size of ['desktop', 'phone', 'landscape']) {
-    const { page, launch, press, selectTackle, closeDialog, errors } = await practicePage(browser, {
+    const { page, openGame, press, selectTackle, closeDialog, errors } = await practicePage(browser, {
       mobile: size !== 'desktop',
       viewport: size === 'landscape' ? { width: 720, height: 320 } : undefined,
     });
 
-    await press(launch, 'Enter');
+    await openGame();
     const picker = page.getByRole('dialog', { name: 'Choose an outing' });
     const campaign = picker.getByRole('button', { name: 'Campaign', exact: true });
     const tutorial = picker.getByRole('button', { name: 'Tutorial with Bryan', exact: true });

@@ -23,7 +23,7 @@ async function fightView(page) {
 }
 
 async function checkLandscape(browser, mode) {
-  const { leave, page, tray, action, button, status, launch, press, enter, tick, findFish, waitForBite, selectTackle, errors } =
+  const { leave, page, tray, action, button, status, openGame, press, enter, tick, findFish, waitForBite, selectTackle, errors } =
     await practicePage(browser, { mobile: true });
   await page.evaluate(() => {
     const rolls = [.98, .2, .5, .4, .1];
@@ -115,7 +115,7 @@ async function checkLandscape(browser, mode) {
   }
 
   await leave();
-  await press(launch, 'Enter');
+  await openGame();
   await press(page.getByRole('button', { name: 'Tackle shop', exact: true }));
   const shop = page.getByRole('dialog', { name: 'Tackle shop' });
   const strongerLine = await selectTackle('stronger-line');

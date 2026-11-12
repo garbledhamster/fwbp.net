@@ -8,7 +8,7 @@ const profileCommand = (page, command) => page.evaluate(async input => {
 
 await withBrowser(async browser => {
   const context = await browser.newContext();
-  const { page, press, tray, launch, tick, errors } = await practicePage(context);
+  const { page, press, tray, openGame, tick, errors } = await practicePage(context);
   const oldSave = {
     version: 1, revision: 1, coins: 25, owned: ['starter-license', 'starter-line', 'starter-hook'],
     equipped: { line: 'starter-line', hook: 'starter-hook' }, awards: {}, elapsedMs: 0,
@@ -50,7 +50,7 @@ await withBrowser(async browser => {
   await other.close();
 
   async function campaignMap() {
-    await press(launch, 'Enter');
+    await openGame();
     await press(page.getByRole('button', { name: 'Campaign', exact: true }), 'Enter');
     await page.locator('.fishing-map[open]').waitFor();
   }

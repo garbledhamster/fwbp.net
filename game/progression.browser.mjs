@@ -21,7 +21,7 @@ await withBrowser(async browser => {
   assert.equal(result.blocked.status, 'outing-active');
   assert.equal(result.reset.profile.coins, result.learned.profile.coins);
   assert.equal(result.after.points, result.before.points);
-  await page.getByRole('button', { name: 'Play fishing game', exact: true }).or(page.getByRole('link', { name: 'Fishing with Bryan, start fishing' })).click();
+  await qa.openGame();
   await page.locator('[data-open-skills]').click();
   await page.getByRole('dialog', { name: 'Campaign Skills' }).waitFor();
   await page.screenshot({ path: `../../evidence/progression/skills-${viewport.width}x${viewport.height}.png` });

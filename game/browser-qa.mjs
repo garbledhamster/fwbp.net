@@ -131,8 +131,18 @@ export async function practicePage(browser, { mobile = false, viewport, configur
     await tray.locator('[data-exit]:enabled').waitFor();
   }
 
-  async function enter(name = 'Practice', spot) {
+  async function startGame() {
+    const title = page.getByRole('dialog', { name: 'Ice Fishing with Bryan' });
+    await press(title.getByRole('button', { name: 'Start Game' }), 'Enter');
+  }
+
+  async function openGame() {
     await press(launch, 'Enter');
+    await startGame();
+  }
+
+  async function enter(name = 'Practice', spot) {
+    await openGame();
     await chooseMode(name, spot);
   }
 
@@ -223,7 +233,7 @@ export async function practicePage(browser, { mobile = false, viewport, configur
   }
 
   return {
-    page, tray, action, launch, button, press, closeDialog, closeSavedCatch, selectTackle, leave, errors, findFish, chooseMode, enter, reelToHole,
+    page, tray, action, launch, button, press, closeDialog, closeSavedCatch, selectTackle, leave, errors, findFish, chooseMode, enter, openGame, startGame, reelToHole,
     status: tray.getByRole('status'),
     timing, waitForBite,
     tick: ms => page.clock.runFor(ms),

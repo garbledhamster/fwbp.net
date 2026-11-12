@@ -3,7 +3,7 @@ import { practicePage, withBrowser } from './browser-qa.mjs';
 
 await withBrowser(async browser => {
   const qa = await practicePage(browser, { campaignLiveButtons: true });
-  const { page, tray, action, launch, press, closeDialog, findFish, waitForBite, tick, reelToHole, errors } = qa;
+  const { page, tray, action, openGame, press, closeDialog, findFish, waitForBite, tick, reelToHole, errors } = qa;
   const map = page.locator('.fishing-map');
   const spotId = 'A3';
   const spot = map.locator(`[data-map-cell="${spotId}"]`);
@@ -16,7 +16,7 @@ await withBrowser(async browser => {
   }, input);
   const landing = (key, speciesId) => ({ type: 'award', key, outcome: 'landed', speciesId, catch: { points: 10 } });
   async function openMap() {
-    await press(launch, 'Enter');
+    await openGame();
     await press(campaign, 'Enter');
     await map.waitFor();
     await press(spot, 'Enter');

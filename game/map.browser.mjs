@@ -6,12 +6,12 @@ const shore = map.cells.find(cell => cell.area === 'starter-shore');
 const reef = map.cells.find(cell => cell.depthFt >= 30);
 
 async function checkShortPortraitMap(browser) {
-  const { page, press, launch, closeDialog } = await practicePage(browser, {
+  const { page, press, openGame, closeDialog } = await practicePage(browser, {
     mobile: true, viewport: { width: 320, height: 568 },
   });
   try {
     const dialog = page.locator('.fishing-map');
-    await press(launch, 'Enter');
+    await openGame();
     await press(page.getByRole('button', { name: 'Campaign', exact: true }), 'Enter');
     await dialog.waitFor();
     await press(dialog.locator('[data-map-drill]'), 'Enter');

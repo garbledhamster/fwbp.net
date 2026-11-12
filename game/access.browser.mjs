@@ -5,7 +5,7 @@ await withBrowser(async browser => {
   for (const mobile of [false, true]) {
     const qa = await practicePage(browser, { mobile });
     const { page, press, tray, closeDialog } = qa;
-    await press(qa.launch, 'Enter');
+    await qa.openGame();
     const picker = page.getByRole('dialog', { name: 'Choose an outing' });
     assert.equal(await picker.getByRole('button', { name: 'Deep Reef', exact: true }).count(), 0);
     await press(picker.getByRole('button', { name: 'Campaign', exact: true }));

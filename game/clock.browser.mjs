@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { practicePage, withBrowser } from './browser-qa.mjs';
 
 await withBrowser(async browser => {
-  const { leave, page, tray, launch, action, button, status, press, enter, tick, findFish, waitForBite, errors, reelToHole } =
+  const { leave, page, tray, openGame, action, button, status, press, enter, tick, findFish, waitForBite, errors, reelToHole } =
     await practicePage(browser);
   const label = tray.locator('[data-phase]');
   const lake = page.locator('.lake');
@@ -39,7 +39,7 @@ await withBrowser(async browser => {
   await status.filter({ hasText: /yellow perch.*10 coins/i }).waitFor();
   await leave();
 
-  await press(launch, 'Enter');
+  await openGame();
   await press(page.getByRole('button', { name: 'Tackle shop', exact: true }));
   const beforeShop = await savedProfile();
   await tick(90000);

@@ -15,7 +15,7 @@ await withBrowser(async (browser) => {
     const qa = await practicePage(browser, { mobile: skip });
     const { page, press, tray } = qa;
     await seedWallet(page);
-    await press(qa.launch, 'Enter');
+    await qa.openGame();
     await press(page.locator('[data-mode="campaign"][data-area="starter-shore"]'), 'Enter');
     const map = page.locator('.fishing-map');
     const drill = page.locator('.fishing-drill');
@@ -99,7 +99,7 @@ await withBrowser(async (browser) => {
 
     await qa.leave();
     assert.equal(await page.locator('.lake > .dive:visible').count(), 7, 'leaving restores the site lake');
-    await press(qa.launch, 'Enter');
+    await qa.openGame();
     await press(page.getByRole('button', { name: 'Campaign', exact: true }), 'Enter');
     await press(map.locator('[data-map-end]'), 'Enter');
     await qa.chooseMode('Campaign', 'C1');

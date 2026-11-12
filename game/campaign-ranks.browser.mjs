@@ -11,7 +11,7 @@ await withBrowser(async browser => {
     const { applyProfile } = await import('./game/profile.mjs');
     await applyProfile({ type: 'award', key: 'rank-fixture:0', outcome: 'landed', catch: { points: 400 } });
   });
-  await press(qa.launch, 'Enter');
+  await qa.openGame();
   const picker = page.getByRole('dialog', { name: 'Choose an outing' });
   assert.equal(await picker.getByRole('button', { name: 'Deep Reef', exact: true }).count(), 0);
   await qa.chooseMode('Campaign', 'A2');
@@ -74,7 +74,7 @@ await withBrowser(async browser => {
   assert.deepEqual(reloaded.catchLocations, landed.catchLocations);
   assert.deepEqual(reloaded.day, landed.day);
   assert.equal(reloaded.skillRanks.lure, 1);
-  await press(qa.launch, 'Enter');
+  await qa.openGame();
   await press(picker.getByRole('button', { name: 'Skills', exact: true }));
   await skills.getByText('Rank 1 / 100', { exact: true }).waitFor();
   assert.match(await bank.textContent(), new RegExp(`${available - 1} available`));

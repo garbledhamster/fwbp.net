@@ -43,6 +43,16 @@ for (const band of water) {
 const iceCeiling = lake.querySelector('.dive-ceiling');
 const campaignViewport = lake.closest('.fishing-route');
 const icon = id => `<svg class="tackle-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="./assets/tackle-icons.svg#${id}"/></svg>`;
+const titleScreen = document.createElement('dialog');
+titleScreen.className = 'fishing-picker fishing-title';
+titleScreen.setAttribute('aria-labelledby', 'fishing-title');
+titleScreen.innerHTML = `
+  <h2 id="fishing-title">Ice Fishing<br>with Bryan</h2>
+  <form method="dialog" class="fishing-title-actions">
+    <button type="button" data-start-game autofocus>Start Game</button>
+    <button>Exit Game</button>
+  </form>`;
+
 const picker = document.createElement('dialog');
 picker.className = 'fishing-picker fishing-outing-picker';
 picker.setAttribute('aria-labelledby', 'fishing-picker-title');
@@ -268,7 +278,7 @@ celebration.innerHTML = `
 const announcement = document.createElement('span');
 announcement.className = 'fishing-announcement';
 announcement.setAttribute('role', 'status');
-document.body.append(picker, pause, shop, itemDetails, permitDialog, tray, celebration, announcement);
+document.body.append(titleScreen, picker, pause, shop, itemDetails, permitDialog, tray, celebration, announcement);
 
 let celebrationTimer;
 
@@ -1936,7 +1946,7 @@ function enter(event) {
   event.preventDefault();
   launch = event.currentTarget;
   previousScroll = window.scrollY;
-  showOutingPicker();
+  titleScreen.showModal();
 }
 
 async function startSelected(selectedMode, hole, savedProfile) {
@@ -1987,6 +1997,10 @@ function leave() {
 }
 
 document.querySelectorAll('.game-entry, .fish-entry').forEach(entry => entry.addEventListener('click', enter));
+titleScreen.querySelector('[data-start-game]').addEventListener('click', () => {
+  titleScreen.close();
+  showOutingPicker();
+});
 picker.addEventListener('click', event => {
   if (event.target.closest('[data-open-shop]')) return openShop();
   const choice = event.target.closest('button[data-mode]');

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { practicePage, withBrowser } from './browser-qa.mjs';
 
 async function checkTraining(browser, mobile) {
-  const { leave, enter, page, tray, action, press, tick, findFish, waitForBite, launch, selectTackle, status, errors, reelToHole } =
+  const { leave, enter, page, tray, action, press, tick, findFish, waitForBite, openGame, selectTackle, status, errors, reelToHole } =
     await practicePage(browser, { mobile, campaignLiveButtons: true });
   const picker = page.getByRole('dialog', { name: 'Choose an outing' });
   const shop = page.getByRole('dialog', { name: 'Tackle shop' });
@@ -18,7 +18,7 @@ async function checkTraining(browser, mobile) {
   }
 
   async function openShop() {
-    await select(launch);
+    await openGame();
     await select(picker.getByRole('button', { name: 'Tackle shop' }));
     await shop.locator('[data-shop-grid]').waitFor();
   }

@@ -31,7 +31,7 @@ async function search(page, tray, action, mobile) {
 }
 
 async function checkShop(browser, mobile) {
-  const { leave, page, launch, tray, action, status, button, enter, press, tick, findFish, waitForBite, errors, reelToHole, closeSavedCatch } =
+  const { leave, page, openGame, tray, action, status, button, enter, press, tick, findFish, waitForBite, errors, reelToHole, closeSavedCatch } =
     await practicePage(browser, { mobile, campaignLiveButtons: true });
   const picker = page.getByRole('dialog', { name: 'Choose an outing' });
   const shop = page.getByRole('dialog', { name: 'Tackle shop' });
@@ -60,7 +60,7 @@ async function checkShop(browser, mobile) {
   }
 
   async function openShop() {
-    await press(launch, 'Enter');
+    await openGame();
     const entry = picker.getByRole('button', { name: 'Tackle shop', exact: true });
     assert.equal(await entry.isVisible(), true, 'the outing chooser gives access to the shop');
     await press(entry);

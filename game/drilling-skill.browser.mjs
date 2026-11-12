@@ -47,7 +47,7 @@ await withBrowser(async browser => {
     assert.match(await tray.locator('[data-water]').textContent(), new RegExp(id));
   }
 
-  await press(qa.launch, 'Enter');
+  await qa.openGame();
   await showSkills();
   assert.equal(await drilling.getByRole('button', { name: 'Add one rank to Drilling' }).isDisabled(), true);
   await qa.closeDialog(skills, skills.locator('[data-skills-close]'));
@@ -67,7 +67,7 @@ await withBrowser(async browser => {
   assert.deepEqual((await profileCommand(page)).day, first);
 
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await press(qa.launch, 'Enter');
+  await qa.openGame();
   await showSkills();
   await drilling.getByText('Rank 1 / 100').waitFor();
   assert.match(await skills.textContent(), /0 available/);
@@ -112,7 +112,7 @@ await withBrowser(async browser => {
   assert.deepEqual(upgraded, thirdHole.profile.day, 'the stale fourth drill and reopening saved holes preserve the trained day');
 
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await press(qa.launch, 'Enter');
+  await qa.openGame();
   await showSkills();
   await press(skills.getByRole('button', { name: 'Reset points for free' }), 'Enter');
   await drilling.getByText('Rank 0 / 100').waitFor();

@@ -1,6 +1,8 @@
-# Fishing beneath the ice
+# Ice Fishing with Bryan
 
-Choose **Play fishing game** to fish in the lake beneath the site. The site content gives way to open water. A fixed line hangs from the ice hole, and the lure bounces up and down when you jig. Watch how the fish responds to learn which lure works. The catch log records the pairing after you land it. After a Campaign or Practice catch saves, choose **Next fish**, **View in Your Lake**, or a Bryan video when one is available for that species. Cards and videos return to the same catch, outing and selected lure. A failed save offers **Save catch** before these next steps become available.
+Choose **Ice Fishing with Bryan** in the site navigation to open the title screen. **Start Game** opens the existing outing picker, where you can choose Tutorial with Bryan, Campaign, Practice or Ranked when available. **Exit Game** or Escape closes the title screen and returns focus to the site control that opened it. The title screen opens before an outing begins.
+
+Once you choose an outing, you fish in the lake beneath the site. The site content gives way to open water. A fixed line hangs from the ice hole, and the lure bounces up and down when you jig. Watch how the fish responds to learn which lure works. The catch log records the pairing after you land it. After a Campaign or Practice catch saves, choose **Next fish**, **View in Your Lake**, or a Bryan video when one is available for that species. Cards and videos return to the same catch, outing and selected lure. A failed save offers **Save catch** before these next steps become available.
 
 ## Strategy
 

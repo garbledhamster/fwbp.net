@@ -12,7 +12,7 @@ async function search(action, step) {
 }
 
 async function checkDesktop(browser) {
-  const { chooseMode, page, tray, action, launch, status, press, tick, errors, reelToHole } = await practicePage(browser);
+  const { chooseMode, startGame, page, tray, action, launch, status, press, tick, errors, reelToHole } = await practicePage(browser);
   const fish = page.locator('.fishing-target');
   const line = page.locator('.fishing-line');
   await launch.focus();
@@ -20,6 +20,7 @@ async function checkDesktop(browser) {
   const saved = await scrollY(page);
   assert.ok(saved > 0);
   await page.keyboard.press('Enter');
+  await startGame();
   await chooseMode();
   assert.equal(await scrollY(page), 0, 'start at the ice hole');
   assert.equal(await action.isDisabled(), true, 'the first fish requires a search');

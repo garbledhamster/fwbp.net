@@ -98,8 +98,8 @@ async function catchFish(qa, species, lure) {
 }
 
 async function openMap(qa) {
-  const { page, launch, press } = qa;
-  await press(launch, 'Enter');
+  const { page, openGame, press } = qa;
+  await openGame();
   await press(page.getByRole('button', { name: 'Campaign', exact: true }), 'Enter');
   const map = page.locator('.fishing-map[open]');
   await map.waitFor();

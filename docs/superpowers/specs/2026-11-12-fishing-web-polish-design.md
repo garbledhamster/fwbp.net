@@ -4,7 +4,7 @@ Design for review · November 12, 2026 · Baseline v31 (`4399357`)
 
 ## What a player should be able to do
 
-Open the game from Bryan’s site or a Home Screen icon and see the same title screen. A new player can press **Play** and start fishing for Bryan’s guided perch. A returning player can choose **Continue** to reopen their saved Campaign day or go to the map if there is no active day.
+Open **Ice Fishing with Bryan** from the site navigation and see a title screen with **Start Game** and **Exit Game**. Start Game opens the outing picker. Exit Game returns to the site. Bryan’s guided perch and saved Campaign are available from the picker. The proposed Home Screen version should open the same branded title screen.
 
 Tap anywhere on the water to jig. Swipe down and the lure drops with the push. A quick flick carries farther after the thumb lifts. Swipe up to bring the lure up. When a fish bites, the player can tap the water during a clear, forgiving **Hook now** cue. Once hooked, the fish turns away and pulls the line when it runs. When the player reels the line tight, the fish turns toward the hole. The line stays attached to its mouth through both motions.
 
@@ -26,8 +26,9 @@ The live v31 baseline passed the tutorial, Campaign catch and reload, gesture, P
 
 ## Game entry and Pause
 
-- Give the website Play link and the installed web app one same-origin entry, proposed as `/play/`. Keep the title screen available during load so the player can see where they are. Use a standalone manifest and the existing visual identity.
-- Use **Play** for a fresh profile and **Continue** for a saved Campaign. Offer Campaign, Practice and Tutorial replay under **Modes**. Keep Shop, Your Lake and Skills reachable using the game’s existing views. After the guided perch, offer the Starter Shore Campaign map. Continue opens the Campaign map with the saved day and holes. An in-progress bite or fight resumes through the in-session **Resume** button.
+- Put **Ice Fishing with Bryan** in the site’s main navigation. Open the title screen over the site using the existing Mille Lacs dawn artwork. Focus **Start Game** on entry. **Exit Game** and Escape return focus to the control that opened it. Keep the title and both controls visible on a short landscape screen.
+- **Start Game** opens the existing outing picker. Keep Tutorial with Bryan, Campaign, Practice, Ranked, Shop and Skills available through their existing paths. Keep **Resume** in Pause for an in-progress bite or fight.
+- The proposed installed web app entry is `/play/`. When that work is implemented, use the same title and visual identity during load. After the guided perch, offer the Starter Shore Campaign map. A returning player should be able to open the Campaign map with the saved day and holes.
 - Put **Outing**, **Gear**, and **Controls** tabs in Pause, styled like the tackle shop. Outing links to Shop, Your Lake and Skills and lets the player leave for the title screen. Gear shows the current loadout. Controls shows the gestures and keyboard alternatives. Keep **Resume** visible. Retain focus return and the current pause hold when a child dialog opens.
 - Show the build version in a quiet footer on the title and Pause screens. Feed both from one release value and verify it against the numbered snapshot. Use the same static hosting and release process for the web game.
 - Keep the existing browser IndexedDB profile on the same origin. Verify that the installed app can reopen its own save. WebKit documents that Home Screen installation gives the app its own website data. Importing an existing Safari save is a separate feature, proposed for later if players need it. [WebKit Home Screen storage](https://webkit.org/blog/14787/webkit-features-in-safari-17-2/#login-cookies)
@@ -46,9 +47,9 @@ Share the Phaser scene and controls across Tutorial, Campaign and Practice. Rank
 
 ## Checks before calling the web update ready
 
-1. Build the first playable slice around Bryan’s guided perch. Check that one menu action reaches water and the same controls work in Tutorial and Campaign. Try ordinary taps away from the lure, slow strokes, quick flicks, cancellation and a bite that starts mid-swipe.
+1. Build the first playable slice around Bryan’s guided perch. Check that Start Game opens the outing picker. Confirm the tutorial reaches water and the same controls work in Tutorial and Campaign. Try ordinary taps away from the lure, slow strokes, quick flicks, cancellation and a bite that starts mid-swipe.
 2. Verify a full hook, run, loosen, reel and lift. Check the mouth attachment, visible tension, pause and restart after resizing, rotating, changing holes and returning from a hidden tab. Compare the same input at different frame rates.
 3. Exercise the title and Pause tabs on desktop and short portrait and landscape screens. Capture the title, fight and Pause screens in both phone orientations. Verify keyboard navigation, touch, safe areas, Shop and Your Lake focus return, saved Campaign reload and Ranked behavior. Check the current and numbered release URLs for the expected version, assets and direct entry.
 4. Open the installed web app from a real phone’s Home Screen. Verify that the app reopens its save. Ask both kids to start and land the guided perch without coaching. Record entry taps, depth-control trouble and missed hook attempts. Have Joe try an actual run and reel to judge whether the fish and line feel connected.
 
-The proposed route, menu labels, first-Play tutorial, and the scoped Phaser move are design choices for review. Tune the hook window and flick strength on a phone. v31 remains the live baseline.
+The proposed installed route and the scoped Phaser move are design choices for review. Tune the hook window and flick strength on a phone. v31 remains the live baseline.

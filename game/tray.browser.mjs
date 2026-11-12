@@ -53,14 +53,14 @@ async function scrollStep(page, direction, mobile) {
 }
 
 async function checkTray(browser, mobile) {
-  const { page, tray, launch, action, button, status, press, tick, findFish, waitForBite, chooseMode, errors, reelToHole, closeSavedCatch } =
+  const { page, tray, launch, openGame, action, button, status, press, tick, findFish, waitForBite, chooseMode, errors, reelToHole, closeSavedCatch } =
     await practicePage(browser, { mobile, campaignLiveButtons: true });
   await page.evaluate(() => {
     const rolls = [.05, .72, .39].flatMap(species => [species, .2, .5, .4, .1]);
     let draw = 0;
     Math.random = () => rolls[draw++ % rolls.length];
   });
-  await press(launch);
+  await openGame();
   const picker = page.getByRole('dialog', { name: 'Choose an outing' });
   assert.equal(await picker.isVisible(), true, 'the site entry offers a choice of outings');
   assert.equal(await picker.getByRole('button', { name: 'Practice', exact: true }).isVisible(), true);
