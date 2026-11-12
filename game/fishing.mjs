@@ -1,4 +1,4 @@
-import { openCampaignMap, mapCells, firstShoreHole, confirmEndAttempt } from './campaign-map.mjs?v=campaign-ranks';
+import { openCampaignMap, mapCells, firstShoreHole, confirmEndAttempt } from './campaign-map.mjs?v=mobile-map';
 import { createSuspensionClock } from './suspension.mjs';
 import { moveToHole, stepCampaignFish, abandonHoleFish, advanceCampaignBite, advanceLineFight, apply, campaignDepthBand, campaignPhase, lakes, lineBalanceLimits, lineEffort, lures, practiceLevelXp, practiceSkills, publicRun, skills, start, starterArea, startTutorial } from './rules.mjs?v=angler-1';
 import { areaPermit, hasAreaAccess, campaignGoal, campaignProgress, anglerSkills, anglerSkillLimits, anglerSkillRanks, anglerProgress, shopAvailability, applyProfile, campaignMilestone, loadProfile, shopItems } from './profile.mjs?v=angler-1';

@@ -5,15 +5,42 @@ import map from './lake-map-data.mjs';
 const shore = map.cells.find(cell => cell.area === 'starter-shore');
 const reef = map.cells.find(cell => cell.depthFt >= 30);
 
-async function checkShortPortraitMap(browser) {
-  const { page, press, openGame, closeDialog } = await practicePage(browser, {
-    mobile: true, viewport: { width: 320, height: 568 },
+async function checkMapLayout(dialog, viewport) {
+  const layout = await dialog.evaluate(el => {
+    const scroll = el.querySelector('.fishing-map-scroll');
+    const board = el.querySelector('.fishing-map-water').getBoundingClientRect();
+    const inspector = el.querySelector('.fishing-map-inspector').getBoundingClientRect();
+    const cells = [...el.querySelectorAll('[data-map-cell]')].map(cell => cell.getBoundingClientRect());
+    const overlaps = cells.some((a, i) => cells.slice(i + 1).some(b =>
+      Math.min(a.right, b.right) - Math.max(a.left, b.left) > .5 &&
+      Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > .5));
+    return {
+      boardWidth: board.width,
+      boardHeight: board.height,
+      inspectorWidth: inspector.width,
+      mapWidth: el.querySelector('.fishing-map-layout').getBoundingClientRect().width,
+      overlaps,
+      horizontalOverflow: scroll.scrollWidth > scroll.clientWidth,
+    };
   });
+  const size = `${viewport.width}×${viewport.height}`;
+  assert.ok(!layout.overlaps && !layout.horizontalOverflow, `map spots must fit without overlapping at ${size}: ${JSON.stringify(layout)}`);
+  assert.ok(Math.abs(layout.boardWidth - layout.boardHeight) < 1, `the lake map must stay square at ${size}`);
+  if (viewport.width <= 600 && viewport.width <= viewport.height) {
+    assert.ok(Math.abs(layout.boardWidth - layout.mapWidth) < 1, `the map must fill its column at ${size}`);
+    assert.ok(Math.abs(layout.inspectorWidth - layout.mapWidth) < 1, `the spot details must fill the same column at ${size}`);
+  }
+}
+
+async function checkShortPortraitMap(browser) {
+  const viewport = { width: 320, height: 568 };
+  const { page, press, openGame, closeDialog } = await practicePage(browser, { mobile: true, viewport });
   try {
     const dialog = page.locator('.fishing-map');
     await openGame();
     await press(page.getByRole('button', { name: 'Campaign', exact: true }), 'Enter');
     await dialog.waitFor();
+    await checkMapLayout(dialog, viewport);
     await press(dialog.locator('[data-map-drill]'), 'Enter');
     await press(page.locator('[data-permit-shop]'), 'Enter');
     const shop = page.locator('.fishing-shop');
@@ -58,6 +85,7 @@ await withBrowser(async browser => {
     assert.equal(await tray.locator('.fishing-countdown').isVisible(), false);
     await press(moveHole, 'Enter');
     await dialog.waitFor();
+    await checkMapLayout(dialog, viewport);
     assert.equal(await confirm.isVisible(), false, 'looking for fish has no attempt to abandon');
     assert.match(await dialog.locator('[data-map-budget]').textContent(), /6 of 6/);
     assert.equal(await cell(shore.id).getAttribute('aria-pressed'), 'true');

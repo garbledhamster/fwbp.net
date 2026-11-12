@@ -911,7 +911,9 @@ html:has(body[data-fishing-paused]) { overflow: hidden; }
 .fishing-fight-guide small { font-size: inherit; color: #e9d2a5; }
 /* Campaign map uses packaged shoreline, contours and cell coordinates. */
 .fishing-map {
-  width: min(940px, calc(100vw - 24px));
+  width: min(940px, calc(100% - 24px));
+  max-width: none;
+  max-height: calc(100vh - 24px);
   max-height: calc(100dvh - 24px);
   overflow: hidden;
   --map-depth-shallow: #5097a1;
@@ -927,6 +929,7 @@ html:has(body[data-fishing-paused]) { overflow: hidden; }
 .fishing-map-scroll {
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 4px;
   scroll-padding: 6px;
 }
@@ -1036,16 +1039,16 @@ html:has(body[data-fishing-paused]) { overflow: hidden; }
 .fishing-map :is([data-depth="shallow"], [data-temperature="35"], [data-temperature="36"]) { --map-label: #041419; }
 .fishing-map-layout { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(180px, 1fr); align-items: start; gap: 18px; }
 .fishing-map-water { position: relative; aspect-ratio: 1; min-width: 0; }
-.fishing-map-water > img { display: block; width: 100%; height: 100%; border-radius: 8px; }
+.fishing-map-water > img { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 8px; }
 .fishing-map-cells { position: absolute; inset: 0; }
 .fishing-map .fishing-map-cells button {
   position: absolute;
   transform: translate(-50%, -50%);
   display: grid;
   place-items: center;
-  min-width: 44px;
+  width: 44px;
   min-height: 44px;
-  padding: 5px;
+  padding: 5px 0;
   border: 1px solid #b2d4d5;
   background: var(--map-shade);
   color: var(--map-label, #fff4d4);
@@ -1098,7 +1101,7 @@ html:has(body[data-fishing-paused]) { overflow: hidden; }
   right: 5px;
 }
 .fishing-map-markers { margin-block: 8px 0; }
-.fishing-map-cells button[aria-pressed="true"] { outline: 3px solid #78f5ff; outline-offset: 2px; z-index: 1; }
+.fishing-map-cells button[aria-pressed="true"] { outline: 3px solid #78f5ff; z-index: 1; }
 .fishing-map button:focus-visible { outline: 3px solid #fff5a3; outline-offset: 4px; }
 .fishing-map-inspector { padding: 16px; background: #10212b; border: 1px solid #7fabb7; border-radius: 8px; }
 .fishing-map-inspector [data-map-access-label] {
@@ -1137,20 +1140,22 @@ html:has(body[data-fishing-paused]) { overflow: hidden; }
  .fishing-map-layout { grid-template-columns: minmax(0, min(490px, 62dvh, 64%)) minmax(0, 1fr); }
 }
 @media (max-width: 600px) {
- .fishing-map[open] { padding: 12px; }
+ .fishing-map[open] { width: calc(100% - 12px); padding: 8px; }
  .fishing-map-heading h2 { font-size: 1.3rem; }
  .fishing-map [data-map-help] { gap: 5px; padding-inline: 4px 7px; font-size: .8rem; }
  .fishing-map [data-map-help] img { width: 28px; height: 28px; }
  .fishing-map-tools { gap: 0 10px; }
  .fishing-map [data-map-legend] ul { gap: 6px; }
  .fishing-map [data-map-legend] span { width: 15px; height: 15px; }
- .fishing-map-layout { display: flex; flex-direction: column; gap: 10px; }
+ .fishing-map-layout { grid-template-columns: minmax(0, 1fr); gap: 10px; }
  .fishing-map-inspector { padding: 10px; }
  .fishing-map-inspector p { margin-block: 6px; }
 }
-@media (max-height: 420px) and (orientation: landscape) {
- .fishing-map-layout { display: grid; grid-template-columns: minmax(0, 240px) minmax(0, 1fr); }
+@media (min-width: 500px) and (max-height: 420px) and (orientation: landscape) {
+ .fishing-map-layout { grid-template-columns: 280px minmax(0, 1fr); }
  .fishing-map[open] { padding: 10px; }
+}
+@media (max-height: 420px) and (orientation: landscape) {
  .fishing-map-heading h2 { font-size: 1.45rem; }
  .fishing-map-tools { align-items: center; margin-block: 2px 4px; }
  .fishing-map-overlays legend { position: absolute; clip-path: inset(50%); width: 1px; height: 1px; overflow: hidden; }
@@ -1219,6 +1224,7 @@ body[data-reduced] .fishing-auger-scene svg { transition: none; transform: none;
 }
 :is(.fishing-frame, .fishing-map, .fishing-drill, .fishing-permit) button:enabled:hover { background: #305869; }
 :is(.fishing-frame, .fishing-map, .fishing-drill, .fishing-permit) :is(button,a,[tabindex]):focus-visible { outline: 3px solid #a6f0f5; outline-offset: 2px; }
+.fishing-map .fishing-map-cells button:is([aria-pressed="true"], :focus-visible) { outline-offset: -4px; }
 :is(.fishing-frame, .fishing-map, .fishing-drill, .fishing-permit) ::selection { background: #a6f0f5; color: #102d3c; }
 .fishing-frame :is([data-action="resume"], [data-shop-action="buy"], [data-shop-action="equip"]) {
   background: #f1b747; border-color: #ffd990; color: #182b30; font-weight: 750;

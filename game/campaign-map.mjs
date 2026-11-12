@@ -47,6 +47,7 @@ map.innerHTML = `<div class="fishing-map-scroll">
         <li><span class="fishing-map-open-mark" aria-hidden="true"></span>Open hole today</li>
         <li><span class="fishing-map-past-mark" aria-hidden="true"></span>Past catch</li>
       </ul>
+      <p data-map-goal></p>
     </section>
   </div>
   <p class="fishing-map-note">Depths are rounded from Minnesota DNR contours. Near-bottom temperatures are game estimates.</p>
@@ -56,7 +57,6 @@ map.innerHTML = `<div class="fishing-map-scroll">
   <div class="fishing-map-actions">
     <div class="fishing-map-plan">
       <p data-map-message role="status"></p>
-      <p data-map-goal></p>
       <p data-map-allowance role="status"></p>
     </div>
     <button type="button" data-map-back>Back</button>
