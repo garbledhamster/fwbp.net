@@ -8,11 +8,6 @@
 }
 .mast { background: #243329; }
 .brand { font: bold .98rem Georgia, serif; letter-spacing: .04em; }
-.surface {
-  background: #223229 repeating-linear-gradient(8deg,#e5c88808 0 1px,transparent 1px 12px);
-  padding-top: clamp(19px, 2.5vw, 32px);
-}
-.surface-art { opacity: .62; }
 .ice-art, .episode-art .artwork { filter: sepia(.48) saturate(.82); }
 .episode-art { border: 2px solid #b39b6c; border-radius: 16px 3px; }
 .lake .field-notes, .lake .merch { background: transparent; }
@@ -25,12 +20,11 @@
 
 @media (prefers-reduced-motion: no-preference) {
   body:not([data-reduced]) .surface { overflow: clip; }
-  body:not([data-reduced]) :is(.surface-art, .ice-art) {
+  body:not([data-reduced]) .ice-art {
     position: absolute; inset: calc(-1 * var(--travel)) 0 auto;
     height: calc(100% + 2 * var(--travel));
     transform: translateY(calc(var(--depth, 0) * var(--travel)));
   }
-  .surface-art { --travel: 58px; }
   .ice-art { --travel: 43px; }
   body:not([data-reduced]) .ice-light {
     transform: translateY(calc(var(--depth, 0) * 96px));

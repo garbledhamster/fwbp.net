@@ -65,4 +65,27 @@ await withBrowser(async browser => {
     await page.close();
   }
 });
-console.log('Game preview, title screen, focus return and tutorial entry passed at three viewport sizes.');
+await withBrowser(async browser => {
+  for (const reducedMotion of ['no-preference', 'reduce']) {
+    const page = await browser.newPage({
+      reducedMotion,
+      viewport: { width: reducedMotion === 'reduce' ? 390 : 1280, height: 840 },
+    });
+    await page.goto(process.env.FISHING_QA_URL ?? 'http://127.0.0.1:9867/', { waitUntil: 'domcontentloaded' });
+    const surface = page.locator('#surface');
+    const entry = surface.getByRole('button', { name: 'Go ice fishing with Bryan' });
+    const splash = page.getByRole('dialog', { name: 'Ice Fishing with Bryan' });
+    await entry.click();
+    if (reducedMotion === 'no-preference') await surface.locator('xpath=self::*[@data-game-descent]').waitFor();
+    await splash.waitFor();
+    assert.equal(await surface.getAttribute('data-game-descent'), null);
+    assert.equal(await splash.getAttribute('data-from-ice'), '');
+    await splash.getByRole('button', { name: 'Exit Game' }).click();
+    assert.equal(await entry.evaluate(element => element === document.activeElement), true);
+    await entry.click();
+    await splash.getByRole('button', { name: 'Start Game' }).click();
+    await page.getByRole('dialog', { name: 'Choose an outing' }).waitFor();
+    await page.close();
+  }
+});
+console.log('Navigation and ice hole entry, reduced motion, focus return and tutorial passed.');

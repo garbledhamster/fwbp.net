@@ -1942,11 +1942,36 @@ async function begin(selectedMode = mode, hole, savedProfile) {
   if (!token && fromAction && document.activeElement === document.body) action.focus({ preventScroll: true });
 }
 
-function enter(event) {
+let openingTitle = false;
+async function enter(event) {
   event.preventDefault();
+  if (openingTitle || titleScreen.open) return;
   launch = event.currentTarget;
   previousScroll = window.scrollY;
-  titleScreen.showModal();
+  launch.focus({ preventScroll: true });
+  const fromIce = launch.hasAttribute('data-enter-through-ice');
+  titleScreen.toggleAttribute('data-from-ice', fromIce);
+  if (!fromIce || reduceFishingMotion.matches || document.body.hasAttribute('data-reduced')) {
+    titleScreen.showModal();
+    return;
+  }
+
+  const surface = launch.closest('.surface');
+  const art = surface.querySelector('.tent-art');
+  openingTitle = true;
+  surface.setAttribute('data-game-descent', '');
+  const descent = art.animate(
+    [{ transform: 'scale(1)', opacity: 1 }, { transform: 'scale(4)', opacity: .23 }],
+    { duration: 590, easing: 'cubic-bezier(.48, .03, .78, .32)', fill: 'forwards' }
+  );
+  try {
+    await descent.finished;
+    titleScreen.showModal();
+  } finally {
+    surface.removeAttribute('data-game-descent');
+    descent.cancel();
+    openingTitle = false;
+  }
 }
 
 async function startSelected(selectedMode, hole, savedProfile) {

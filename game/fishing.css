@@ -1414,3 +1414,9 @@ body[data-reduced] .fishing-auger-scene svg { transition: none; transform: none;
 .fishing-title-actions button { min-width: 105px; font-size: .86rem; font-weight: 750; }
 .fishing-title-actions [data-start-game] { background: #edbc70; color: #192d24; border-color: #a6753e; }
 .fishing-title-actions [data-start-game]:enabled:hover { background: #f7d294; }
+
+.fishing-picker.fishing-title[data-from-ice] {
+  background:
+    linear-gradient(90deg, #0b252bee 12%, #0b252b78 66%, #0b252b40),
+    #0b252b url('../assets/branding/tent-cutaway.webp') 49% 94% / cover;
+}
