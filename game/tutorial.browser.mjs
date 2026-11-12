@@ -12,7 +12,7 @@ async function checkTutorial(browser, input) {
     const initial = await loadProfile();
     const { profile: withPermit } = await applyProfile({ type: 'buy', id: 'starter-license', revision: initial.revision });
     const { profile } = await applyProfile({ type: 'begin-day' });
-    if (!withPermit.owned.includes('starter-license')) throw new Error('The tutorial fixture needs a Starter Shore permit.');
+    if (!withPermit.owned.includes('starter-license')) throw new Error('The tutorial fixture needs a Mille Lacs permit.');
     return (await applyProfile({ type: 'open-hole', dayId: profile.day.id, cellId: 'A3', elapsedMs: profile.elapsedMs })).profile;
   });
   const readSave = () => page.evaluate(async () => (await import('./game/profile.mjs')).loadProfile());

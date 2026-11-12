@@ -35,7 +35,6 @@ await withBrowser(async browser => {
   assert.deepEqual(first.opened, []);
   assert.deepEqual(first.rosters, {});
   const open = (cellId, dayId = first.id) => ({ type: 'open-hole', dayId, cellId });
-  assert.equal((await profileCommand(other, open('B1'))).status, 'permit-required');
   assert.equal((await profileCommand(other, open('Z0'))).status, 'invalid');
   const opens = await Promise.all([page, other].map(tab => profileCommand(tab, open('A3'))));
   assert.deepEqual(opens.map(result => result.status).sort(), ['hole-current', 'hole-opened']);
@@ -65,11 +64,9 @@ await withBrowser(async browser => {
   assert.match(await page.locator('[data-map-allowance]').textContent(), /0 of 2 new holes/);
   assert.deepEqual((await profileCommand(page)).day, savedDay);
   await page.keyboard.press('ArrowRight');
-  const locked = page.locator('[data-map-cell][aria-pressed="true"]');
-  assert.match(await locked.getAttribute('aria-label'), /permit required/);
-  assert.match(await page.locator('[data-map-permit]').textContent(), /Deep Reef permit/);
-  const permit = await profileCommand(page, { type: 'buy', id: 'deep-reef-license', revision: secondHole.profile.revision });
-  assert.equal(permit.status, 'bought');
+  const selected = page.locator('[data-map-cell][aria-pressed="true"]');
+  assert.equal(await selected.getAttribute('data-spot-access'), 'unlocked');
+  assert.match(await page.locator('[data-map-permit]').textContent(), /Mille Lacs permit/);
   const atLimit = await profileCommand(page, open('B1'));
   assert.equal(atLimit.status, 'daily-limit');
   assert.deepEqual(atLimit.profile.day, savedDay);

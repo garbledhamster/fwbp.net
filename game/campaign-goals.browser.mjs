@@ -63,20 +63,10 @@ async function verifySettlement(browser) {
 
     const pikeResults = await Promise.all([page, other].map((tab, index) =>
       profileCommand(tab, landing(`pike:${index}`, 'pike', 35))));
-    assert.deepEqual(pikeResults.map(result => result.earned), [35, 35]);
+    assert.deepEqual(pikeResults.map(result => result.earned).sort((a, b) => a - b), [17, 35]);
     const afterPike = await profileCommand(page);
     assert.equal(afterPike.goalCatches.length, 2, 'two different pike catches complete just the pike goal');
     assert.match(afterPike.goalCatches[1], /^pike:[01]$/);
-    const reefEarly = landing('reef:0', 'walleye', 25);
-    const waiting = await profileCommand(page, reefEarly);
-    assert.equal(waiting.earned, 25, 'the permit wait pays ordinary rewards');
-    assert.deepEqual(waiting.profile.goalCatches, afterPike.goalCatches);
-
-    const permit = await profileCommand(page, { type: 'buy', id: 'deep-reef-license', revision: waiting.profile.revision });
-    assert.equal(permit.status, 'bought');
-    const replay = await profileCommand(other, reefEarly);
-    assert.equal(replay.status, 'duplicate-award');
-    assert.deepEqual(replay.profile.goalCatches, afterPike.goalCatches);
     const offReef = await profileCommand(other, landing('reef:1', 'rock-bass', 15));
     assert.equal(offReef.earned, 7);
     const walleye = await profileCommand(page, landing('reef:2', 'walleye', 25));
@@ -120,7 +110,6 @@ async function buyPermit(qa, id, area) {
   const { page, press, closeDialog } = qa;
   const permit = page.getByRole('dialog', { name: `${area} permit` });
   await permit.waitFor();
-  if (area === 'Deep Reef') await permit.getByText(/costs 25 coins/i).waitFor();
   await press(permit.getByRole('button', { name: 'Get this permit' }), 'Enter');
   const shop = page.getByRole('dialog', { name: 'Tackle shop' });
   const item = shop.locator(`[data-item="${id}"]`);
@@ -160,7 +149,7 @@ async function verifyOuting(browser) {
   const hole = map.getByRole('button', { name: /A3, Weed edge/ });
   await press(hole, 'Enter');
   await press(map.locator('[data-map-drill]'), 'Enter');
-  await buyPermit(qa, 'starter-license', 'Starter Shore');
+  await buyPermit(qa, 'starter-license', 'Mille Lacs');
   await drillSelected(qa, map);
   await tray.locator('[data-exit]:enabled').waitFor();
   assert.match(await tray.locator('[data-fishing-goal]').textContent(), /Goal.*perch/i);
@@ -200,17 +189,13 @@ async function verifyOuting(browser) {
   const pike = await catchFish(qa, 'pike', 'spoon');
   assert.equal(await pike.locator('h2').textContent(), 'Northern pike');
   assert.match(await pike.textContent(), /\+35 coins.*\+35 XP/);
-  await assertGoalClue(pike.locator('[data-reward-goal]'), /goal complete.*Deep Reef permit.*walleye/i);
+  await assertGoalClue(pike.locator('[data-reward-goal]'), /goal complete.*walleye/i);
 
   await page.reload({ waitUntil: 'domcontentloaded' });
   await openMap(qa);
   const reefMap = await nextDay(qa);
-  await assertGoalClue(reefMap.locator('[data-map-goal]'), /Deep Reef permit.*walleye/i);
-  await press(reefMap.getByRole('button', { name: /B1, Reef edge.*permit required/ }), 'Enter');
-  await press(reefMap.getByRole('button', { name: 'Check permit' }), 'Enter');
-  await buyPermit(qa, 'deep-reef-license', 'Deep Reef');
-  await reefMap.waitFor();
   await assertGoalClue(reefMap.locator('[data-map-goal]'), /walleye.*reef edges.*25 ft.*minnow/i);
+  await press(reefMap.getByRole('button', { name: /B1, Reef edge/ }), 'Enter');
   await drillSelected(qa, reefMap);
   assert.match(await tray.locator('[data-fishing-goal]').textContent(), /Goal.*walleye/i);
   const walleye = await catchFish(qa, 'walleye', 'minnow');

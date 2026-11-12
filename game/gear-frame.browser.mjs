@@ -30,19 +30,19 @@ await withBrowser(async browser=>{
     if(evidence)await page.screenshot({path:`${evidence}/inventory-${viewport.width}x${viewport.height}.png`});
     await tile('waxworm-bait').focus();
     await page.keyboard.press('End');
-    assert.equal(await tile('deep-reef-license').evaluate(el=>el===document.activeElement),true,'End reaches the final inventory tile');
+    assert.equal(await tile('starter-license').evaluate(el=>el===document.activeElement),true,'End reaches the final inventory tile');
     await page.keyboard.press('Home');
     assert.equal(await tile('waxworm-bait').evaluate(el=>el===document.activeElement),true,'Home returns to the first inventory tile');
     await press(tile('live-minnow'));
     assert.match(await gear.locator('[data-gear-inspector]').textContent(),/Carried next outing/);
     if(viewport.width<600) await press(gear.locator('[data-gear-grid-back]'));
-    await tile('deep-reef-license').scrollIntoViewIfNeeded();
+    await tile('starter-license').scrollIntoViewIfNeeded();
     const offset=await grid.evaluate(el=>el.scrollTop);
-    await press(tile('deep-reef-license'));
+    await press(tile('starter-license'));
     if(viewport.width<600){
       await press(gear.locator('[data-gear-grid-back]'));
       assert.equal(await grid.evaluate(el=>el.scrollTop),offset);
-      assert.equal(await tile('deep-reef-license').evaluate(el=>el===document.activeElement),true);
+      assert.equal(await tile('starter-license').evaluate(el=>el===document.activeElement),true);
     }
     await press(tile('stronger-line'));
     const selected=gear.locator('[data-gear-inspector]');

@@ -92,7 +92,8 @@ await withBrowser(async browser => {
     }), legacy);
     const migrated = await command(first);
     assert.equal(migrated.version, 2);
-    assert.equal(migrated.coins, 91);
+    assert.equal(migrated.coins, legacy.coins + 25);
+    assert.equal(migrated.reefPermitRefunded, true);
     assert.equal(migrated.elapsedMs, 4567);
     assert.equal(migrated.custom, 'retained');
     assert.deepEqual(migrated.owned, legacy.owned);

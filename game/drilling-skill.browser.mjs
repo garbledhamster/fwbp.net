@@ -49,29 +49,28 @@ await withBrowser(async browser => {
 
   await press(qa.launch, 'Enter');
   await showSkills();
-  assert.equal(await drilling.getByRole('button', { name: 'Locked' }).isDisabled(), true);
+  assert.equal(await drilling.getByRole('button', { name: 'Add one rank to Drilling' }).isDisabled(), true);
   await qa.closeDialog(skills, skills.locator('[data-skills-close]'));
   const { profile: funded } = await profileCommand(page, { type: 'award', key: 'earlier-outing:0', outcome: 'landed', catch: { points: 35 } });
-  const { profile: licensed } = await profileCommand(page, { type: 'buy', id: 'starter-license', revision: funded.revision });
-  await profileCommand(page, { type: 'buy', id: 'deep-reef-license', revision: licensed.revision });
+  await profileCommand(page, { type: 'buy', id: 'starter-license', revision: funded.revision });
 
   await showMap();
   const first = (await profileCommand(page)).day;
   assert.equal(first.allowance, 2);
   await press(map.locator('[data-map-back]'), 'Enter');
   await showSkills();
-  assert.match(await skills.textContent(), /Level 2 · 35 XP.*1 skill point saved/);
-  assert.match(await drilling.textContent(), /3 new holes.*next day.*1 point/is);
-  await press(drilling.getByRole('button', { name: 'Learn', exact: true }), 'Enter');
-  await drilling.getByRole('button', { name: 'Learned' }).waitFor();
-  assert.match(await skills.textContent(), /0 skill points saved/);
+  assert.match(await skills.textContent(), /Level 2 · 35 XP.*1 available/s);
+  assert.match(await drilling.textContent(), /Next rank.*3 new holes/is);
+  await press(drilling.getByRole('button', { name: 'Add one rank to Drilling' }), 'Enter');
+  await drilling.getByText('Rank 1 / 100').waitFor();
+  assert.match(await skills.textContent(), /0 available/);
   assert.deepEqual((await profileCommand(page)).day, first);
 
   await page.reload({ waitUntil: 'domcontentloaded' });
   await press(qa.launch, 'Enter');
   await showSkills();
-  await drilling.getByRole('button', { name: 'Learned' }).waitFor();
-  assert.match(await skills.textContent(), /0 skill points saved/);
+  await drilling.getByText('Rank 1 / 100').waitFor();
+  assert.match(await skills.textContent(), /0 available/);
   await qa.closeDialog(skills, skills.locator('[data-skills-close]'));
   await showMap();
   assert.match(await allowance.textContent(), /2 of 2 new holes/);
@@ -116,8 +115,8 @@ await withBrowser(async browser => {
   await press(qa.launch, 'Enter');
   await showSkills();
   await press(skills.getByRole('button', { name: 'Reset points for free' }), 'Enter');
-  await drilling.getByRole('button', { name: 'Learn', exact: true }).waitFor();
-  assert.match(await skills.textContent(), /1 skill point saved/);
+  await drilling.getByText('Rank 0 / 100').waitFor();
+  assert.match(await skills.textContent(), /1 available/);
   assert.deepEqual((await profileCommand(page)).day, upgraded);
   await qa.closeDialog(skills, skills.locator('[data-skills-close]'));
   await showMap();

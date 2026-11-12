@@ -1,9 +1,9 @@
-import { openCampaignMap, mapCells, firstShoreHole, confirmEndAttempt } from './campaign-map.mjs?v=campaign-map-access';
+import { openCampaignMap, mapCells, firstShoreHole, confirmEndAttempt } from './campaign-map.mjs?v=campaign-ranks';
 import { createSuspensionClock } from './suspension.mjs';
-import { catchQuality, moveToHole, stepCampaignFish, abandonHoleFish, advanceLineFight, apply, campaignAreas, campaignDepthBand, campaignPhase, lakes, lineBalanceLimits, lineEffort, lures, practiceLevelXp, practiceSkills, publicRun, skills, start, starterArea, startTutorial } from './rules.mjs?v=bryan-tutorial';
-import { areaPermit, hasAreaAccess, campaignGoal, campaignProgress, campaignTraining, campaignTechniques, techniqueState, shopAvailability, applyProfile, campaignMilestone, loadProfile, shopItems } from './profile.mjs?v=campaign-map-discovery';
+import { catchQuality, moveToHole, stepCampaignFish, abandonHoleFish, advanceLineFight, apply, campaignDepthBand, campaignPhase, lakes, lineBalanceLimits, lineEffort, lures, practiceLevelXp, practiceSkills, publicRun, skills, start, starterArea, startTutorial } from './rules.mjs?v=campaign-ranks';
+import { areaPermit, hasAreaAccess, campaignGoal, campaignProgress, campaignTraining, campaignSkills, campaignSkillCap, campaignSkillRanks, shopAvailability, applyProfile, campaignMilestone, loadProfile, shopItems } from './profile.mjs?v=campaign-ranks';
 import { lureTip } from './species-catalog.mjs';
-import { openYourLake } from './collection.mjs?v=campaign-map-discovery';
+import { openYourLake } from './collection.mjs?v=campaign-ranks';
 import { renderSpeciesVideo } from './species-video.mjs';
 import { spriteHref } from './lake-sprites.mjs';
 
@@ -43,9 +43,6 @@ for (const band of water) {
 const iceCeiling = lake.querySelector('.dive-ceiling');
 const campaignViewport = lake.closest('.fishing-route');
 const icon = id => `<svg class="tackle-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="./assets/tackle-icons.svg#${id}"/></svg>`;
-const reefArea = 'deep-reef';
-const reefLicense = shopItems.find(item => item.area === reefArea);
-const reefRequirement = `Requires the ${reefLicense.name}, ${reefLicense.cost} coins at the tackle shop.`;
 const picker = document.createElement('dialog');
 picker.className = 'fishing-picker fishing-outing-picker';
 picker.setAttribute('aria-labelledby', 'fishing-picker-title');
@@ -59,9 +56,7 @@ picker.innerHTML = `
     <button type="button" data-mode="tutorial" aria-describedby="tutorial-description">Tutorial with Bryan</button>
     <p id="tutorial-description">Practice jigging, setting the hook, and landing a perch.</p>
     <button type="button" data-mode="campaign" data-area="${starterArea}" aria-describedby="campaign-description">Campaign</button>
-    <p id="campaign-description">Fish ${campaignAreas[starterArea].name} on Mille Lacs with your own tackle.</p>
-    <button type="button" data-mode="campaign" data-area="${reefArea}" aria-describedby="reef-description">${campaignAreas[reefArea].name}</button>
-    <p id="reef-description">${reefRequirement}</p>
+    <p id="campaign-description">Fish shallow and deep water on Mille Lacs with your own tackle.</p>
     <button type="button" data-open-shop aria-describedby="shop-description">Tackle shop</button>
     <p id="shop-description">Spend coins and choose your gear between outings.</p>
     <button type="button" data-open-skills aria-describedby="skills-description">Skills</button>
@@ -105,10 +100,9 @@ permitDialog.innerHTML = `
   <p data-permit-message role="status"></p>
   <div class="fishing-permit-actions">
     <button type="button" data-permit-shop>Get this permit</button>
-    <button type="button" data-permit-starter hidden>Choose Starter Shore</button>
-    <button type="button" data-permit-back>Back to areas</button>
+    <button type="button" data-permit-back>Back to map</button>
   </div>
-  <p class="fishing-permit-note">These permits unlock game areas with game coins. For real fishing, check
+  <p class="fishing-permit-note">This free game permit opens Mille Lacs. For real fishing, check
     <a href="https://www.dnr.state.mn.us/regulations/fishing/index.html" target="_blank" rel="noopener">Minnesota DNR requirements</a>
     and <a href="https://www.dnr.state.mn.us/fishing/millelacs.html" target="_blank" rel="noopener">Mille Lacs rules</a>.</p>`;
 
@@ -238,6 +232,7 @@ const biteRipple = line.querySelector('.fishing-bite-ripple');
 const biteFlash = line.querySelector('.fishing-bite-flash');
 const campaignSwimmers = new Map();
 let swimFrame, swimPositions, campaignBiteAnchor;
+let missedJigAt = -Infinity;
 const lineGestureMarker = document.createElement('div');
 lineGestureMarker.className = 'fishing-line-gesture';
 lineGestureMarker.setAttribute('data-line-gesture-marker', '');
@@ -347,7 +342,6 @@ status.after(studiedCue);
 document.addEventListener('fishing:profile-changed', event => {
   if (usesLinePhysics() && !tutorial) profile = event.detail.profile;
 });
-let permitArea = starterArea;
 let permitReturn;
 let selectedHole = firstShoreHole;
 let mapRelease;
@@ -509,7 +503,6 @@ const shopLabels = { bait: 'Bait', line: 'Fishing line', hook: 'Hooks', training
 const shopBalance = shop.querySelector('[data-shop-balance]');
 const shopMessage = shop.querySelector('[data-shop-message]');
 const shopList = shop.querySelector('[data-shop-items]');
-const reefDescription = picker.querySelector('#reef-description');
 
 function showOutingPicker(focusArea, message = '') {
   const current = ++pickerGeneration;
@@ -519,78 +512,63 @@ function showOutingPicker(focusArea, message = '') {
   void loadProfile().then(savedProfile => {
     if (current !== pickerGeneration || !picker.open) return;
     for (const entry of picker.querySelectorAll('[data-area]')) {
-      const owned = hasAreaAccess(savedProfile, entry.dataset.area);
+      const owned = hasAreaAccess(savedProfile);
       // Locked areas remain actionable so keyboard and touch can reach the guide.
       entry.toggleAttribute('data-permit-required', !owned);
       entry.removeAttribute('aria-disabled');
     }
-    const unlocked = hasAreaAccess(savedProfile, reefArea);
-    reefDescription.textContent = unlocked ? 'Look for fish around a deeper reef on Mille Lacs.' : reefRequirement;
-    picker.querySelector('#campaign-description').textContent = hasAreaAccess(savedProfile, starterArea)
-      ? `Fish ${campaignAreas[starterArea].name} on Mille Lacs with your own tackle.`
-      : 'Claim the free Starter Shore permit before your first Campaign outing.';
-  }).catch(() => {
-    if (current !== pickerGeneration || !picker.open) return;
-    reefDescription.textContent = 'Couldn’t read your permits. Choose an area to try again.';
-  });
+    picker.querySelector('#campaign-description').textContent = hasAreaAccess(savedProfile)
+      ? 'Fish shallow and deep water on Mille Lacs with your own tackle.'
+      : 'Claim the free Mille Lacs permit before your first Campaign outing.';
+  }).catch(() => {});
 }
 
 const permitMessage = permitDialog.querySelector('[data-permit-message]');
 const permitShop = permitDialog.querySelector('[data-permit-shop]');
-const permitStarter = permitDialog.querySelector('[data-permit-starter]');
 
-async function showPermit(area) {
-  const permit = areaPermit(area);
-  if (!permit) return showOutingPicker();
-  permitArea = area;
+async function showPermit() {
+  const permit = areaPermit();
   const current = ++permitGeneration;
   picker.close();
   if (!permitDialog.open) permitDialog.showModal();
-  permitDialog.querySelector('h2').textContent = `${campaignAreas[area].name} permit`;
-  permitMessage.textContent = 'Checking your saved permits…';
+  permitDialog.querySelector('h2').textContent = permit.name;
+  permitMessage.textContent = 'Checking your saved permit…';
   permitShop.disabled = true;
-  permitStarter.hidden = area === starterArea;
   permitDialog.querySelector('h2').focus();
   try {
     const saved = await loadProfile();
     if (current !== permitGeneration || !permitDialog.open) return;
-    const shortfall = Math.max(0, permit.cost - saved.coins);
-    permitMessage.textContent = hasAreaAccess(saved, area)
-      ? `You own the ${permit.name}. Return to the areas and choose ${campaignAreas[area].name} when you’re ready.`
-      : `${campaignAreas[area].name} needs the ${permit.name}. ${permit.cost === 0 ? 'It’s free' : `It costs ${coins(permit.cost)}`}. You have ${coins(saved.coins)}.${shortfall ? ` You need ${coins(shortfall)} more. Starter Shore has a free permit.` : ''}`;
-    permitShop.textContent = hasAreaAccess(saved, area) ? 'View this permit' : 'Get this permit';
+    permitMessage.textContent = hasAreaAccess(saved)
+      ? `You own the ${permit.name}. Return to the map to choose a fishing spot.`
+      : 'Claim your free Mille Lacs permit to fish any spot on the map.';
+    permitShop.textContent = hasAreaAccess(saved) ? 'View this permit' : 'Get this permit';
     permitShop.disabled = false;
   } catch {
     if (current !== permitGeneration || !permitDialog.open) return;
-    permitMessage.textContent = 'Couldn’t read your saved permits. Open the shop to try again, or go back to the areas.';
+    permitMessage.textContent = 'Couldn’t read your saved permit. Open the shop to try again, or return to the map.';
     permitShop.disabled = false;
   }
 }
 
-function returnToAreas() {
+function returnToMap() {
   permitGeneration++;
   permitDialog.close();
   if (permitReturn) { const back = permitReturn; permitReturn = undefined; void back(); }
-  else showOutingPicker(permitArea);
+  else showOutingPicker(starterArea);
 }
 
 permitDialog.addEventListener('cancel', event => {
   event.preventDefault();
-  returnToAreas();
+  returnToMap();
 });
-permitDialog.querySelector('[data-permit-back]').addEventListener('click', returnToAreas);
+permitDialog.querySelector('[data-permit-back]').addEventListener('click', returnToMap);
 permitShop.addEventListener('click', () => {
-  const area = permitArea;
-  const permit = areaPermit(area);
+  const permit = areaPermit();
   permitGeneration++;
   permitDialog.close();
-  void openShop({ itemId: permit.id, onClose: () => { if (permitReturn) { const back = permitReturn; permitReturn = undefined; void back(); } else showOutingPicker(area); } });
+  void openShop({ itemId: permit.id, onClose: () => { if (permitReturn) { const back = permitReturn; permitReturn = undefined; void back(); } else showOutingPicker(starterArea); } });
 });
-permitStarter.addEventListener('click', () => {
-  permitGeneration++;
-  permitDialog.close();
-  if (permitReturn) { selectedHole = firstShoreHole; const back = permitReturn; permitReturn = undefined; void back(); } else showOutingPicker(starterArea);
-});
+
 
 function shopItemState(item) {
   const availability = shopAvailability(profile, item);
@@ -1066,6 +1044,18 @@ function positionFightGuide(water, phase, viewportLeft, viewportTop, bottom) {
   lineGestureMarker.style.top = `${y - water.top}px`;
 }
 
+function hookTargetDiameter() {
+  if (tutorial) return 68;
+  if (lure !== 'jig') return 44;
+  return (run.campaign.hook?.targetDiameter ?? 44) + (run.campaign.aimBonus ?? 0);
+}
+
+function biteDrift(elapsed) {
+  if (reducedMotion()) return 0;
+  const amplitude = Math.min(tutorial ? 38 : 90, campaignViewport.clientWidth * (tutorial ? .13 : .24));
+  return amplitude * Math.sin(elapsed / (tutorial ? 380 : 245));
+}
+
 function positionLineGestureMarker(water, x, y) {
   const phase = lineGesturePhase();
   if (!phase) return clearLineGestureMarker();
@@ -1074,6 +1064,9 @@ function positionLineGestureMarker(water, x, y) {
   const waiting = phase === 'hook' && elapsed < state.window.from;
   const missedWindow = phase === 'hook' && elapsed > state.window.until;
   const fighting = hookedGesture(phase);
+  const diameter = phase === 'hook' ? hookTargetDiameter() : 52;
+  lineGestureMarker.style.setProperty('--lure-target-size', `${diameter}px`);
+  lureAction.classList.toggle('is-gold', phase === 'hook' && !waiting && !missedWindow);
   const label = phase === 'jig' ? 'Jig lure' : missedWindow ? 'Try again' : 'Set hook';
   if (lureAction.getAttribute('aria-label') !== label) lureAction.setAttribute('aria-label', label);
   if (lureAction.getAttribute('aria-disabled') !== String(waiting)) lureAction.setAttribute('aria-disabled', String(waiting));
@@ -1087,8 +1080,9 @@ function positionLineGestureMarker(water, x, y) {
   const right = Math.min(water.right, offsetLeft + width);
   const top = Math.max(water.top, offsetTop);
   // Keep the whole target reachable even when the rig is at the ice hole or the screen edge.
-  const markerX = Math.max(left + 26, Math.min(water.left + x, right - 26));
-  const markerY = Math.max(top + 26, Math.min(water.top + y, bottom - 26));
+  const radius = diameter / 2;
+  const markerX = Math.max(left + radius, Math.min(water.left + x, right - radius));
+  const markerY = Math.max(top + radius, Math.min(water.top + y, bottom - radius));
   lineGestureMarker.style.left = `${markerX - water.left}px`;
   lineGestureMarker.style.top = `${markerY - water.top}px`;
 }
@@ -1188,7 +1182,7 @@ function drawFishingLine(eye, slack = 0, fight, search, water = lake.getBounding
     if (eye) depthPosition = Math.max(minimumHookDepth, y - y0);
     const center = cameraCenter();
     const lead = state.stage === 'seek' ? cameraLag : 0;
-    lake.style.setProperty('--camera-x', `${center.x - campaignViewport.offsetLeft - x}px`);
+    lake.style.setProperty('--camera-x', `${center.x - campaignViewport.offsetLeft - x + (state.stage === 'bite' && campaignBiteAnchor ? biteDrift(outingTime.dateNow() - biteAt) : 0)}px`);
     lake.style.setProperty('--camera-y', `${center.y + lead - campaignViewport.offsetTop - y}px`);
     water = lake.getBoundingClientRect();
   }
@@ -1239,7 +1233,8 @@ function positionFishingLine(search, water = lake.getBoundingClientRect()) {
     const depth = fight ? remaining / fight.startDepth : 1;
     const lineX = hole.x + pullX * Math.min(82, innerWidth * .10);
     const closing = fight ? Math.max(0, 1 - (outingTime.dateNow() - fight.hookedAt) / 380) : 1;
-    const x = campaignBiteAnchor ? lineX + (water.left + water.width * campaignBiteAnchor.x - hole.x) * closing : lineX;
+    const drift = stage === 'bite' || fight ? biteDrift((fight?.hookedAt ?? outingTime.dateNow()) - biteAt) : 0;
+    const x = campaignBiteAnchor ? lineX + (water.left + water.width * campaignBiteAnchor.x - hole.x + drift) * closing : lineX;
     const y = stage === 'landed'
       ? Math.max(hole.y + 12, water.top + fish.height * mouthY + 8)
       : hole.y + (biteY - hole.y) * depth + pullY * 16 - (cue.offset ?? 0);
@@ -1548,6 +1543,10 @@ function showPracticeBite(elapsed) {
   const passed = elapsed > state.window.until;
   const campaign = mode === 'campaign';
   action.classList.toggle('fishing-action-quiet', wait);
+  if (campaign && !wait && !passed && outingTime.dateNow() - missedJigAt < 700) {
+    setStatus('Missed the jig. Aim at it while the window is gold.');
+    return;
+  }
   if (tutorial) {
     const hookInput = coarsePointer.matches ? 'Tap the jig' : 'Click the jig or press R';
     setStatus(wait ? 'That’s a bite! Wait for the marker to reach gold.'
@@ -1563,6 +1562,7 @@ function showPracticeBite(elapsed) {
 function clearBite() {
   outingTime.cancel(frame);
   timing.style.removeProperty('--position');
+  missedJigAt = -Infinity;
 }
 
 function animateBite() {
@@ -1692,7 +1692,6 @@ function renderStudiedCue() {
 }
 
 function bryanGoalClue(goal) {
-  if (goal?.requiredPermit) return `Bryan’s next stop. Get the ${goal.requiredPermit.name} from Marnie’s shop to fish for walleye.`;
   return goal ? `Bryan’s goal. ${goal.clue}` : 'Bryan’s goals complete.';
 }
 
@@ -1777,7 +1776,7 @@ function render() {
   if (campaign && profile) {
     const goal = campaignGoal(profile);
     const fish = goal && lakes['mille-lacs'].fish.find(fish => fish.id === goal.speciesId);
-    const label = goal?.requiredPermit ? 'Goal · Reef permit' : fish ? `Goal · ${fish.name}` : 'Goals complete';
+    const label = fish ? `Goal · ${fish.name}` : 'Goals complete';
     if (goalLabel.textContent !== label) goalLabel.textContent = label;
   }
   phaseLabel.hidden = tutorial || !linePhysics || !state;
@@ -1913,14 +1912,14 @@ async function begin(selectedMode = mode, hole, savedProfile) {
     const lineStrength = equippedLine?.strength;
     const line = equippedLine?.windowMs ? { lure: equippedLine.lure, windowMs: equippedLine.windowMs } : undefined;
     const equippedHook = shopItems.find(item => item.id === equipment?.equipped.hook);
-    const hook = equippedHook?.windowMs ? { lure: equippedHook.lure, windowMs: equippedHook.windowMs } : undefined;
-    const { lineControlRank, lureWorkRank } = campaignTraining(equipment);
+    const hook = equippedHook?.windowMs ? { lure: equippedHook.lure, windowMs: equippedHook.windowMs, targetDiameter: equippedHook.targetDiameter } : undefined;
+    const training = campaignTraining(equipment);
     const baits = shopItems.filter(item => item.category === 'bait' && equipment?.owned.includes(item.id));
     const elapsedMs = mode === 'campaign' ? profile?.elapsedMs ?? 0 : 0;
     const now = outingTime.dateNow();
     run = tutorial ? startTutorial(now) : start(now, undefined, undefined, {
       practice: mode === 'practice',
-      campaign: mode === 'campaign' ? { hole, roster: profile.day.rosters[hole.id], area: hole.area, lineStrength, line, hook, lineControlRank, lureWorkRank, baits, elapsedMs } : undefined,
+      campaign: mode === 'campaign' ? { hole, roster: profile.day.rosters[hole.id], area: hole.area, lineStrength, line, hook, ...training, baits, elapsedMs } : undefined,
     });
     state = publicRun(run);
     startOutingClock(elapsedMs);
@@ -2056,7 +2055,7 @@ function campaignInputPhase(target) {
   if (!campaignViewport.contains(target) && !tray.contains(target)) return;
   if (tray.hidden || outingTime.suspended || dialogOpen() || failed) return;
   const phase = lineGesturePhase();
-  if (phase === 'hook' && !lureAction.contains(target)) return;
+  if (phase === 'hook') return;
   return phase ?? (state?.stage === 'seek' ? 'browse' : undefined);
 }
 
@@ -2250,7 +2249,11 @@ async function retryCatchCoins() {
 
 async function perform(move, input = {}, { reelEffort, keepDepth } = {}) {
   if (busy || outingTime.suspended || !state) return;
-  if (move === 'next') { campaignMilestoneNotice = false; settledCatch = undefined; }
+  if (move === 'next') {
+    campaignMilestoneNotice = false;
+    settledCatch = undefined;
+    if (run?.campaign && !tutorial) Object.assign(run.campaign, campaignTraining(profile));
+  }
   const prior = state;
   const focused = document.activeElement;
   const current = generation;
@@ -2387,20 +2390,51 @@ async function activatePrimary(reelEffort) {
   const move = { seek: 'jig', bite: 'reel', fight: fightMove, landed: 'next', missed: 'next' }[state.stage];
   return perform(move, move === 'jig' ? { lure } : {}, { reelEffort });
 }
-action.addEventListener('click', () => { void activatePrimary(); });
-lureAction.addEventListener('pointerdown', event => {
-  lurePress = event.isPrimary && event.button === 0
-    ? { phase: lineGesturePhase(), x: event.clientX, y: event.clientY } : undefined;
+action.addEventListener('click', event => {
+  if (event.detail && mode === 'campaign' && state?.stage === 'bite') return lureAction.focus({ preventScroll: true });
+  void activatePrimary();
 });
-lureAction.addEventListener('pointermove', event => {
+campaignViewport.addEventListener('click', event => {
+  if (!event.detail || lureAction.contains(event.target) || event.target.closest('button, a') || lineGesturePhase() !== 'hook') return;
+  const elapsed = outingTime.dateNow() - biteAt;
+  if (elapsed < state.window.from || elapsed > state.window.until) return;
+  missedJigAt = outingTime.dateNow();
+  showPracticeBite(elapsed);
+});
+lureAction.addEventListener('pointerdown', event => {
+  lurePress = undefined;
+  if (!event.isPrimary || event.button !== 0) return;
+  const phase = lineGesturePhase();
+  const elapsed = phase === 'hook' ? outingTime.dateNow() - biteAt : 0;
+  if (phase === 'hook') {
+    const box = lureAction.getBoundingClientRect();
+    if (Math.hypot(event.clientX - box.left - box.width / 2, event.clientY - box.top - box.height / 2) > box.width / 2) {
+      missedJigAt = outingTime.dateNow();
+      showPracticeBite(elapsed);
+      return;
+    }
+    // The moving target can leave the pointer before release. Judge aim at contact.
+    lureAction.setPointerCapture(event.pointerId);
+  }
+  lurePress = { phase, elapsed, version: state?.version, x: event.clientX, y: event.clientY };
+});
+window.addEventListener('pointermove', event => {
   if (lurePress && Math.hypot(event.clientX - lurePress.x, event.clientY - lurePress.y) > 5) lurePress = undefined;
 });
 lureAction.addEventListener('pointercancel', () => { lurePress = undefined; });
+lureAction.addEventListener('pointerup', () => {
+  const started = lurePress;
+  if (started?.phase !== 'hook') return;
+  lurePress = undefined;
+  if (lineGesturePhase() === 'hook' && started.version === state.version && started.elapsed >= state.window.from) {
+    void activatePrimary();
+  }
+});
 lureAction.addEventListener('click', event => {
   const phase = lineGesturePhase();
   const started = lurePress;
   lurePress = undefined;
-  if (event.detail && started?.phase !== phase) return;
+  if (event.detail && (phase === 'hook' || started?.phase !== phase)) return;
   if (phase === 'jig' || (phase === 'hook' && outingTime.dateNow() - biteAt >= state.window.from)) {
     void activatePrimary();
   }
@@ -2483,15 +2517,14 @@ async function showLakeMap(active, dayId = active ? campaignDayId : undefined, p
   const day = profile.day;
   if (dayId && day?.id !== dayId) return staleDay();
   if (preferredArea) {
-    selectedHole = mapCells.find(cell => cell.area === preferredArea && day.opened.includes(cell.id))?.id
-      ?? mapCells.find(cell => cell.area === preferredArea)?.id ?? firstShoreHole;
+    if (!day.opened.includes(selectedHole)) selectedHole = day.opened[0] ?? firstShoreHole;
   }
-  openCampaignMap({ selected: selectedHole, hasAccess: area => hasAreaAccess(profile, area),
+  openCampaignMap({ selected: selectedHole, hasAccess: () => hasAreaAccess(profile),
     get recognizedSpecies() { return profile.caughtSpecies; },
     get pastCatchSpots() { return Object.values(profile.catchLocations ?? {}).map(record => record.cellId); },
     day, goalClue: bryanGoalClue(campaignGoal(profile)), budget: active ? state.count - state.index : undefined,
     onSelect: id => { selectedHole = id; },
-    onPermit: cell => { permitReturn = () => showLakeMap(active, day.id); void showPermit(cell.area); },
+    onPermit: () => { permitReturn = () => showLakeMap(active, day.id); void showPermit(); },
     onBack: () => { releaseMap(); if (!active) showOutingPicker(preferredArea); else mapButton.focus(); },
     save: async command => {
       const result = await (command.type === 'end-day' ? endSavedDay(command.dayId)
@@ -2650,18 +2683,44 @@ skillsDialog.className = 'fishing-picker fishing-frame fishing-campaign-skills';
 skillsDialog.setAttribute('aria-label', 'Campaign Skills');
 document.body.append(skillsDialog);
 let skillsRelease, skillsOpener, skillsSaving = false;
-const betweenOutings = () => tray.hidden || state?.stage === 'done';
+const canSpendSkills = () => tray.hidden || (mode === 'campaign' && !tutorial &&
+  (state?.stage === 'done' || (state?.stage === 'landed' && Boolean(settledCatch) && !busy)));
+
+function describeRank(id, ranks) {
+  const effect = campaignTraining(profile, ranks);
+  if (id === 'lure' && !ranks.lure) return 'Standard timing and jig target';
+  if (id === 'lure') return `Gold opens ${effect.hookEarlyMs} ms earlier · +${effect.aimBonus} px Jig target`;
+  if (id === 'control' && !effect.hookLateMs) return 'Standard hook timing';
+  if (id === 'control') return `+${effect.hookLateMs} ms to set the hook`;
+  const holes = `${ranks.drilling ? 3 : 2} new holes per day`;
+  return effect.drillReduction ? `${holes} · ${effect.drillReduction} fewer turns per hole` : holes;
+}
+
 function renderCampaignSkills(message = '') {
   const progress = campaignProgress(profile);
-  skillsDialog.innerHTML = `<h2>Campaign Skills</h2><p>Level ${progress.level} · ${progress.xp} XP${progress.nextXp ? ` / ${progress.nextXp} for the next level` : ' · Maximum level'} · ${progress.points} skill point${progress.points === 1 ? '' : 's'} saved</p>
-    <p>Each level you gain earns one skill point. Changes to Drilling take effect on your next fishing day.</p>
-    ${[2, 4].map(level => `<section class="fishing-skill-level"><h3>Level ${level}</h3>${campaignTechniques.filter(node => node.level === level).map(node => {
-      const { status } = techniqueState(profile, node.id);
-      const prerequisite = campaignTechniques.find(item => item.id === node.requires);
-      return `<article><h4>${node.name}</h4><p>${node.effect}</p><p>${node.cost} point${node.cost === 1 ? '' : 's'}${prerequisite ? ` · Requires ${prerequisite.name}` : ''}</p><button type="button" data-technique="${node.id}" ${status !== 'available' || !betweenOutings() ? 'disabled' : ''}>${status === 'learned' ? 'Learned' : status === 'locked' ? 'Locked' : status === 'unaffordable' ? 'Save more points' : 'Learn'}</button></article>`;
-    }).join('')}</section>`).join('')}
-    <p>${betweenOutings() ? 'Reset is free. Your level, purchases and paid Line Control stay with you.' : 'Finish or leave this outing to spend or reset points.'}</p>
-    <p data-skill-message role="status">${message}</p><footer><button type="button" data-reset-skills ${!betweenOutings() || !profile?.techniques?.length ? 'disabled' : ''}>Reset points for free</button><button type="button" data-skills-close>Back</button></footer>`;
+  const ranks = campaignSkillRanks(profile);
+  const canSpend = canSpendSkills();
+  skillsDialog.innerHTML = `<h2>Campaign Skills</h2>
+    <p>Level ${progress.level} · ${progress.xp} XP</p>
+    <p data-skill-bank><strong>${progress.points} available</strong> · ${progress.spent} spent · ${progress.earned} earned</p>
+    <p>${progress.nextXp ? `One point per level. Next level at ${progress.nextXp} XP.` : `Next point at ${Math.floor(progress.xp / 100) * 100 + 100} XP.`}</p>
+    <section class="fishing-skill-level" aria-label="Skill branches">${Object.entries(campaignSkills).map(([id, name]) => {
+      const rank = ranks[id];
+      const capped = rank >= campaignSkillCap;
+      const next = { ...ranks, [id]: rank + 1 };
+      const currentEffect = describeRank(id, ranks);
+      const nextEffect = describeRank(id, next);
+      let milestone = rank + 1;
+      while (milestone <= campaignSkillCap && describeRank(id, { ...ranks, [id]: milestone }) === currentEffect) milestone++;
+      return `<article><h3>${name}</h3><p>Rank ${rank} / ${campaignSkillCap}</p>
+        <div class="fishing-rank-track"><meter min="0" max="${campaignSkillCap}" value="${rank}" aria-label="${name} rank"></meter>
+          ${(id === 'drilling' ? [20, 40, 60, 80] : [3]).map(mark => `<span aria-hidden="true" style="--rank-mark:${mark}%"></span>`).join('')}</div>
+        <p>${currentEffect}</p><p>${capped ? 'Maximum rank' : currentEffect !== nextEffect
+          ? `Next rank · ${nextEffect}` : milestone <= campaignSkillCap ? `Next benefit at rank ${milestone}` : 'Current benefit is at its limit'}</p>
+        <button type="button" data-technique="${id}" aria-label="Add one rank to ${name}" ${!canSpend || capped || !progress.points ? 'disabled' : ''}>+1 rank</button></article>`;
+    }).join('')}</section>
+    <p>${canSpend ? 'Fishing skills apply to the next encounter. Drilling applies next fishing day.' : 'Spend points after a saved catch or between outings.'}</p>
+    <p data-skill-message role="status">${message}</p><footer><button type="button" data-reset-skills ${!canSpend || !progress.spent ? 'disabled' : ''}>Reset points for free</button><button type="button" data-skills-close>Back</button></footer>`;
 }
 async function openCampaignSkills() {
   if (skillsDialog.open) return;
@@ -2684,9 +2743,9 @@ skillsDialog.addEventListener('click', async event => {
   const id = button.dataset.technique;
   skillsDialog.querySelectorAll('button').forEach(button => { button.disabled = true; });
   try {
-    const result = await applyProfile({ type: id ? 'learn' : 'reset-skills', id, revision: profile.revision, betweenOutings: betweenOutings() });
+    const result = await applyProfile({ type: id ? 'learn' : 'reset-skills', id, revision: profile.revision, betweenOutings: canSpendSkills() });
     profile = result.profile;
-    renderCampaignSkills(({ learned: 'Technique learned.', reset: 'Points returned. Choose a new path.', stale: 'Your skills changed in another tab. Check your points.' })[result.status] ?? 'Finish this outing before changing skills.');
+    renderCampaignSkills(({ learned: 'Rank added.', reset: 'Points returned. Choose a new path.', stale: 'Your skills changed in another tab. Check your points.', capped: 'This branch is at its maximum rank.', unaffordable: 'No skill points available.' })[result.status] ?? 'Finish this outing before changing skills.');
   } catch { renderCampaignSkills('Couldn’t save your skills. Try again.'); }
   finally { skillsSaving = false; skillsDialog.querySelector(id ? `[data-technique="${id}"]` : '[data-reset-skills]')?.focus(); }
 });
@@ -2705,7 +2764,7 @@ function renderSavedCatch() {
   catchPopup.innerHTML = `<header><p>Catch saved</p><h2 id="fishing-reward-title">${fish.name}</h2></header><div data-reward-body><p data-reward-goal></p><div class="fishing-reward-art ${fish.gilded ? 'gilded' : ''}">${fishSvg(state.fish.art)}<span aria-hidden="true" class="fishing-reward-sparks">✦ ✧ ✦</span></div>
     <p class="fishing-reward-quality">${quality} · ${fish.length} inches</p><p>${fish.rarity} species${fish.grade === 'Record' ? ' · Record' : ''}${fish.gilded ? ' · Gilded' : ''}</p>
     <p>+${coins(catchReward)} · +${settledCatch.xp} XP · Level ${settledCatch.level}</p><p>${settledCatch.level === 2 ? 'Marnie: Your next gear and bait are available in the shop.' : settledCatch.level === 10 ? 'Marnie: Pro gear and live bait are available in the shop.' : 'Your catch is safe in Your Lake.'}</p>
-    <div data-reward-video></div></div><footer><button type="button" data-reward-lake>View in Your Lake</button><button type="button" data-reward-next>${state.index + 1 === state.count ? 'Finish outing' : lastFishAtHole() ? 'Move hole' : 'Next fish'}</button><button type="button" data-reward-close>Back to catch</button></footer>`;
+    <div data-reward-video></div></div><footer><button type="button" data-reward-lake>View in Your Lake</button><button type="button" data-reward-skills>Skills</button><button type="button" data-reward-next>${state.index + 1 === state.count ? 'Finish outing' : lastFishAtHole() ? 'Move hole' : 'Next fish'}</button><button type="button" data-reward-close>Back to catch</button></footer>`;
   const goal = campaignGoal(profile);
   const completed = goal && profile.goalCatches?.includes(settledCatch.key);
   catchPopup.querySelector('[data-reward-goal]').textContent = `${completed ? 'Goal complete. ' : ''}${bryanGoalClue(goal)}`;
@@ -2716,6 +2775,7 @@ function renderSavedCatch() {
 catchPopup.addEventListener('cancel', event => event.stopPropagation());
 catchPopup.addEventListener('close', () => { catchRelease?.(); catchRelease = undefined; action.focus({ preventScroll: true }); });
 catchPopup.addEventListener('click', event => {
+  if (event.target.closest('[data-reward-skills]')) void openCampaignSkills();
   if (event.target.closest('[data-reward-lake]')) {
     openOutingLake(settledCatch.speciesId);
     document.querySelector('#your-lake [data-close]')?.replaceChildren(document.createTextNode('Back to catch'));

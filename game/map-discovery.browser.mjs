@@ -79,7 +79,7 @@ await withBrowser(async browser => {
     await press(action);
     await waitForBite();
     await tick(700);
-    await press(action);
+    await press(page.getByRole('button', { name: 'Set hook', exact: true }));
     await reelToHole();
     await press(action);
 

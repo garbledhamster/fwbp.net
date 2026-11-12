@@ -34,10 +34,10 @@ async function checkLandscape(browser, mode) {
   const campaign = mode === 'Campaign';
   const marker = page.locator('[data-line-gesture-marker]');
   const touch = campaign && await page.context().newCDPSession(page);
-  async function swipe(direction, atMarker = false) {
-    const box = await (atMarker ? marker : tray).boundingBox();
-    const x = atMarker ? box.x + box.width / 2 : 30;
-    const y = atMarker ? box.y + box.height / 2 : Math.max(75, box.y / 2);
+  async function swipe(direction) {
+    const box = await tray.boundingBox();
+    const x = 30;
+    const y = Math.max(75, box.y / 2);
     const send = (type, touchPoints) => touch.send('Input.dispatchTouchEvent', { type, touchPoints });
     await send('touchStart', [{ x, y }]);
     for (let step = 1; step <= 4; step++) await send('touchMove', [{ x, y: y + direction * 16 * step }]);
@@ -52,7 +52,7 @@ async function checkLandscape(browser, mode) {
     await waitForBite();
   } else await press(action);
   await tick(700);
-  if (campaign) await swipe(-1, true);
+  if (campaign) await marker.getByRole('button', { name: 'Set hook', exact: true }).tap();
   else await press(action);
   await tick(800);
   assert.match(await status.textContent(), /line’s tight/i);

@@ -15,11 +15,6 @@ async function campaign(browser, { mobile = false } = {}) {
     return rig.transform.baseVal.getItem(0).matrix.f - path.getPointAtLength(0).y;
   });
   const waterPoint = async () => ({ x: 30, y: Math.max(75, (await tray.boundingBox()).y * .5) });
-  const markerPoint = async () => {
-    const { x, y, width, height } = await marker.boundingBox();
-    return { x: x + width / 2, y: y + height / 2 };
-  };
-
   async function gesture(dy, point, duration = 100) {
     const { x, y } = point ?? await waterPoint();
     if (!touch) {
@@ -57,7 +52,8 @@ async function campaign(browser, { mobile = false } = {}) {
     await waitForBite();
     assert.match(await status.textContent(), /wait for gold/i);
     await wait(700);
-    await gesture(mobile ? -60 : -100, await markerPoint());
+    const target = marker.getByRole('button', { name: 'Set hook', exact: true });
+    await (mobile ? target.tap() : target.click());
     assert.match(await status.textContent(), /reel it up toward the hole/i);
   }
 

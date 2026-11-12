@@ -10,8 +10,8 @@ await withBrowser(async browser => {
     await m.applyProfile({ type: 'award', key: 'legacy:0', outcome: 'landed', catch: { points: 100 }, speciesId: 'perch' });
     saved = await m.loadProfile();
     const before = m.campaignProgress(saved);
-    const learned = await m.applyProfile({ type: 'learn', id: 'line-control-1', revision: saved.revision, betweenOutings: true });
-    const stale = await m.applyProfile({ type: 'learn', id: 'lure-work-1', revision: saved.revision, betweenOutings: true });
+    const learned = await m.applyProfile({ type: 'learn', id: 'control', revision: saved.revision, betweenOutings: true });
+    const stale = await m.applyProfile({ type: 'learn', id: 'lure', revision: saved.revision, betweenOutings: true });
     const blocked = await m.applyProfile({ type: 'reset-skills', revision: learned.profile.revision, betweenOutings: false });
     const reset = await m.applyProfile({ type: 'reset-skills', revision: learned.profile.revision, betweenOutings: true });
     return { before, learned, stale, blocked, reset, after: m.campaignProgress(reset.profile) };
@@ -25,8 +25,8 @@ await withBrowser(async browser => {
   await page.locator('[data-open-skills]').click();
   await page.getByRole('dialog', { name: 'Campaign Skills' }).waitFor();
   await page.screenshot({ path: `../../evidence/progression/skills-${viewport.width}x${viewport.height}.png` });
-  await page.locator('[data-technique="lure-work-1"]').click();
-  await page.locator('[data-skill-message]').filter({ hasText: 'Technique learned' }).waitFor();
+  await page.locator('[data-technique="lure"]').click();
+  await page.locator('[data-skill-message]').filter({ hasText: 'Rank added' }).waitFor();
   await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');
   const sizeRoll = viewport.width === 1200 ? .4 : viewport.width === 320 ? .75 : .95;
@@ -36,7 +36,7 @@ await withBrowser(async browser => {
   await press(action);
   await waitForBite();
   await tick(700);
-  await press(action);
+  await press(page.getByRole('button', { name: 'Set hook', exact: true }));
   await reelToHole();
   await press(action);
   const popup = page.locator('.fishing-catch-popup');

@@ -115,7 +115,7 @@ async function checkTray(browser, mobile) {
   await press(action);
   await waitForBite();
   const committedAt = await page.evaluate(() => Date.now());
-  await press(action);
+  await page.keyboard.press('r');
   await tick(16);
   assert.match(await status.textContent(), /slipped the hook/i);
   await tick(mobile ? 28600 : 27800);
@@ -126,7 +126,7 @@ async function checkTray(browser, mobile) {
   const secondBite = await page.evaluate(() => Date.now());
   await tick(Math.max(700, committedAt + 30100 - secondBite));
   assert.match(await status.textContent(), /yeah, reel it/i, 'a late bite keeps its hook window');
-  await press(action);
+  await press(page.getByRole('button', { name: 'Set hook', exact: true }));
   await reelToHole();
   await press(action);
   await tray.getByText(/Yellow perch.*points/i).waitFor();

@@ -47,7 +47,7 @@ async function checkFight(browser, mobile, mode) {
     await press(action);
     if (mode === 'Campaign') await waitForBite();
     await tick(700);
-    await press(action);
+    await press(mode === 'Campaign' ? page.getByRole('button', { name: 'Set hook', exact: true }) : action);
   }
 
   await hook();

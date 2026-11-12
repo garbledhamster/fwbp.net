@@ -21,16 +21,16 @@ test('shop levels gate new purchases but retain legacy owned gear', () => {
   assert.equal(profile.shopAvailability({ ...base, owned: [item.id] }, item).status, 'owned');
   assert.equal(profile.shopAvailability({ ...base, awards: { 'old:0': 2000 } }, profile.shopItems.find(item => item.id === 'pro-line')).status, 'available');
 });
-test('techniques bank points, respect prerequisites and retain paid control once', () => {
-  const saved = { awards: { 'old:0': 100 }, owned: ['line-control'], techniques: ['line-control-1'] };
-  assert.equal(profile.campaignTraining(saved).lineControlRank, 1);
-  assert.equal(profile.campaignProgress(saved).points, profile.campaignProgress(saved).level - 2);
-  assert.equal(profile.campaignTraining({ ...saved, techniques: [] }).lineControlRank, 1);
-  assert.equal(profile.techniqueState({ ...saved, techniques: [] }, 'line-control-1').status, 'learned');
-  assert.equal(profile.techniqueState({ ...saved, techniques: [] }, 'line-control-2').status, 'available');
-  assert.equal(profile.techniqueState({ ...saved, owned: [], techniques: [] }, 'line-control-2').status, 'locked');
-  assert.equal(profile.techniqueState({ ...saved, techniques: [] }, 'lure-work-1').status, 'available');
+test('legacy techniques convert spent points and preserve paid control', () => {
+  const saved = { awards: { 'old:0': 400 }, owned: ['line-control'], techniques: ['line-control-2', 'lure-work-1', 'drilling-1'] };
+  assert.deepEqual(profile.campaignSkillRanks(saved), { lure: 1, control: 2, drilling: 1 });
+  assert.equal(profile.campaignTraining(saved).hookLateMs, 700);
+  assert.equal(profile.campaignProgress(saved).points, 2);
+  assert.equal(profile.campaignProgress(saved).earned, 6);
+  assert.equal(profile.campaignTraining({ ...saved, skillRanks: {} }).hookLateMs, 350);
+  assert.equal(profile.campaignProgress({ awards: { 'old:0': 1400 } }).earned, 11);
 });
+
 test('quality measures same-species size and keeps rarity, Record and Gilded separate', () => {
   assert.equal(rules.catchQuality('perch', 5), 'Bronze');
   assert.equal(rules.catchQuality('perch', 9), 'Silver');

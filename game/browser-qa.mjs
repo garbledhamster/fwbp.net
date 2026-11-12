@@ -102,21 +102,22 @@ export async function practicePage(browser, { mobile = false, viewport, configur
     return item;
   }
 
-  async function chooseMode(name = 'Practice') {
+  async function chooseMode(name = 'Practice', spot) {
     const picker = page.getByRole('dialog', { name: 'Choose an outing' });
     await press(picker.getByRole('button', { name, exact: true }), 'Enter');
-    if (name === 'Campaign' || name === 'Deep Reef') {
+    if (name === 'Campaign') {
       const map = page.locator('.fishing-map');
       const permit = page.locator('.fishing-permit');
       const drill = page.locator('.fishing-drill');
       const wallet = tray.locator('[data-wallet]');
       await map.waitFor();
+      if (spot) await press(map.locator(`[data-map-cell="${spot}"]`), 'Enter');
       await press(map.locator('[data-map-drill]'), 'Enter');
       await permit.or(drill).or(wallet).filter({ visible: true }).first().waitFor();
       if (await permit.isVisible()) {
         await press(permit.getByRole('button', { name: 'Get this permit' }), 'Enter');
         const shop = page.getByRole('dialog', { name: 'Tackle shop' });
-        await press(shop.locator('[data-item="starter-license"]').getByRole('button', { name: /^(?:Buy|Claim) Starter Shore permit$/ }), 'Enter');
+        await press(shop.locator('[data-item="starter-license"]').getByRole('button', { name: /^(?:Buy|Claim) Mille Lacs permit$/ }), 'Enter');
         await shop.locator('[data-item="starter-license"]').getByText('Owned', { exact: true }).waitFor();
         await closeDialog(shop, shop.locator('[data-shop-back]'));
         await map.waitFor();
@@ -130,9 +131,9 @@ export async function practicePage(browser, { mobile = false, viewport, configur
     await tray.locator('[data-exit]:enabled').waitFor();
   }
 
-  async function enter(name = 'Practice') {
+  async function enter(name = 'Practice', spot) {
     await press(launch, 'Enter');
-    await chooseMode(name);
+    await chooseMode(name, spot);
   }
 
   async function leave() {
