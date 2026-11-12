@@ -1,94 +1,42 @@
 import { spriteHref } from "./game/lake-sprites.mjs";
 import { openVideo } from './game/video-player.mjs';
 
-const hotDogCategory = "Hot dog";
-const episodes = [
-  {
-    id: "3dmUMd9oR88",
-    title: "Five of Diamonds for northern pike and bass",
-    category: "Underwater",
-    art: "ice",
-    description: "Bryan fishes a Five of Diamonds spoon through the ice with an underwater camera."
-  },
-  {
-    id: "20uLF46BQKk",
-    title: "Northern pike on a Dardevle",
-    category: "Underwater",
-    art: "lure",
-    featured: true,
-    description: "Watch northern pike come in on a Dardevle spoon from the camera’s view below the ice."
-  },
-  {
-    id: "PHJOCTI5XUo",
-    title: "Pike, bass, crappie and a muskrat on camera",
-    category: "Underwater",
-    art: "lure",
-    description: "An Aqua-Vu camera captures some unexpected company below the ice."
-  },
-  {
-    id: "i5TfAtufo7U",
-    title: "Early ice walleyes on Mille Lacs",
-    category: "Mille Lacs",
-    art: "camp",
-    description: "Early-season walleye fishing on Mille Lacs Lake with an underwater camera."
-  },
-  {
-    id: "sXRoaFLDS10",
-    title: "Ice Castle perch on Mille Lacs",
-    category: "Mille Lacs",
-    art: "ice",
-    featured: true,
-    description: "Bryan films yellow perch under the ice on Mille Lacs."
-  },
-  {
-    id: "toN7z2eNxEU",
-    title: "Mississippi River smallmouth from a kayak",
-    category: "Kayak fishing",
-    art: "light",
-    description: "Bryan heads to the Mississippi River for smallmouth bass from his kayak."
-  },
-  {
-    id: "1mtyGF6wlDI",
-    title: "Underwater camera setup for early ice",
-    category: "Gear",
-    art: "camp",
-    description: "Bryan takes an underwater camera out for an early-ice scouting trip in Minnesota."
-  },
-  ...[
-    ["NpQtS2wNDRc", "Hot Dog vs. Pike! Will They Eat?", "Bryan tries hot dogs for northern pike in shallow water."],
-    ["L7Ub8BdT0Ws", "Big Pike vs. Hot Dog!", "A Short about whether big pike like hot dogs."],
-    ["W63YgKh-szs", "Ice Fishing Hot Dogs for Big Pike", "Bryan gives hot dog bait a try and shares what happened."],
-    ["gujypoDa-dc", "Ice Fishing with Hot Dog for Northern Pike", "See how pike react to hot dog bait on Bryan’s underwater camera."],
-    ["GRJ1GOc6Pvk", "Hot Dog vs. Kielbasa", "Bryan puts both baits in front of northern pike."],
-    ["aYJhIZhbeDg", "Pike Eats Hot Dog!", "A Short of a northern pike going for hot dog bait."]
-  ].map(([id, title, description]) => ({ id, title, description, category: hotDogCategory, art: "lure" }))
-];
+import { iceFishingVideos } from "./assets/ice-fishing-videos.mjs";
 
-const duckHunterShort = {
-  id: "Qo7FSZc9S7I",
-  title: "I THOUGHT I GOT SHOT!",
-  description: "Duck hunters startled Bryan while he was out in his kayak. This clip contains sudden gunfire."
-};
-
-function watchUrl(id) {
-  return "https://www.youtube.com/watch?v=" + id;
-}
+const categories = ["Underwater", "All", "Mille Lacs", "Gear", "Hot dog"];
+const categoryArt = { Underwater: "ice", "Mille Lacs": "ice", Gear: "camp", "Hot dog": "lure" };
+const featuredIds = ["20uLF46BQKk", "sXRoaFLDS10"];
+const batchSize = 18;
+const episodes = iceFishingVideos.map(([id, title, tags, short]) => ({
+  id, title, tags, short,
+  url: "https://www.youtube.com/" + (short ? "shorts/" + id : "watch?v=" + id),
+  art: categoryArt[tags[0]] ?? "camp"
+}));
+const byId = new Map(episodes.map(episode => [episode.id, episode]));
+const hotDogEpisodes = episodes.filter(episode => episode.tags.includes("Hot dog"));
 
 const library = document.querySelector("#video-grid");
 const featured = document.querySelector("#featured-grid");
 const filters = document.querySelector(".filters");
 const filterButtons = new Map();
 const libraryStatus = document.querySelector("#library-status");
-const byId = new Map([...episodes, duckHunterShort].map((episode) => [episode.id, episode]));
-const hotDogEpisodes = episodes.filter((episode) => episode.category === hotDogCategory);
+const randomVideo = document.querySelector("#random-video");
+const moreVideos = document.querySelector("#more-videos");
+let matches = [];
+let lastRandomId;
 let lastHotDogId;
+
+function pickRandom(pool, previousId) {
+  const choices = pool.length > 1 ? pool.filter(episode => episode.id !== previousId) : pool;
+  return choices[Math.floor(Math.random() * choices.length)];
+}
 
 function makeEpisode(episode) {
   const article = document.createElement("article");
   article.className = "episode";
   const link = document.createElement("a");
   link.className = "episode-trigger";
-  link.href = watchUrl(episode.id);
+  link.href = episode.url;
   link.dataset.watch = episode.id;
   link.setAttribute("aria-label", "Watch " + episode.title);
   const art = document.createElement("span");
@@ -109,7 +57,8 @@ function makeEpisode(episode) {
   art.append(play);
   const meta = document.createElement("span");
   meta.className = "episode-meta";
-  meta.textContent = episode.category;
+  const label = episode.tags.join(" · ") || "Ice fishing";
+  meta.textContent = episode.short ? label + " · Short" : label;
   const title = document.createElement("strong");
   title.className = "episode-name";
   title.textContent = episode.title;
@@ -118,16 +67,29 @@ function makeEpisode(episode) {
   return article;
 }
 
+function showMore() {
+  const start = library.childElementCount;
+  const cards = matches.slice(start, start + batchSize).map(makeEpisode);
+  library.append(...cards);
+  const shown = library.childElementCount;
+  moreVideos.hidden = shown >= matches.length;
+  libraryStatus.textContent = shown < matches.length
+    ? "Showing " + shown + " of " + matches.length + " videos"
+    : matches.length + (matches.length === 1 ? " video" : " videos");
+  return cards[0];
+}
+
 function setFilter(category) {
-  const matches = category === "All" ? episodes : episodes.filter((episode) => episode.category === category);
-  library.replaceChildren(...matches.map(makeEpisode));
+  matches = category === "All" ? episodes : episodes.filter(episode => episode.tags.includes(category));
+  library.replaceChildren();
   for (const [name, button] of filterButtons) {
     button.setAttribute("aria-pressed", String(name === category));
   }
-  libraryStatus.textContent = matches.length + (matches.length === 1 ? " video" : " videos");
+  randomVideo.disabled = matches.length === 0;
+  showMore();
 }
 
-for (const category of ["All", ...new Set(episodes.map((episode) => episode.category))]) {
+for (const category of categories) {
   const button = document.createElement("button");
   button.type = "button";
   button.textContent = category;
@@ -143,20 +105,23 @@ for (const shortcut of document.querySelectorAll(".trip-picks button")) {
     filters.scrollIntoView({ block: "start" });
   });
 }
-featured.replaceChildren(...episodes.filter((episode) => episode.featured).map(makeEpisode));
-setFilter("All");
+moreVideos.addEventListener("click", () => showMore()?.querySelector("a").focus());
+randomVideo.addEventListener("click", () => {
+  const episode = pickRandom(matches, lastRandomId);
+  if (openVideo(episode, { trigger: randomVideo, playlist: matches })) lastRandomId = episode.id;
+});
+featured.replaceChildren(...featuredIds.map(id => makeEpisode(byId.get(id))));
+setFilter("Underwater");
+randomVideo.hidden = false;
 
 document.addEventListener("click", (event) => {
   const trigger = event.target.closest("a[data-watch]");
   if (!trigger || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
   let episode = byId.get(trigger.dataset.watch);
   if (trigger.hasAttribute("data-random-hot-dog") && hotDogEpisodes.length) {
-    const choices = hotDogEpisodes.length > 1
-      ? hotDogEpisodes.filter((candidate) => candidate.id !== lastHotDogId)
-      : hotDogEpisodes;
-    episode = choices[Math.floor(Math.random() * choices.length)];
+    episode = pickRandom(hotDogEpisodes, lastHotDogId);
     lastHotDogId = episode.id;
-    trigger.href = watchUrl(episode.id);
+    trigger.href = episode.url;
   }
   if (episode && openVideo({ ...episode, url: trigger.href }, { trigger })) event.preventDefault();
 });
