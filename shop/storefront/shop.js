@@ -157,14 +157,36 @@ const blankProduct = previewFigure.querySelector(".blank-product");
 const appliedDesign = previewFigure.querySelector(".applied-design");
 const previewDescription = designPreview.querySelector("#preview-description");
 const productChoices = [...designPreview.querySelectorAll("[data-product]")];
+const garmentSides = designPreview.querySelector("#garment-sides");
+const sideChoices = [...garmentSides.querySelectorAll("[data-side]")];
 let designOpener;
+
+function showGarmentSide(side) {
+  const view = previewFigure.dataset.view;
+  const front = side === "front";
+  previewFigure.dataset.side = side;
+  blankProduct.src = `assets/blanks/${view}${front ? "" : "-back"}.jpg`;
+  appliedDesign.src = front ? "assets/fwbp-print.svg" : designOpener.dataset.design;
+  appliedDesign.alt = front ? "Small FWBP badge on the upper right of the front" : `${designOpener.dataset.name} printed large on the back`;
+  for (const button of sideChoices) {
+    button.setAttribute("aria-pressed", String(button.dataset.side === side));
+  }
+}
 
 function showProduct(choice) {
   const view = choice.dataset.product;
   previewFigure.dataset.view = view;
+  const isGarment = view === "tee" || view === "sweatshirt";
+  garmentSides.hidden = !isGarment;
   blankProduct.hidden = view === "sticker";
-  if (!blankProduct.hidden) blankProduct.src = `assets/blanks/${view}.jpg`;
-  appliedDesign.alt = `${designOpener.dataset.name} on a ${choice.textContent.toLowerCase()}`;
+  if (isGarment) {
+    showGarmentSide("back");
+  } else {
+    delete previewFigure.dataset.side;
+    if (!blankProduct.hidden) blankProduct.src = `assets/blanks/${view}.jpg`;
+    appliedDesign.src = designOpener.dataset.design;
+    appliedDesign.alt = `${designOpener.dataset.name} on a ${choice.textContent.toLowerCase()}`;
+  }
   for (const button of productChoices) {
     button.setAttribute("aria-pressed", String(button === choice));
   }
@@ -182,13 +204,15 @@ for (const button of document.querySelectorAll("[data-design]")) {
   button.addEventListener("click", () => {
     designOpener = button;
     designPreview.querySelector("h2").textContent = button.dataset.name;
-    appliedDesign.src = button.dataset.design;
     showProduct(productChoices[0]);
     designPreview.showModal();
   });
 }
 for (const button of productChoices) {
   button.addEventListener("click", () => showProduct(button));
+}
+for (const button of sideChoices) {
+  button.addEventListener("click", () => showGarmentSide(button.dataset.side));
 }
 designPreview.querySelector("#close-design").addEventListener("click", () => designPreview.close());
 designPreview.addEventListener("close", () => designOpener?.focus());

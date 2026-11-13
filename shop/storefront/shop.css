@@ -194,6 +194,7 @@ dialog::backdrop { background: #051719d9; }
 #design-preview .drawer-header { padding: .65rem 1rem; }
 .design-preview-body { padding: .75rem 1rem 1rem; display: grid; gap: .75rem; }
 .product-switcher { display: flex; flex-wrap: wrap; gap: .4rem; }
+.product-switcher[hidden] { display: none; }
 .product-switcher button {
   padding: .4rem .65rem; min-height: 44px; border: 1px solid var(--rule); border-radius: 5px;
   background: var(--blackwater); color: var(--foam);
@@ -204,7 +205,8 @@ dialog::backdrop { background: #051719d9; }
   aspect-ratio: 1; border-radius: 7px; overflow: hidden; background: #eeeae2;
   --art-x: 50%; --art-y: 44%; --art-size: 31%;
 }
-.design-preview-image[data-view="sweatshirt"] { --art-x: 50%; --art-y: 43%; --art-size: 29%; }
+.design-preview-image[data-side="back"] { --art-x: 50%; --art-y: 46%; --art-size: 48%; }
+.design-preview-image[data-side="front"] { --art-x: 64%; --art-y: 31%; --art-size: 14%; }
 .design-preview-image[data-view="mug"] { --art-x: 45%; --art-y: 53%; --art-size: 30%; }
 .design-preview-image[data-view="hat"] { --art-x: 50%; --art-y: 42%; --art-size: 26%; }
 .design-preview-image[data-view="sticker"] { --art-x: 50%; --art-y: 50%; --art-size: 72%; background: #dde5df; }

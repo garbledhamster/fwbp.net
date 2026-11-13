@@ -8,8 +8,8 @@
   <meta name="referrer" content="no-referrer">
   <title>Fishing with Bryan Shop</title>
   <link rel="icon" href="assets/bp.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="shop.css?v=designs3">
-  <script defer src="shop.js?v=designs3"></script>
+  <link rel="stylesheet" href="shop.css?v=designs4">
+  <script defer src="shop.js?v=designs4"></script>
 </head>
 <body>
   <a class="skip" href="#merch">Skip to catalog</a>
@@ -143,7 +143,11 @@
         <button type="button" data-product="hat" aria-pressed="false">Hat</button>
         <button type="button" data-product="sticker" aria-pressed="false">Sticker</button>
       </div>
-      <figure class="design-preview-image" data-view="tee">
+      <div class="product-switcher" role="group" aria-label="Garment side" id="garment-sides">
+        <button type="button" data-side="back" aria-pressed="true">Back</button>
+        <button type="button" data-side="front" aria-pressed="false">Front</button>
+      </div>
+      <figure class="design-preview-image" data-view="tee" data-side="back">
         <img class="blank-product" src="assets/blanks/tee.jpg" alt="" width="627" height="627">
         <img class="applied-design" src="assets/bp-print.svg" alt="" width="256" height="256">
       </figure>
