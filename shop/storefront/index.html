@@ -7,43 +7,60 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <meta name="referrer" content="no-referrer">
   <title>Fishing with Bryan Shop</title>
-  <link rel="icon" href="assets/fwbp-logo.jpg">
+  <link rel="icon" href="assets/underwater-stamp-favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="shop.css">
   <script defer src="merch-catalog.js"></script>
   <script defer src="shop.js"></script>
 </head>
-<body data-variant="counter">
-  <a class="skip" href="#shop">Skip to shop</a>
+<body>
+  <a class="skip" href="#shop">Skip to catalog</a>
   <header class="site-header">
     <div class="header-inner">
       <a class="brand" href="https://fwbp.net/">
-        <img src="assets/fwbp-logo.jpg" alt="" width="44" height="44">
-        <span>Fishing with Bryan<small>Prokuski</small></span>
+        <img src="assets/underwater-stamp.svg" alt="" width="34" height="34">
+        <span>Fishing with Bryan</span>
       </a>
       <nav class="departments" aria-label="Shop departments">
         <a href="#tackle">Tackle</a>
         <a href="#merch">Merch</a>
         <a href="#faq">FAQ</a>
       </nav>
-      <div class="header-actions">
       <button class="cart-toggle" id="cart-toggle" type="button">
         <span class="cart-icon" aria-hidden="true"></span> Preview cart <span id="cart-count">0</span>
-      </button></div>
+      </button>
     </div>
   </header>
-  <div class="preview-status">Ordering is closed. Browse Bryan’s tackle and original merch below.</div>
-  <main id="shop" tabindex="-1"></main>
-  <section class="frame section faq" id="faq" aria-labelledby="faq-title">
-    <h2 id="faq-title">Frequently asked questions</h2>
-    <div class="faq-list">
-      <details><summary>Can I place an order?</summary><p>Ordering is closed while we confirm the first products and shipping options. The preview cart lets you see items together.</p></details>
-      <details><summary>Are all these colors coming back?</summary><p>The color photos are from Bryan’s original merch. We’ll list the sizes and colors we can ship when ordering opens.</p></details>
-    </div>
-  </section>
+  <main>
+    <section class="frame shop-intro" aria-labelledby="shop-heading">
+      <div class="shop-hero">
+        <div class="shop-hero-art">
+          <img src="assets/bryan-merch-wink.webp" width="900" height="900" alt="Bryan winks and gives a thumbs-up.">
+        </div>
+        <div class="shop-hero-copy">
+          <h1 id="shop-heading">The Tackle Counter</h1>
+          <p>Browse Bryan’s tackle and original merch. Ordering is closed while we confirm what we can ship.</p>
+          <a class="button" href="#merch">Browse merch</a>
+        </div>
+      </div>
+    </section>
+    <div id="shop" class="frame" tabindex="-1"></div>
+    <section class="frame section faq" id="faq" aria-labelledby="faq-title">
+      <h2 id="faq-title">Frequently asked questions</h2>
+      <div class="faq-list">
+        <details><summary>Can I place an order?</summary><p>Ordering is closed while we confirm the first products and shipping options. The preview cart lets you see items together.</p></details>
+        <details><summary>Are all these colors coming back?</summary><p>The color photos are from Bryan’s original merch. We’ll list the sizes and colors we can ship when ordering opens.</p></details>
+      </div>
+    </section>
+  </main>
   <footer class="site-footer">
-    <span>Fishing with Bryan Prokuski</span>
-    <a href="https://fwbp.net/merch/">Bryan’s merch gallery</a>
-    <a href="https://fwbp.net/">Bryan’s site</a>
+    <div class="frame footer-inner">
+      <strong>Fishing with Bryan Prokuski</strong>
+      <nav aria-label="Fishing with Bryan">
+        <a href="https://fwbp.net/">Bryan’s site</a>
+        <a href="https://fwbp.net/#videos">Fishing videos</a>
+        <a href="https://fwbp.net/merch/">Bryan’s merch gallery</a>
+      </nav>
+    </div>
   </footer>
   <dialog id="cart" aria-labelledby="cart-title">
     <header class="drawer-header">

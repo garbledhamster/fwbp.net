@@ -1,12 +1,10 @@
 // Tackle Counter catalog and preview cart.
 const icons = {
-  left: '<path d="m15 18-6-6 6-6"/>',
   right: '<path d="m9 18 6-6-6-6"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   check: '<path d="m5 12 4 4L19 6"/>',
   close: '<path d="m6 6 12 12M18 6 6 18"/>',
   cart: '<path d="M3 4h2l2.4 10.4a2 2 0 0 0 2 1.6h8a2 2 0 0 0 2-1.6L21 7H6m4 13h.01M17 20h.01"/>',
-  play: '<path d="M8 5l12 7-12 7z"/>',
 };
 
 function icon(name) {
@@ -62,7 +60,7 @@ function product(item) {
   return `<article class="product">
     <div class="product-photo">${photo(item)}</div>
     <div class="product-copy">
-      <h3>${item.name}</h3><p>${item.detail}</p>
+      <h2>${item.name}</h2><p>${item.detail}</p>
       ${item.video ? `<a class="video-link" href="${item.video}">Watch Bryan fish it</a>` : ""}
       ${add(item)}
     </div>
@@ -102,20 +100,14 @@ function colorGrid() {
 }
 
 function counter() {
-  return `<div class="frame">
-    <div class="counter-intro">
-      <h1>The Tackle Counter</h1>
-      <p>Select any item to see it up close.</p>
+  return `<div class="section counter-layout">
+    <div class="counter-list">
+      <section id="tackle"><h2>Tackle</h2>${counterList(tackle)}</section>
+      <section id="merch"><h2>Merch</h2>${counterList(merch)}${colorGrid()}</section>
     </div>
-    <div class="section counter-layout">
-      <div class="counter-list">
-        <section id="tackle"><h2>Tackle</h2>${counterList(tackle)}</section>
-        <section id="merch"><h2>Merch</h2>${counterList(merch)}${colorGrid()}</section>
-      </div>
-      <section id="counter-detail" class="counter-detail" aria-label="Selected item" tabindex="-1">
-        ${counterProduct(products.get(selected))}
-      </section>
-    </div>
+    <section id="counter-detail" class="counter-detail" aria-label="Selected item" tabindex="-1">
+      ${counterProduct(products.get(selected))}
+    </section>
   </div>`;
 }
 
@@ -140,17 +132,13 @@ function updateCart() {
       <button class="remove" type="button" data-remove="${id}" aria-label="Remove one ${item.name}">${icon("close")}</button>
     </li>`;
   }).join("")}</ul>` : "<p>Your cart is empty.</p>";
-  const packList = document.querySelector("#pack-list");
-  if (packList) {
-    packList.innerHTML = cart.size ? [...cart].map(([id, quantity]) =>
-      `<li>${products.get(id).name} × ${quantity}</li>`
-    ).join("") : "<li>No items packed yet.</li>";
-  }
+
 }
 
 function openCart(event) {
   cartOpener = event.currentTarget;
   cartDialog.showModal();
+  document.querySelector("#close-cart").focus();
 }
 
 document.querySelector(".cart-icon").innerHTML = icon("cart");
@@ -179,7 +167,6 @@ shop.addEventListener("click", event => {
   const addButton = event.target.closest("[data-add]");
   const pickButton = event.target.closest("[data-pick]");
   const colorButton = event.target.closest("[data-color-pick]");
-  const openButton = event.target.closest("[data-open-cart]");
 
   if (addButton) {
     const id = addButton.dataset.add;
@@ -205,9 +192,6 @@ shop.addEventListener("click", event => {
       selector.dispatchEvent(new Event("change", {bubbles: true}));
       detail.focus();
     } else if (matchMedia("(max-width: 630px)").matches) detail.focus();
-  } else if (openButton) {
-    cartOpener = openButton;
-    cartDialog.showModal();
   }
 });
 
