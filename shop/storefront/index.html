@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
+  <title>Fishing with Bryan Shop</title>
+  <link rel="icon" href="assets/fwbp-logo.jpg">
+  <link rel="stylesheet" href="shop.css">
+  <script defer src="merch-catalog.js"></script>
+  <script defer src="shop.js"></script>
+</head>
+<body data-variant="counter">
+  <a class="skip" href="#shop">Skip to shop</a>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="https://fwbp.net/">
+        <img src="assets/fwbp-logo.jpg" alt="" width="44" height="44">
+        <span>Fishing with Bryan<small>Prokuski</small></span>
+      </a>
+      <nav class="departments" aria-label="Shop departments">
+        <a href="#tackle">Tackle</a>
+        <a href="#merch">Merch</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+      <div class="header-actions">
+      <button class="cart-toggle" id="cart-toggle" type="button">
+        <span class="cart-icon" aria-hidden="true"></span> Preview cart <span id="cart-count">0</span>
+      </button></div>
+    </div>
+  </header>
+  <div class="preview-status">Ordering is closed. Browse Bryan’s tackle and original merch below.</div>
+  <main id="shop" tabindex="-1"></main>
+  <section class="frame section faq" id="faq" aria-labelledby="faq-title">
+    <h2 id="faq-title">Frequently asked questions</h2>
+    <div class="faq-list">
+      <details><summary>Can I place an order?</summary><p>Ordering is closed while we confirm the first products and shipping options. The preview cart lets you see items together.</p></details>
+      <details><summary>Are all these colors coming back?</summary><p>The color photos are from Bryan’s original merch. We’ll list the sizes and colors we can ship when ordering opens.</p></details>
+    </div>
+  </section>
+  <footer class="site-footer">
+    <span>Fishing with Bryan Prokuski</span>
+    <a href="https://fwbp.net/merch/">Bryan’s merch gallery</a>
+    <a href="https://fwbp.net/">Bryan’s site</a>
+  </footer>
+  <dialog id="cart" aria-labelledby="cart-title">
+    <header class="drawer-header">
+      <h2 id="cart-title">Preview cart</h2>
+      <button id="close-cart" type="button" class="close" aria-label="Close cart"></button>
+    </header>
+    <div id="cart-items"></div>
+    <div class="drawer-footer">
+      <button class="button" id="review-cart" type="button">Review preview cart</button>
+      <p id="order-preview" role="status"></p>
+    </div>
+  </dialog>
+  <div id="cart-status" class="sr-only" aria-live="polite"></div>
+</body>
+</html>

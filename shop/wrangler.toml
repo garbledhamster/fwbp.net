@@ -1,6 +1,9 @@
 name = "fwbp-shop-holding"
-main = "holding-page.mjs"
 compatibility_date = "2026-11-12"
 workers_dev = false
 preview_urls = false
 routes = [{ pattern = "shop.fwbp.net", custom_domain = true }]
+
+[assets]
+directory = "./storefront"
+not_found_handling = "none"
