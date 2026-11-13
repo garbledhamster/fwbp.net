@@ -5,7 +5,11 @@
 <title>Bryan’s merch customizer prototype</title>
 <style>
 :root{color-scheme:light;--ink:#102f31;--paper:#f7f4eb;--border:#afb9ac;--accent:#eac777;font:16px/1.5 system-ui,sans-serif;color:var(--ink);background:var(--paper)}
-*{box-sizing:border-box}body{margin:0}main{width:min(1050px,100%);margin:auto;padding:clamp(16px,4vw,40px)}h1,h2{font-family:Georgia,serif;line-height:1.14;margin:0}h1{font-size:clamp(1.75rem,4vw,2.9rem)}h2{font-size:1.4rem}p{margin:.5rem 0 1rem}button,select{font:inherit;color:inherit;min-height:44px}button{cursor:pointer;border:1px solid var(--border);border-radius:6px;background:white;padding:.45rem .7rem}button:disabled{cursor:default;opacity:.55}button[aria-pressed=true],button[aria-selected=true],#add{background:var(--accent);border-color:#9e7731;font-weight:650}button:focus-visible,select:focus-visible{outline:3px solid #246ab0;outline-offset:2px}.buttons{display:flex;flex-wrap:wrap;gap:8px}.layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:clamp(18px,4vw,42px);margin-top:1.4rem;grid-template-areas:"controls preview" "summary preview";align-items:start}.controls{grid-area:controls}.choices{display:grid;gap:.8rem;margin:0 0 1rem}label{display:grid;gap:.3rem;font-weight:650}select{width:100%;background:white;border:1px solid var(--border);border-radius:6px;padding:.4rem}.figures{grid-area:preview;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.figures.single{grid-template-columns:minmax(0,1fr);max-width:360px}figure{margin:0;text-align:center;font-weight:650}.scene{position:relative;aspect-ratio:1;background:#e6e3d8;border-radius:6px;overflow:hidden}.blank{width:100%;display:block}.print{position:absolute;left:var(--x);top:var(--y);width:var(--size);height:var(--size);object-fit:contain;transform:translate(-50%,-50%);mix-blend-mode:multiply}figcaption{padding-top:.3rem}.summary,.examples{border-top:1px solid var(--border);padding-top:1rem;margin-top:1.3rem}.summary{grid-area:summary;margin-top:0}.summary dl{display:grid;grid-template-columns:auto 1fr;gap:.2rem .75rem;margin:.55rem 0 .8rem}dt{font-weight:650}dd{margin:0}.examples p{margin:.55rem 0}.examples [role=tablist]{margin:.6rem 0}#cart{margin:.4rem 0;padding-left:1.3rem}#notice{min-height:1.5em;margin:.4rem 0}[hidden]{display:none!important}@media(max-width:670px){.layout{grid-template-columns:1fr;grid-template-areas:"controls" "preview" "summary";gap:16px}.choices{grid-template-columns:repeat(2,minmax(0,1fr))}.layout{margin-top:1rem}}
+*{box-sizing:border-box}body{margin:0}main{width:min(1050px,100%);margin:auto;padding:clamp(16px,4vw,40px)}h1,h2{font-family:Georgia,serif;line-height:1.14;margin:0}h1{font-size:clamp(1.75rem,4vw,2.9rem)}h2{font-size:1.4rem}p{margin:.5rem 0 1rem}button,select{font:inherit;color:inherit;min-height:44px}button{cursor:pointer;border:1px solid var(--border);border-radius:6px;background:white;padding:.45rem .7rem}button:disabled{cursor:default;opacity:.55}button[aria-pressed=true],button[aria-selected=true],#add{background:var(--accent);border-color:#9e7731;font-weight:650}button:focus-visible,select:focus-visible{outline:3px solid #246ab0;outline-offset:2px}.buttons{display:flex;flex-wrap:wrap;gap:8px}.layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:clamp(18px,4vw,42px);margin-top:1.4rem;grid-template-areas:"controls preview" "summary preview";align-items:start}.controls{grid-area:controls;min-width:0}.choices{display:grid;gap:.8rem;margin:0 0 1rem}label{display:grid;gap:.3rem;font-weight:650}select{width:100%;background:white;border:1px solid var(--border);border-radius:6px;padding:.4rem}.figures{grid-area:preview;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.figures.single{grid-template-columns:minmax(0,1fr);max-width:360px}figure{margin:0;text-align:center;font-weight:650}.scene{position:relative;aspect-ratio:1;background:#e6e3d8;border-radius:6px;overflow:hidden}.blank{width:100%;display:block}.print{position:absolute;left:var(--x);top:var(--y);width:var(--size);height:var(--size);object-fit:contain;transform:translate(-50%,-50%);mix-blend-mode:multiply}figcaption{padding-top:.3rem}.summary,.examples{border-top:1px solid var(--border);padding-top:1rem;margin-top:1.3rem}.summary{grid-area:summary;margin-top:0}.summary dl{display:grid;grid-template-columns:auto 1fr;gap:.2rem .75rem;margin:.55rem 0 .8rem}dt{font-weight:650}dd{margin:0}.examples p{margin:.55rem 0}.examples [role=tablist]{margin:.6rem 0}#cart{margin:.4rem 0;padding-left:1.3rem}#notice{min-height:1.5em;margin:.4rem 0}[hidden]{display:none!important}@media(max-width:670px){.layout{grid-template-columns:minmax(0,1fr);grid-template-areas:"controls" "preview" "summary";gap:16px}.choices{grid-template-columns:repeat(2,minmax(0,1fr))}.layout{margin-top:1rem}}
+
+.picker-modes{margin:.65rem 0}.picker-modes button{flex:1}.artwork-strip{display:flex;gap:8px;overflow-x:auto;padding:5px 5px 10px;margin:0 -5px .4rem;scroll-padding-inline:5px}
+.artwork-strip button{flex:0 0 96px;min-width:0;font-size:.76rem;line-height:1.25;padding:5px;display:grid;grid-template-rows:58px auto;align-content:start;gap:4px;text-align:center}
+.artwork-strip img{width:100%;height:58px;object-fit:contain}.artwork-strip .none{display:grid;place-items:center;font-size:1.2rem}.location-buttons{margin:.5rem 0 .15rem}.location-buttons button{flex:1}
 </style>
 <main>
 <h1>Bryan’s merch customizer</h1>
@@ -14,7 +18,18 @@
 <div class="layout">
 <section class="controls" aria-labelledby="choices-title">
 <h2 id="choices-title">Choose artwork</h2>
-<div class="choices">
+<div class="buttons picker-modes" role="group" aria-label="Artwork picker">
+<button type="button" data-picker="images" aria-pressed="true">Images</button>
+<button type="button" data-picker="names" aria-pressed="false">Names</button>
+</div>
+<div id="image-picker">
+  <div class="buttons location-buttons" role="group" aria-label="Choose a print location">
+    <button type="button" data-slot="primary"></button>
+    <button type="button" data-slot="secondary"></button>
+  </div>
+  <div class="artwork-strip" role="group" aria-label="Artwork options" id="artwork-strip"></div>
+</div>
+<div class="choices" id="name-picker" hidden>
 <label><span id="primary-label">Primary</span><select id="primary"></select></label>
 <label id="secondary-field"><span id="secondary-label">Secondary</span><select id="secondary"></select></label>
 </div>
@@ -89,6 +104,29 @@ for (const slot of ["primary","secondary"]) {
   for (const [key,art] of Object.entries(artwork)) $(slot).append(new Option(art.name,key));
   $(slot).onchange = event => run({type:"art",slot,value:event.target.value});
 }
+const pickerButtons = [...document.querySelectorAll("[data-picker]")];
+const slotButtons = [...document.querySelectorAll("[data-slot]")];
+let picker = new URLSearchParams(location.search).get("picker") === "names" ? "names" : "images";
+let activeSlot = "primary";
+for (const button of pickerButtons) {
+  button.onclick = () => { picker = button.dataset.picker; render(); };
+}
+for (const button of slotButtons) {
+  button.onclick = () => { activeSlot = button.dataset.slot; render(); };
+}
+const artButtons = [["", {name:"None"}], ...Object.entries(artwork)].map(([key,art]) => {
+  const button = document.createElement("button");
+  button.type = "button";
+  const visual = art.src ? new Image() : document.createElement("span");
+  if (art.src) { visual.src = art.src; visual.alt = ""; }
+  else { visual.className = "none"; visual.textContent = "—"; visual.setAttribute("aria-hidden","true"); }
+  const name = document.createElement("span");
+  name.textContent = art.name;
+  button.append(visual,name);
+  button.onclick = () => run({type:"art",slot:activeSlot,value:key});
+  $("artwork-strip").append(button);
+  return [key,button];
+});
 const examples = {
   two:{copy:"Put Walleye Catch on the back and FWBP on the chest. Swap them and see where each ends up.",steps:[
     ["Choose Walleye Catch",{type:"art",slot:"primary",value:"walleye-catch"}],
@@ -125,6 +163,17 @@ function render(notice="") {
   $("primary").value=state.primary;
   $("secondary").value=state.secondary;
   $("secondary-field").hidden=!apparel;
+  if (!apparel) activeSlot = "primary";
+  $("image-picker").hidden = picker !== "images";
+  $("name-picker").hidden = picker !== "names";
+  for (const button of pickerButtons) button.setAttribute("aria-pressed",String(button.dataset.picker === picker));
+  const primaryLabel = apparel ? (state.primarySide === "back" ? "Back" : "Chest") : product.position;
+  const secondaryLabel = state.primarySide === "back" ? "Chest" : "Back";
+  slotButtons[0].textContent = primaryLabel;
+  slotButtons[1].textContent = secondaryLabel;
+  slotButtons[1].hidden = !apparel;
+  for (const button of slotButtons) button.setAttribute("aria-pressed",String(button.dataset.slot === activeSlot));
+  for (const [key,button] of artButtons) button.setAttribute("aria-pressed",String(key === state[activeSlot]));
   $("swap").hidden=!apparel;
   $("primary-label").textContent=apparel?"Primary · "+(state.primarySide==="back"?"Back":"Chest"):"Primary · "+product.position;
   $("secondary-label").textContent="Secondary · "+(state.primarySide==="back"?"Chest":"Back");

@@ -32,3 +32,10 @@ Try the same artwork and swap in both pickers at phone and desktop widths, inclu
 ## Completion criterion
 
 Joe tries both pickers and says which should be the default or how to combine them.
+
+## Review evidence
+
+- [Images picker](http://10.200.0.59:18763/?picker=images)
+- [Names picker](http://10.200.0.59:18763/?picker=names)
+
+Verified at 375px and 1440px. Both pickers carry the same selections when switched. Keyboard activation, swapping placements, and blank validation work. Physical phone access has not been checked. Awaiting Joe’s reaction.
