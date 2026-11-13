@@ -24,7 +24,8 @@ if [[ -n "$(git diff --name-only --diff-filter=DMRT FETCH_HEAD HEAD -- ':(glob)v
   exit 1
 fi
 
-site_files=(index.html styles.css brands.css site.js brands.js assets fishing.webmanifest play/index.html game/fishing.css game/fishing.mjs game/campaign-scene.mjs game/rules.mjs game/campaign-map.mjs game/lake-map-data.mjs game/profile.mjs game/suspension.mjs game/species-catalog.mjs game/lake-sprites.mjs game/collection.mjs game/collection.css game/bryan-videos.mjs game/video-player.mjs game/species-video.mjs)
+public_pages=(index.html about/index.html videos/index.html field-notes/index.html merch/index.html ice-fishing/index.html privacy/index.html)
+site_files=("${public_pages[@]}" styles.css brands.css site.js brands.js assets fishing.webmanifest play/index.html game/fishing.css game/fishing.mjs game/campaign-scene.mjs game/rules.mjs game/campaign-map.mjs game/lake-map-data.mjs game/profile.mjs game/suspension.mjs game/species-catalog.mjs game/lake-sprites.mjs game/collection.mjs game/collection.css game/bryan-videos.mjs game/video-player.mjs game/species-video.mjs)
 number=0
 while IFS= read -r name; do
   if [[ "$name" =~ ^v([1-9][0-9]*)$ ]] && (( BASH_REMATCH[1] > number )); then
@@ -33,7 +34,24 @@ while IFS= read -r name; do
 done < <(git ls-tree --name-only -d HEAD)
 
 version="v$number"
-if (( number == 0 )) || ! git diff --quiet "HEAD:$version" HEAD -- "${site_files[@]}"; then
+archive_html() {
+  sed '/<link rel="canonical" /c\
+  <meta name="robots" content="noindex">
+' "$1"
+}
+
+archive_matches() {
+  local page
+  local exclusions=()
+  for page in "${public_pages[@]}"; do
+    git cat-file -e "HEAD:$version/$page" || return 1
+    diff -q <(git show "HEAD:$version/$page") <(archive_html "$page") >/dev/null || return 1
+    exclusions+=(":(exclude)$page")
+  done
+  git diff --quiet "HEAD:$version" HEAD -- "${site_files[@]}" "${exclusions[@]}"
+}
+
+if (( number == 0 )) || ! archive_matches; then
   version="v$((number + 1))"
   if [[ -e "$version" || -L "$version" ]]; then
     echo "Cannot create $version because that path already exists." >&2
@@ -43,8 +61,11 @@ if (( number == 0 )) || ! git diff --quiet "HEAD:$version" HEAD -- "${site_files
   git archive --format=tar -o "$lock/site.tar" HEAD -- "${site_files[@]}"
   tar -xf "$lock/site.tar" -C "$lock/$version"
   sed -E "s/(<meta name=\"fishing-build\" content=\")[^\"]*(\")/\\1$version\\2/" \
-    index.html > "$lock/$version/index.html"
-  cp "$lock/$version/index.html" index.html
+    index.html > "$lock/index.html"
+  cp "$lock/index.html" index.html
+  for page in "${public_pages[@]}"; do
+    archive_html "$page" > "$lock/$version/$page"
+  done
   mv "$lock/$version" "$version"
   git add -- index.html "$version"
   git commit -m "Publish site $version"

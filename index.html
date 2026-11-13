@@ -3,13 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="robots" content="noindex">
   <meta name="theme-color" content="#243329">
   <meta name="application-name" content="Ice Fishing">
   <meta name="apple-mobile-web-app-title" content="Ice Fishing">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="description" content="Fish Minnesota with Bryan Prokuski, from underwater ice fishing on Mille Lacs to summer kayak trips on the Mississippi.">
+  <link rel="canonical" href="https://fwbp.net/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Fishing with Bryan Prokuski">
+  <meta property="og:url" content="https://fwbp.net/">
+  <meta property="og:image" content="https://fwbp.net/assets/fwbp-channel-banner.jpg">
   <meta property="og:title" content="Fishing with Bryan Prokuski">
   <meta property="og:description" content="Go through the ice with Bryan Prokuski. Watch underwater fishing videos and browse illustrated field notes.">
   <link rel="icon" href="./assets/branding/underwater-stamp-favicon.ico" sizes="16x16 32x32 48x48">
@@ -24,6 +28,16 @@
   <link rel="stylesheet" href="./game/fishing.css?v=outing-cards">
   <script type="module" src="./game/fishing.mjs?v=outing-cards"></script>
   <script type="module" src="./assets/live-counters.mjs"></script>
+  <script type="module" src="./assets/analytics.mjs"></script>
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Fishing with Bryan Prokuski",
+      "alternateName": "Fishing with Bryan",
+      "url": "https://fwbp.net/"
+    }
+  </script>
   <title>Fishing with Bryan Prokuski</title>
 </head>
 <body>
@@ -351,7 +365,15 @@
     </div>
     <div class="wrap footer-inner" data-fish-overlay>
       <div><strong>Fishing with Bryan Prokuski</strong><p>Ice fishing and open-water trips in Minnesota.</p></div>
-      <div class="footer-links"><a href="#merch">Merch</a><button id="motion" type="button" aria-pressed="false" hidden>Reduce motion</button><a href="#surface">Back to surface ↑</a></div>
+      <nav class="footer-links" aria-label="Explore Fishing with Bryan">
+        <a href="https://fwbp.net/about/">About Bryan</a>
+        <a href="https://fwbp.net/videos/">Fishing videos</a>
+        <a href="https://fwbp.net/field-notes/">Field notes</a>
+        <a href="https://fwbp.net/merch/">Merch gallery</a>
+        <a href="https://fwbp.net/ice-fishing/">Ice fishing game</a>
+        <a href="https://fwbp.net/privacy/">Privacy</a>
+      </nav>
+      <div class="footer-links"><button id="motion" type="button" aria-pressed="false" hidden>Reduce motion</button><a href="#surface">Back to surface ↑</a></div>
     </div>
   </footer>
   <dialog id="player" aria-labelledby="player-title" aria-describedby="player-description">
