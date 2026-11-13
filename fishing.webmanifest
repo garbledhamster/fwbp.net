@@ -11,8 +11,8 @@
   "theme_color": "#243329",
   "categories": ["games", "entertainment"],
   "icons": [
-    { "src": "./assets/branding/ice-fishing-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "./assets/branding/ice-fishing-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "./assets/branding/ice-fishing-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "./assets/branding/bp-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./assets/branding/bp-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./assets/branding/bp-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }
