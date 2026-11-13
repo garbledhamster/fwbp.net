@@ -124,13 +124,30 @@ picker.innerHTML = `
         </span>
         <span class="fishing-menu-arrow" aria-hidden="true">→</span>
       </button>
+      <button type="button" class="fishing-outing-card fishing-outing-shop" data-open-shop aria-labelledby="shop-entry-label" aria-describedby="shop-entry-description">
+        <span class="fishing-outing-art" aria-hidden="true">
+          <img src="./assets/fishing/tackle-shop.webp" alt="" width="1104" height="460">
+          <img src="./assets/fishing/marnie.webp" alt="" width="256" height="256">
+        </span>
+        <span class="fishing-outing-copy">
+          <strong id="shop-entry-label">Tackle shop</strong>
+          <span id="shop-entry-description">Buy bait and gear from Marnie.</span>
+        </span>
+        <span class="fishing-menu-arrow" aria-hidden="true">→</span>
+      </button>
+      <button type="button" class="fishing-outing-card fishing-outing-skills" data-open-skills aria-labelledby="skills-entry-label" aria-describedby="skills-entry-description">
+        <img src="./assets/branding/bryan-walleye-portrait.webp" alt="" width="560" height="634">
+        <span class="fishing-outing-copy">
+          <strong id="skills-entry-label">Angler Skills</strong>
+          <span id="skills-entry-description">Spend points earned from Campaign catches.</span>
+        </span>
+        <span class="fishing-menu-arrow" aria-hidden="true">→</span>
+      </button>
     </div>
-    <div class="fishing-menu-tools" role="group" aria-label="More ways to play">
-      <button type="button" data-open-shop>${icon('shop')} Tackle shop</button>
-      <button type="button" data-open-skills>${icon('training')} Angler Skills</button>
+    <form method="dialog" class="fishing-menu-footer fishing-outing-footer">
+      <button>Back to the site</button>
       ${endpoint ? `<button type="button" data-mode="ranked" aria-description="Fish for a score on the public board.">${icon('quick')} Ranked</button>` : ''}
-    </div>
-    <form method="dialog" class="fishing-menu-footer"><button>Back to the site</button></form>
+    </form>
   </section>
   <section class="fishing-menu-page" data-picker-page="tutorial" aria-labelledby="fishing-tutorial-title" hidden>
     <header class="fishing-menu-masthead">
@@ -144,11 +161,12 @@ picker.innerHTML = `
         </div>
         <div class="fishing-lesson-copy">
           <h3 id="fishing-lesson-title">Your first perch</h3>
-          <p>Catch a yellow perch with Bryan. There’s no outing timer.</p>
+          <p>Bryan talks you through one perch. Take your time and try again if it slips the hook.</p>
           <ol class="fishing-lesson-steps" aria-label="What you’ll learn">
-            <li>${icon('jig')}<strong>Jig</strong><small>Work the lure</small></li>
+            <li>${icon('next')}<strong>Find</strong><small>Match its depth</small></li>
+            <li>${icon('jig')}<strong>Jig</strong><small>Move the lure</small></li>
             <li>${icon('hook')}<strong>Hook</strong><small>Wait for gold</small></li>
-            <li>${icon('reel')}<strong>Reel</strong><small>Ease a tight line</small></li>
+            <li>${icon('reel')}<strong>Land</strong><small>Loosen, then reel</small></li>
           </ol>
           <button type="button" class="fishing-lesson-start" data-mode="tutorial">Tutorial with Bryan <span aria-hidden="true">→</span></button>
         </div>
@@ -1420,8 +1438,8 @@ function fightCue(fight) {
     const up = coarsePointer.matches ? 'Swipe up' : 'Scroll up or press R';
     const down = coarsePointer.matches ? 'Swipe down' : 'Scroll down or press L';
     if (state.reaction === 'snapped') return `The line snapped. Try again. ${down} to give it line.`;
-    if (fight.tight) return `See the tight line on the meter? ${down} to loosen.`;
-    if (fight.pullUp) return `The perch is at the hole. ${up} to pull it through.`;
+    if (fight.tight) return `The meter says Tight. ${down} to loosen the line.`;
+    if (fight.pullUp) return `The perch is at the hole. ${up} once more to lift it through the ice.`;
     return fight.tension < lineBalanceLimits.low
       ? `The line is slack. ${up} to take it in.` : `The line is balanced. ${up} to reel.`;
   }
@@ -1968,7 +1986,7 @@ function render() {
   let detail = '';
   let cue = state?.cue ?? 'Opening the lake…';
   if (tutorialLanded) {
-    cue = 'You landed a yellow perch! Ready to try your own hole?';
+    cue = 'You landed a yellow perch! In Campaign, tap the water to jig and keep tapping to reel.';
     detail = 'Tutorial complete';
   } else if (failed) cue = 'Ranking disconnected. You can start a practice outing.';
   else if (linePhysics && state?.fight) cue = fightCue(state.fight);
@@ -2988,7 +3006,7 @@ function renderCampaignSearch(eye) {
     if (lure !== 'jig') return setStatus('Choose Jig in the tray. A perch likes a little jig.');
     if (fish.some(swimmer => swimmer.near)) {
       const jig = coarsePointer.matches ? 'Swipe up a little or tap the lure' : 'Scroll up a little, click the lure, or press J';
-      return setStatus(`${state.reaction === 'slipped-hook' ? 'Try again. ' : ''}${jig} to jig.`);
+      return setStatus(`${state.reaction === 'slipped-hook' ? 'Try again. ' : ''}${jig} to jig. Then watch the lure.`);
     }
     const lureY = eye?.y ?? searchRig(lake.getBoundingClientRect(), iceCeiling.getBoundingClientRect()).y;
     const direction = fish[0]?.y < lureY ? 'up' : 'down';

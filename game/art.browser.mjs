@@ -44,12 +44,30 @@ await withBrowser(async browser => {
     const campaign = picker.getByRole('button', { name: 'Campaign', exact: true });
     const tutorial = picker.getByRole('button', { name: 'Tutorial', exact: true });
     const openShop = picker.getByRole('button', { name: 'Tackle shop', exact: true });
+    const openSkills = picker.getByRole('button', { name: 'Angler Skills', exact: true });
     await picker.waitFor();
-    await checkArt(picker, 'mille-lacs-dawn.webp');
-    assert.ok(await inDialogViewport(picker, campaign), 'Campaign stays visible with the outing art');
-    assert.ok(await inDialogViewport(picker, tutorial), 'Tutorial stays visible with the outing art');
+    const cards = [
+      [campaign, 'mille-lacs-dawn.webp', true],
+      [tutorial, 'bryan-jig-portrait.webp', false],
+      [openShop, 'tackle-shop.webp', true],
+      [openSkills, 'bryan-walleye-portrait.webp', false],
+    ];
+    for (const [card, file, onLeft] of cards) {
+      await checkArt(card, file);
+      assert.ok(await inDialogViewport(picker, card), `${size}: ${await card.innerText()} fits on screen`);
+      const art = await card.locator(`img[src$="/${file}"]`).boundingBox();
+      const copy = await card.locator('.fishing-outing-copy').boundingBox();
+      assert.ok(onLeft ? art.x + art.width <= copy.x : copy.x + copy.width <= art.x,
+        `${size}: ${file} is on the ${onLeft ? 'left' : 'right'} of the copy`);
+    }
+    assert.ok(await picker.evaluate(el => el.scrollWidth <= el.clientWidth), 'the outing menu has no horizontal overflow');
     await capture(page, `${size}-outings`);
-    assert.ok(await inDialogViewport(picker, openShop), `${size}: Tackle shop stays visible with the outing art`);
+
+    await press(openSkills);
+    const skills = page.getByRole('dialog', { name: 'Angler Skills', exact: true });
+    await skills.locator('[data-skill-bank]').waitFor();
+    await closeDialog(skills, skills.getByRole('button', { name: 'Back', exact: true }));
+    assert.ok(await openSkills.evaluate(el => document.activeElement === el), 'return focus to the Skills entry');
 
     await press(tutorial);
     const training = page.getByRole('dialog', { name: 'Tutorial', exact: true });
