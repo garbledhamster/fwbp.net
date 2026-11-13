@@ -144,9 +144,8 @@ body:not(.fishing) .dive-ceiling { visibility: hidden; }
 .lure-rig { position: absolute; top: 0; left: var(--home-line-x); translate: -50% 0; }
 .footer-hot-dog {
   position: absolute;
-  top: 118px; left: var(--home-line-x);
+  top: 117px; left: calc(var(--home-line-x) - 4px);
   translate: -50% 0;
-  rotate: -12deg;
   display: grid; place-items: center;
   width: 104px; height: 44px;
   border-radius: 12px;
