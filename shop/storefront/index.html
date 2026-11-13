@@ -7,17 +7,16 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <meta name="referrer" content="no-referrer">
   <title>Fishing with Bryan Shop</title>
-  <link rel="icon" href="assets/underwater-stamp-favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="shop.css">
-  <script defer src="merch-catalog.js"></script>
-  <script defer src="shop.js"></script>
+  <link rel="icon" href="assets/bp.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="shop.css?v=designs3">
+  <script defer src="shop.js?v=designs3"></script>
 </head>
 <body>
-  <a class="skip" href="#shop">Skip to catalog</a>
+  <a class="skip" href="#merch">Skip to catalog</a>
   <header class="site-header">
     <div class="header-inner">
       <a class="brand" href="https://fwbp.net/">
-        <img src="assets/underwater-stamp.svg" alt="" width="34" height="34">
+        <img src="assets/bp.svg" alt="" width="34" height="34">
         <span>Fishing with Bryan</span>
       </a>
       <nav class="departments" aria-label="Shop departments">
@@ -38,17 +37,86 @@
         </div>
         <div class="shop-hero-copy">
           <h1 id="shop-heading">The Tackle Counter</h1>
-          <p>Browse Bryan’s tackle and original merch. Ordering is closed while we confirm what we can ship.</p>
+          <p>Pick a design and see it on a tee, sweatshirt, mug, hat or sticker. Ordering is closed for now.</p>
           <a class="button" href="#merch">Browse merch</a>
         </div>
+      </div>
+    </section>
+    <section id="merch" class="frame section collection" aria-labelledby="collection-title">
+      <h2 id="collection-title">Choose a design</h2>
+      <div class="merch-grid">
+        <button type="button" class="design-card" data-design="assets/bp-print.svg" data-name="BP" aria-haspopup="dialog">
+          <span class="design-art logo-art"><img src="assets/bp-print.svg" alt="" width="256" height="256"></span>
+          <span class="design-caption"><strong>BP</strong></span>
+        </button>
+        <button type="button" class="design-card" data-design="assets/fwbp-print.svg" data-name="FWBP" aria-haspopup="dialog">
+          <span class="design-art logo-art"><img src="assets/fwbp-print.svg" alt="" width="256" height="256"></span>
+          <span class="design-caption"><strong>FWBP</strong></span>
+        </button>
+        <button type="button" class="design-card" data-design="assets/fwbp-classic.svg" data-name="FWBP Classic" data-classic aria-haspopup="dialog">
+          <span class="design-art classic-art"><img src="assets/fwbp-classic.svg" alt="" width="256" height="256"></span>
+          <span class="design-caption"><strong>FWBP Classic</strong></span>
+        </button>
+        <button type="button" class="design-card" data-design="assets/bryan-merch-wink.webp" data-name="Bryan Thumbs-Up" aria-haspopup="dialog">
+          <span class="design-art"><img src="assets/bryan-merch-wink.webp" alt="" width="256" height="256" loading="lazy"></span>
+          <span class="design-caption"><strong>Bryan Thumbs-Up</strong></span>
+        </button>
+        <button type="button" class="design-card" data-design="assets/collection/bryan-walleye.webp" data-name="Walleye Catch" aria-haspopup="dialog">
+          <span class="design-art"><img src="assets/collection/bryan-walleye.webp" alt="" width="256" height="256" loading="lazy"></span>
+          <span class="design-caption"><strong>Walleye Catch</strong></span>
+        </button>
+        <button type="button" class="design-card" data-design="assets/collection/bryan-pike.webp" data-name="Northern Pike" aria-haspopup="dialog">
+          <span class="design-art"><img src="assets/collection/bryan-pike.webp" alt="" width="256" height="256" loading="lazy"></span>
+          <span class="design-caption"><strong>Northern Pike</strong></span>
+        </button>
+        <button type="button" class="design-card" data-design="assets/collection/bryan-kayak.webp" data-name="Kayak Bryan" aria-haspopup="dialog">
+          <span class="design-art"><img src="assets/collection/bryan-kayak.webp" alt="" width="256" height="256" loading="lazy"></span>
+          <span class="design-caption"><strong>Kayak Bryan</strong></span>
+        </button>
+        <button type="button" class="design-card" data-design="assets/collection/bryan-camera.webp" data-name="Underwater Camera" aria-haspopup="dialog">
+          <span class="design-art"><img src="assets/collection/bryan-camera.webp" alt="" width="256" height="256" loading="lazy"></span>
+          <span class="design-caption"><strong>Underwater Camera</strong></span>
+        </button>
+        <button type="button" class="design-card" data-design="assets/collection/bryan-jig-portrait.webp" data-name="Keep on Jigging" aria-haspopup="dialog">
+          <span class="design-art"><img src="assets/collection/bryan-jig-portrait.webp" alt="" width="256" height="256" loading="lazy"></span>
+          <span class="design-caption"><strong>Keep on Jigging</strong></span>
+        </button>
+        <button type="button" class="design-card" data-design="assets/collection/bryan-over-the-shoulder.webp" data-name="Over the Shoulder" aria-haspopup="dialog">
+          <span class="design-art"><img src="assets/collection/bryan-over-the-shoulder.webp" alt="" width="256" height="256" loading="lazy"></span>
+          <span class="design-caption"><strong>Over the Shoulder</strong></span>
+        </button>
+        <button type="button" class="design-card" data-design="assets/collection/bryan-full-body-jig.webp" data-name="On the Jig" aria-haspopup="dialog">
+          <span class="design-art"><img src="assets/collection/bryan-full-body-jig.webp" alt="" width="256" height="256" loading="lazy"></span>
+          <span class="design-caption"><strong>On the Jig</strong></span>
+        </button>
+        <button type="button" class="design-card" data-design="assets/collection/bryan-walleye-portrait.webp" data-name="Walleye Portrait" aria-haspopup="dialog">
+          <span class="design-art"><img src="assets/collection/bryan-walleye-portrait.webp" alt="" width="256" height="256" loading="lazy"></span>
+          <span class="design-caption"><strong>Walleye Portrait</strong></span>
+        </button>
+        <button type="button" class="design-card" data-design="assets/collection/bryan-headshot.webp" data-name="Bryan Portrait" aria-haspopup="dialog">
+          <span class="design-art"><img src="assets/collection/bryan-headshot.webp" alt="" width="256" height="256" loading="lazy"></span>
+          <span class="design-caption"><strong>Bryan Portrait</strong></span>
+        </button>
+        <button type="button" class="design-card" data-design="assets/collection/bryan-front-facing.webp" data-name="Face to Face" aria-haspopup="dialog">
+          <span class="design-art"><img src="assets/collection/bryan-front-facing.webp" alt="" width="256" height="256" loading="lazy"></span>
+          <span class="design-caption"><strong>Face to Face</strong></span>
+        </button>
+        <button type="button" class="design-card" data-design="assets/collection/bryan-leaning-in.webp" data-name="Leaning In" aria-haspopup="dialog">
+          <span class="design-art"><img src="assets/collection/bryan-leaning-in.webp" alt="" width="256" height="256" loading="lazy"></span>
+          <span class="design-caption"><strong>Leaning In</strong></span>
+        </button>
+        <button type="button" class="design-card" data-design="assets/collection/bryan-standing-welcome.webp" data-name="Welcome Bryan" aria-haspopup="dialog">
+          <span class="design-art"><img src="assets/collection/bryan-standing-welcome.webp" alt="" width="256" height="256" loading="lazy"></span>
+          <span class="design-caption"><strong>Welcome Bryan</strong></span>
+        </button>
       </div>
     </section>
     <div id="shop" class="frame" tabindex="-1"></div>
     <section class="frame section faq" id="faq" aria-labelledby="faq-title">
       <h2 id="faq-title">Frequently asked questions</h2>
       <div class="faq-list">
-        <details><summary>Can I place an order?</summary><p>Ordering is closed while we confirm the first products and shipping options. The preview cart lets you see items together.</p></details>
-        <details><summary>Are all these colors coming back?</summary><p>The color photos are from Bryan’s original merch. We’ll list the sizes and colors we can ship when ordering opens.</p></details>
+        <details><summary>Can I place an order?</summary><p>Ordering is closed for now. You can browse the merch and tackle while we finish setting up checkout.</p></details>
+        <details><summary>What can I put a design on?</summary><p>Choose any design to preview it on a T-shirt, sweatshirt, mug, hat, or sticker.</p></details>
       </div>
     </section>
   </main>
@@ -58,10 +126,30 @@
       <nav aria-label="Fishing with Bryan">
         <a href="https://fwbp.net/">Bryan’s site</a>
         <a href="https://fwbp.net/#videos">Fishing videos</a>
-        <a href="https://fwbp.net/merch/">Bryan’s merch gallery</a>
+        <a href="https://fwbp.net/merch/">Merch on Bryan’s site</a>
       </nav>
     </div>
   </footer>
+  <dialog id="design-preview" aria-labelledby="preview-title">
+    <header class="drawer-header">
+      <h2 id="preview-title"></h2>
+      <button id="close-design" class="close" type="button" aria-label="Close product preview">×</button>
+    </header>
+    <div class="design-preview-body">
+      <div class="product-switcher" role="group" aria-label="Preview on a product">
+        <button type="button" data-product="tee" aria-pressed="true">T-shirt</button>
+        <button type="button" data-product="sweatshirt" aria-pressed="false">Sweatshirt</button>
+        <button type="button" data-product="mug" aria-pressed="false">Mug</button>
+        <button type="button" data-product="hat" aria-pressed="false">Hat</button>
+        <button type="button" data-product="sticker" aria-pressed="false">Sticker</button>
+      </div>
+      <figure class="design-preview-image" data-view="tee">
+        <img class="blank-product" src="assets/blanks/tee.jpg" alt="" width="627" height="627">
+        <img class="applied-design" src="assets/bp-print.svg" alt="" width="256" height="256">
+      </figure>
+      <p id="preview-description" role="status"></p>
+    </div>
+  </dialog>
   <dialog id="cart" aria-labelledby="cart-title">
     <header class="drawer-header">
       <h2 id="cart-title">Preview cart</h2>

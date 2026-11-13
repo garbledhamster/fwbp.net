@@ -11,14 +11,6 @@ function icon(name) {
   return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name]}</svg>`;
 }
 
-const merch = [
-  {id: "classic-tee", name: "FWBP Classic T-Shirt", detail: "Burgundy with the white Minnesota mark."},
-  {id: "classic-hoodie", name: "FWBP Classic Hoodie", detail: "Bright green with the white Minnesota mark."},
-  {id: "keep-on-jigging-tee", name: "Keep On Jigging T-Shirt", detail: "Olive with Bryan’s white FWBP design."},
-  {id: "keep-on-jigging-hoodie", name: "Keep On Jigging Hoodie", detail: "Light blue with the black Keep On Jigging design."},
-  {id: "tall-tumbler", name: "FWBP Tall Tumbler", detail: "Stainless steel with the black Minnesota mark."},
-];
-
 const tackle = [
   {
     id: "dardevle",
@@ -34,17 +26,7 @@ const tackle = [
   },
 ];
 
-const products = new Map([...tackle, ...merch].map(item => [item.id, item]));
-for (const item of merch) {
-  for (const variant of merchCatalog[item.id]) {
-    products.set(variant.id, {
-      ...item,
-      ...variant,
-      name: item.name + " · " + variant.color,
-      detail: "From Bryan’s original merch shelf.",
-    });
-  }
-}
+const products = new Map(tackle.map(item => [item.id, item]));
 const cart = new Map();
 let selected = tackle[0].id;
 
@@ -76,37 +58,13 @@ function counterList(items) {
   </li>`).join("")}</ul>`;
 }
 
-function counterProduct(item) {
-  const colors = merchCatalog[item.id];
-  if (!colors) return product(item);
-  const colorOptions = colors.map(variant =>
-    '<option value="' + variant.id + '">' + variant.color + '</option>'
-  ).join("");
-  return '<div class="counter-merch"><label for="merch-color">Color</label>' +
-    '<select id="merch-color" data-color>' + colorOptions + '</select></div>' +
-    '<div id="counter-color-product">' + product(products.get(colors[0].id)) + '</div>';
-}
-
-function colorGrid() {
-  const groups = merch.map(item => {
-    const choices = merchCatalog[item.id].map(variant =>
-      '<li><button type="button" data-color-pick="' + variant.id + '" data-parent="' + item.id + '">' +
-      '<img loading="lazy" src="assets/' + variant.image + '" alt="" width="96" height="96">' +
-      '<span>' + variant.color + '</span></button></li>'
-    ).join("");
-    return '<section><h3>' + item.name + '</h3><ul class="swatch-grid">' + choices + '</ul></section>';
-  }).join("");
-  return '<details class="all-colors"><summary>See all merch colors</summary>' + groups + '</details>';
-}
-
 function counter() {
   return `<div class="section counter-layout">
     <div class="counter-list">
       <section id="tackle"><h2>Tackle</h2>${counterList(tackle)}</section>
-      <section id="merch"><h2>Merch</h2>${counterList(merch)}${colorGrid()}</section>
     </div>
     <section id="counter-detail" class="counter-detail" aria-label="Selected item" tabindex="-1">
-      ${counterProduct(products.get(selected))}
+      ${product(products.get(selected))}
     </section>
   </div>`;
 }
@@ -166,7 +124,6 @@ reviewCart.addEventListener("click", () => {
 shop.addEventListener("click", event => {
   const addButton = event.target.closest("[data-add]");
   const pickButton = event.target.closest("[data-pick]");
-  const colorButton = event.target.closest("[data-color-pick]");
 
   if (addButton) {
     const id = addButton.dataset.add;
@@ -180,26 +137,58 @@ shop.addEventListener("click", event => {
       addButton.classList.remove("added");
       addButton.innerHTML = `${icon("plus")}<span>Add to preview cart</span>`;
     }, 1000);
-  } else if (pickButton || colorButton) {
-    selected = pickButton ? pickButton.dataset.pick : colorButton.dataset.parent;
+  } else if (pickButton) {
+    selected = pickButton.dataset.pick;
     shop.querySelector("[aria-pressed=true]").setAttribute("aria-pressed", "false");
-    shop.querySelector('[data-pick="' + selected + '"]').setAttribute("aria-pressed", "true");
+    pickButton.setAttribute("aria-pressed", "true");
     const detail = document.querySelector("#counter-detail");
-    detail.innerHTML = counterProduct(products.get(selected));
-    if (colorButton) {
-      const selector = detail.querySelector("[data-color]");
-      selector.value = colorButton.dataset.colorPick;
-      selector.dispatchEvent(new Event("change", {bubbles: true}));
-      detail.focus();
-    } else if (matchMedia("(max-width: 630px)").matches) detail.focus();
-  }
-});
-
-shop.addEventListener("change", event => {
-  if (event.target.matches("[data-color]")) {
-    document.querySelector("#counter-color-product").innerHTML = product(products.get(event.target.value));
+    detail.innerHTML = product(products.get(selected));
+    if (matchMedia("(max-width: 630px)").matches) detail.focus();
   }
 });
 
 shop.innerHTML = counter();
 updateCart();
+
+
+const designPreview = document.querySelector("#design-preview");
+const previewFigure = designPreview.querySelector("figure");
+const blankProduct = previewFigure.querySelector(".blank-product");
+const appliedDesign = previewFigure.querySelector(".applied-design");
+const previewDescription = designPreview.querySelector("#preview-description");
+const productChoices = [...designPreview.querySelectorAll("[data-product]")];
+let designOpener;
+
+function showProduct(choice) {
+  const view = choice.dataset.product;
+  previewFigure.dataset.view = view;
+  blankProduct.hidden = view === "sticker";
+  if (!blankProduct.hidden) blankProduct.src = `assets/blanks/${view}.jpg`;
+  appliedDesign.alt = `${designOpener.dataset.name} on a ${choice.textContent.toLowerCase()}`;
+  for (const button of productChoices) {
+    button.setAttribute("aria-pressed", String(button === choice));
+  }
+
+  if (designOpener.hasAttribute("data-classic") && view === "tee") {
+    previewDescription.textContent = "White Classic Tee · S–3XL · $28 + $4.95 U.S. shipping. Ordering is closed.";
+  } else if (designOpener.dataset.name.includes("Thumbs-Up") && view === "sticker") {
+    previewDescription.textContent = "Thumbs-Up Vinyl Sticker · 3″, 4″ and 5.5″. Ordering is closed.";
+  } else {
+    previewDescription.textContent = "Placement preview. Ordering is closed.";
+  }
+}
+
+for (const button of document.querySelectorAll("[data-design]")) {
+  button.addEventListener("click", () => {
+    designOpener = button;
+    designPreview.querySelector("h2").textContent = button.dataset.name;
+    appliedDesign.src = button.dataset.design;
+    showProduct(productChoices[0]);
+    designPreview.showModal();
+  });
+}
+for (const button of productChoices) {
+  button.addEventListener("click", () => showProduct(button));
+}
+designPreview.querySelector("#close-design").addEventListener("click", () => designPreview.close());
+designPreview.addEventListener("close", () => designOpener?.focus());

@@ -105,28 +105,12 @@ svg { width: 1.16em; height: 1.16em; flex: none; vertical-align: middle; }
 .product-copy { padding-top: .85rem; display: grid; gap: .55rem; justify-items: start; }
 .product-copy p, .faq-list p, .cart-line span, .drawer-footer p { color: var(--muted); font-size: .9rem; }
 .video-link { display: inline-flex; align-items: center; min-height: 44px; color: var(--lamp); font-size: .85rem; font-weight: 700; }
-.counter-merch { display: grid; gap: .25rem; margin-bottom: .75rem; }
-.counter-merch label { font-size: .85rem; font-weight: 700; }
-.counter-merch select {
-  min-height: 44px; min-width: 0; width: 100%; border: 1px solid var(--rule);
-  border-radius: 5px; background: var(--blackwater); padding: .4rem .6rem;
-}
-.all-colors { margin-top: .6rem; }
-.all-colors h3 { margin: .9rem 0 .6rem; }
-.swatch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(74px, 1fr)); gap: .45rem; margin-bottom: 1.25rem; }
-.swatch-grid button {
-  width: 100%; height: 100%; padding: .3rem; border: 1px solid var(--rule);
-  background: var(--panel); border-radius: 4px; font-size: .75rem;
-}
-.swatch-grid button:hover { border-color: var(--lamp); }
-.swatch-grid img { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 3px; background: #fff; }
-.swatch-grid span { display: block; padding: .25rem 0; }
 
 .faq h2 { margin-bottom: .6rem; }
 .faq-list { max-width: 70ch; }
 .faq-list details { border-top: 1px solid var(--rule); }
 .faq-list details:last-child { border-bottom: 1px solid var(--rule); }
-.faq-list summary, .all-colors summary { min-height: 44px; padding-block: .6rem; font-weight: 700; }
+.faq-list summary { min-height: 44px; padding-block: .6rem; font-weight: 700; }
 .faq-list p { padding-bottom: .8rem; }
 .site-footer { background: var(--tent); border-top: 1px solid var(--rule); }
 .footer-inner, .footer-inner nav { display: flex; flex-wrap: wrap; gap: .3rem 1rem; align-items: center; }
@@ -171,7 +155,6 @@ dialog::backdrop { background: #051719d9; }
   .counter-layout { grid-template-columns: minmax(0, 1fr); }
   .counter-detail { position: static; order: -1; display: grid; grid-template-columns: 35% minmax(0, 1fr); gap: .75rem; align-items: center; }
   .counter-detail > .product, #counter-color-product, #counter-color-product > .product { display: contents; }
-  .counter-merch { grid-column: 1 / -1; grid-template-columns: auto minmax(0, 1fr); align-items: center; margin-bottom: 0; gap: .7rem; }
   .product-copy { padding-top: 0; }
   .product-copy h2 { font-size: 1.25rem; }
 }
@@ -180,4 +163,64 @@ dialog::backdrop { background: #051719d9; }
   .brand { gap: 4px; font-size: .79rem; }
   .brand img { width: 25px; height: 25px; }
   .cart-toggle { padding-inline: .35rem; gap: .3rem; font-size: .76rem; }
+}
+
+.collection h2 { margin-bottom: .85rem; }
+.merch-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(.65rem, 2vw, 1.2rem); }
+@media (max-width: 690px) {
+  .merch-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.design-card {
+  display: grid; min-width: 0; padding: 0; overflow: hidden; text-align: left;
+  color: var(--foam); background: var(--panel); border: 1px solid var(--rule); border-radius: 8px;
+}
+.design-card:hover { border-color: var(--lamp); }
+.design-art {
+  display: grid; place-items: center; aspect-ratio: 1.2;
+  background: #dedbd1; overflow: hidden;
+}
+.design-art img { width: 79%; height: 94%; object-fit: contain; }
+.logo-art, .classic-art { background: #f2eee3; }
+.classic-art img { width: 84%; height: 94%; }
+.design-caption { display: grid; gap: .15rem; padding: .7rem .85rem; }
+.design-caption strong { font: 700 clamp(1.15rem, 2.2vw, 1.5rem)/1.18 Georgia, serif; }
+#design-preview {
+  inset: 0; height: fit-content;
+  width: min(660px, 100% - 24px); max-height: min(90dvh, 800px); margin: auto;
+  padding: 0; border: 1px solid var(--rule); border-radius: 12px;
+  color: var(--foam); background: var(--panel); overflow: auto;
+}
+#design-preview .drawer-header { padding: .65rem 1rem; }
+.design-preview-body { padding: .75rem 1rem 1rem; display: grid; gap: .75rem; }
+.product-switcher { display: flex; flex-wrap: wrap; gap: .4rem; }
+.product-switcher button {
+  padding: .4rem .65rem; min-height: 44px; border: 1px solid var(--rule); border-radius: 5px;
+  background: var(--blackwater); color: var(--foam);
+}
+.product-switcher button[aria-pressed="true"] { background: var(--lamp); border-color: var(--lamp); color: var(--tent); }
+.design-preview-image {
+  position: relative; width: min(100%, 440px); margin-inline: auto;
+  aspect-ratio: 1; border-radius: 7px; overflow: hidden; background: #eeeae2;
+  --art-x: 50%; --art-y: 44%; --art-size: 31%;
+}
+.design-preview-image[data-view="sweatshirt"] { --art-x: 50%; --art-y: 43%; --art-size: 29%; }
+.design-preview-image[data-view="mug"] { --art-x: 45%; --art-y: 53%; --art-size: 30%; }
+.design-preview-image[data-view="hat"] { --art-x: 50%; --art-y: 42%; --art-size: 26%; }
+.design-preview-image[data-view="sticker"] { --art-x: 50%; --art-y: 50%; --art-size: 72%; background: #dde5df; }
+.blank-product { width: 100%; }
+.blank-product[hidden] { display: none; }
+.applied-design {
+  position: absolute; left: var(--art-x); top: var(--art-y); width: var(--art-size);
+  height: var(--art-size); object-fit: contain; transform: translate(-50%,-50%);
+  mix-blend-mode: multiply;
+}
+[data-view="sticker"] .applied-design {
+  mix-blend-mode: normal;
+  filter: drop-shadow(2px 0 white) drop-shadow(-2px 0 white) drop-shadow(0 2px white) drop-shadow(0 -2px white) drop-shadow(0 3px 2px #41524d70);
+}
+#preview-description { color: var(--muted); font-size: .9rem; }
+@media (max-width: 520px) {
+  .merch-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .design-caption { padding: .6rem; }
 }
