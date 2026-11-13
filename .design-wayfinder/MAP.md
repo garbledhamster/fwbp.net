@@ -30,10 +30,11 @@ Static HTML, CSS, and JavaScript. The standalone prototype uses the existing sto
 ## Decisions so far
 
 - [Product, artwork, and placement rules](decisions/customization-rules.md)
+- [Show decal thumbnails in the placement dropdowns](decisions/artwork-picker.md)
 
 ## Frontier
 
-- [Pick artwork by image or by name](tickets/open/artwork-picker.md)
+- Awaiting review of the combined dropdowns.
 
 ## Fog
 

@@ -1,7 +1,7 @@
 ---
 title: Pick artwork by image or by name
 type: compare
-status: open
+status: closed
 created: 2026-11-13
 ---
 
@@ -35,7 +35,6 @@ Joe tries both pickers and says which should be the default or how to combine th
 
 ## Review evidence
 
-- [Images picker](http://10.200.0.59:18763/?picker=images)
-- [Names picker](http://10.200.0.59:18763/?picker=names)
+Joe chose to combine the two pickers and asked for a small decal before the title. The [combined prototype](http://10.200.0.59:18763/) keeps both placement dropdowns visible and shows a thumbnail in the current choice and in each option. Verified selection, swapping, and keyboard operation at 375px and 1440px.
 
-Verified at 375px and 1440px. Both pickers carry the same selections when switched. Keyboard activation, swapping placements, and blank validation work. Physical phone access has not been checked. Awaiting Joe’s reaction.
+[Decision](../../decisions/artwork-picker.md)

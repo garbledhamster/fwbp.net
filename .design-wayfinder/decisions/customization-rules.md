@@ -19,4 +19,4 @@ Joe selected these rules in the six pop-out questions.
 
 ## Follow-on frontier
 
-[Pick artwork by image or by name](../tickets/open/artwork-picker.md)
+[Pick artwork by image or by name](../tickets/closed/artwork-picker.md)
