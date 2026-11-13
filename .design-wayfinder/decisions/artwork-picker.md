@@ -9,3 +9,5 @@ Joe preferred the two placement dropdowns and asked for a small image before the
 
 - [Local prototype](http://10.200.0.59:18763/)
 - [Standalone HTML](../../shop/customizer-prototype.html)
+
+The prototype also includes the four original logo designs in black and white, using the transparent PNGs in [Bryan’s forwarded artwork email](https://mail.google.com/mail/u/?authuser=jmjrice94%40gmail.com#all/1a1d53b9932add08). The EPS files in the same email are the print source.
