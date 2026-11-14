@@ -26,6 +26,17 @@
 .design-options button:hover { border-color:var(--border); }
 .design-options button:focus-visible { outline-offset:-2px; }
 .design-choice-name { overflow-wrap:anywhere; line-height:1.2; }
+
+.variant-picker { margin:1rem 0; }
+.variant-heading { display:flex; align-items:baseline; gap:.4rem; flex-wrap:wrap; font-weight:650; }
+#color-name { font-weight:400; }
+.swatches { display:flex; flex-wrap:wrap; gap:6px; margin:.35rem 0 .6rem; }
+.swatch { width:44px; padding:6px; display:grid; place-items:center; }
+.swatch span { display:block; width:24px; height:24px; border:1px solid #102f3155; border-radius:50%; }
+.swatch[aria-pressed=true] { outline:2px solid var(--ink); outline-offset:-2px; background:white; }
+.size-field { max-width:180px; }
+.catalog-note { font-size:.83rem; margin:.65rem 0 .2rem; }
+.product-color { position:absolute; inset:0; background:var(--product-color); mix-blend-mode:multiply; pointer-events:none; }
 </style>
 <main>
 <h1>Bryan’s merch customizer</h1>
@@ -33,6 +44,12 @@
 <div id="products" class="buttons" role="group" aria-label="Product"></div>
 <div class="layout">
 <section class="controls" aria-labelledby="choices-title">
+<div class="variant-picker">
+  <div class="variant-heading"><span id="color-label">Color</span><span id="color-name" aria-live="polite"></span></div>
+  <div class="swatches" id="swatches" role="group" aria-labelledby="color-label"></div>
+  <label class="size-field">Size <select id="size"></select></label>
+  <p class="catalog-note" id="catalog-note"></p>
+</div>
 <h2 id="choices-title">Choose artwork</h2>
 <div class="choices" id="artwork-fields">
   <div class="design-field">
@@ -84,23 +101,43 @@ const products = {
   hat: {name:"Hat", position:"Hat front", x:50,y:42,size:26},
   sticker: {name:"Sticker", position:"Sticker artwork", x:50,y:50,size:72}
 };
-const defaults = {product:"tee",primary:"",secondary:"",primarySide:"back"};
+const catalog = {"tee": {"id": 108, "title": "Men's Fitted T-Shirt | Next Level 3600", "colors": {"Black": {"hex": "#0c0b0b", "hex2": null, "sizes": {"2XL": 4870, "3XL": 4871, "L": 4868, "M": 4867, "S": 4866, "XL": 4869, "XS": 4865, "4XL": 52139, "5XL": 52144}}, "Cool Blue": {"hex": "#003d68", "hex2": null, "sizes": {"2XL": 52772, "3XL": 52773, "L": 52770, "M": 52769, "S": 52768, "XL": 52771}}, "Cream": {"hex": "#ead3bf", "hex2": null, "sizes": {"2XL": 52796, "3XL": 52797, "L": 52794, "M": 52793, "S": 52792, "XL": 52795}}, "Desert Pink": {"hex": "#ffb095", "hex2": null, "sizes": {"2XL": 13576, "3XL": 13577, "L": 13574, "M": 13573, "S": 13572, "XL": 13575}}, "Forest Green": {"hex": "#233d30", "hex2": null, "sizes": {"2XL": 52778, "3XL": 52779, "L": 52776, "M": 52775, "S": 52774, "XL": 52777}}, "Graphite Black": {"hex": "#383435", "hex2": null, "sizes": {"2XL": 52802, "3XL": 52803, "L": 52800, "M": 52799, "S": 52798, "XL": 52801}}, "Heather Grey": {"hex": "#9a978e", "hex2": null, "sizes": {"2XL": 4884, "3XL": 4885, "L": 4882, "M": 4881, "S": 4880, "XL": 4883, "XS": 4879, "4XL": 52140, "5XL": 52145}}, "Heavy Metal": {"hex": "#474445", "hex2": null, "sizes": {"2XL": 52784, "3XL": 52785, "L": 52782, "M": 52781, "S": 52780, "XL": 52783}}, "Light Blue": {"hex": "#ecfffb", "hex2": null, "sizes": {"2XL": 13583, "3XL": 13584, "L": 13581, "M": 13580, "S": 13579, "XL": 13582}}, "Midnight Navy": {"hex": "#1d242e", "hex2": null, "sizes": {"2XL": 4891, "3XL": 4892, "L": 4889, "M": 4888, "S": 4887, "XL": 4890, "XS": 4886, "4XL": 52141, "5XL": 52146}}, "Natural": {"hex": "#fff1dd", "hex2": null, "sizes": {"2XL": 52790, "3XL": 52791, "L": 52788, "M": 52787, "S": 52786, "XL": 52789}}, "Red": {"hex": "#d50732", "hex2": null, "sizes": {"2XL": 5336, "3XL": 5337, "L": 5334, "M": 5333, "S": 5332, "XL": 5335}}, "Royal Blue": {"hex": "#274c97", "hex2": null, "sizes": {"2XL": 5343, "3XL": 5344, "L": 5341, "M": 5340, "S": 5339, "XL": 5342, "XS": 5338, "4XL": 52142, "5XL": 52147}}, "White": {"hex": "#ffffff", "hex2": null, "sizes": {"2XL": 4877, "3XL": 4878, "L": 4875, "M": 4874, "S": 4873, "XL": 4876, "XS": 4872, "4XL": 52143, "5XL": 52148}}}}, "sweatshirt": {"id": 145, "title": "Unisex Crew Neck Sweatshirt | Gildan 18000", "colors": {"Ash": {"hex": "#ededed", "hex2": null, "sizes": {"2XL": 18759, "3XL": 18760, "4XL": 18761, "5XL": 18762, "L": 18757, "M": 18756, "S": 18755, "XL": 18758}}, "Black": {"hex": "#0b0b0b", "hex2": null, "sizes": {"2XL": 5438, "3XL": 5439, "4XL": 5440, "5XL": 5441, "L": 5436, "M": 5435, "S": 5434, "XL": 5437}}, "Carolina Blue": {"hex": "#8DB7F6", "hex2": null, "sizes": {"2XL": 20598, "3XL": 20599, "L": 20596, "M": 20595, "S": 20594, "XL": 20597}}, "Charcoal": {"hex": "#534E4A", "hex2": null, "sizes": {"2XL": 16886, "3XL": 16887, "4XL": 22661, "5XL": 22662, "L": 16884, "M": 16883, "S": 16882, "XL": 16885}}, "Dark Chocolate": {"hex": "#35241b", "hex2": null, "sizes": {"2XL": 5462, "3XL": 5463, "4XL": 5464, "5XL": 5465, "L": 5460, "M": 5459, "S": 5458, "XL": 5461}}, "Dark Heather": {"hex": "#46484d", "hex2": null, "sizes": {"2XL": 10837, "3XL": 10838, "4XL": 10839, "5XL": 10840, "L": 10835, "M": 10834, "S": 10833, "XL": 10836}}, "Forest Green": {"hex": "#1A3626", "hex2": null, "sizes": {"2XL": 18767, "3XL": 18768, "4XL": 18769, "5XL": 18770, "L": 18765, "M": 18764, "S": 18763, "XL": 18766}}, "Gold": {"hex": "#FFAF24", "hex2": null, "sizes": {"2XL": 20582, "3XL": 20583, "L": 20580, "M": 20579, "S": 20578, "XL": 20581}}, "Graphite Heather": {"hex": "#686868", "hex2": null, "sizes": {"2XL": 22646, "3XL": 22647, "4XL": 22648, "5XL": 22649, "L": 22644, "M": 22643, "S": 22642, "XL": 22645}}, "Heather Deep Royal": {"hex": "#6898f2", "hex2": null, "sizes": {"2XL": 23661, "3XL": 23662, "L": 23659, "M": 23658, "S": 23657, "XL": 23660}}, "Heliconia": {"hex": "#F63880", "hex2": null, "sizes": {"2XL": 20590, "3XL": 20591, "4XL": 20592, "5XL": 20593, "L": 20588, "M": 20587, "S": 20586, "XL": 20589}}, "Indigo Blue": {"hex": "#395d82", "hex2": null, "sizes": {"2XL": 5470, "3XL": 5471, "L": 5468, "M": 5467, "S": 5466, "XL": 5469}}, "Irish Green": {"hex": "#00B365", "hex2": null, "sizes": {"2XL": 5454, "3XL": 5455, "4XL": 5456, "5XL": 5457, "L": 5452, "M": 5451, "S": 5450, "XL": 5453}}, "Light Blue": {"hex": "#a1c5e1", "hex2": null, "sizes": {"2XL": 7864, "3XL": 7865, "L": 7862, "M": 7861, "S": 7860, "XL": 7863}}, "Light Pink": {"hex": "#f3d4e3", "hex2": null, "sizes": {"2XL": 7872, "3XL": 7873, "L": 7870, "M": 7869, "S": 7868, "XL": 7871}}, "Maroon": {"hex": "#651d32", "hex2": null, "sizes": {"2XL": 5494, "L": 5492, "M": 5491, "S": 5490, "XL": 5493}}, "Military Green": {"hex": "#7e8560", "hex2": null, "sizes": {"2XL": 13009, "3XL": 13010, "L": 13007, "M": 13006, "S": 13005, "XL": 13008}}, "Navy": {"hex": "#050c1d", "hex2": null, "sizes": {"2XL": 5502, "3XL": 5503, "4XL": 5504, "5XL": 5505, "L": 5500, "M": 5499, "S": 5498, "XL": 5501}}, "Orange": {"hex": "#ff5723", "hex2": null, "sizes": {"2XL": 22654, "3XL": 22655, "4XL": 22656, "5XL": 22657, "L": 22652, "M": 22651, "S": 22650, "XL": 22653}}, "Purple": {"hex": "#4A1C7D", "hex2": null, "sizes": {"2XL": 20606, "3XL": 20607, "L": 20604, "M": 20603, "S": 20602, "XL": 20605}}, "Red": {"hex": "#da0a1a", "hex2": null, "sizes": {"2XL": 5446, "3XL": 5447, "4XL": 5448, "5XL": 5449, "L": 5444, "M": 5443, "S": 5442, "XL": 5445}}, "Royal": {"hex": "#1D50A4", "hex2": null, "sizes": {"2XL": 16874, "3XL": 16875, "L": 16872, "M": 16871, "S": 16870, "XL": 16873}}, "Sand": {"hex": "#e7d3b3", "hex2": null, "sizes": {"2XL": 16880, "3XL": 16881, "L": 16878, "M": 16877, "S": 16876, "XL": 16879}}, "Sport Grey": {"hex": "#ccccce", "hex2": null, "sizes": {"2XL": 5518, "3XL": 5519, "4XL": 5520, "5XL": 5521, "L": 5516, "M": 5515, "S": 5514, "XL": 5517}}, "White": {"hex": "#ffffff", "hex2": null, "sizes": {"2XL": 5430, "3XL": 5431, "4XL": 5432, "5XL": 5433, "L": 5428, "M": 5427, "S": 5426, "XL": 5429}}}}, "mug": {"id": 19, "title": "White Glossy Mug", "colors": {"White": {"hex": "#ffffff", "hex2": null, "sizes": {"11 oz": 1320, "15 oz": 4830, "20 oz": 16586}}}}, "hat": {"id": 206, "title": "Classic Dad Hat | Yupoong 6245CM", "colors": {"Black": {"hex": "#181717", "hex2": null, "sizes": {"One size": 7854}}, "Cranberry": {"hex": "#a3001b", "hex2": null, "sizes": {"One size": 12735}}, "Dark Grey": {"hex": "#39353a", "hex2": null, "sizes": {"One size": 12736}}, "Green Camo": {"hex": "#415446", "hex2": "#9e7853", "sizes": {"One size": 9794}}, "Khaki": {"hex": "#b49771", "hex2": null, "sizes": {"One size": 7855}}, "Light Blue": {"hex": "#b5cbda", "hex2": null, "sizes": {"One size": 7856}}, "Navy": {"hex": "#182031", "hex2": null, "sizes": {"One size": 7857}}, "Pink": {"hex": "#fab2ba", "hex2": null, "sizes": {"One size": 7858}}, "Spruce": {"hex": "#183a31", "hex2": null, "sizes": {"One size": 8745}}, "Stone": {"hex": "#d6bdad", "hex2": null, "sizes": {"One size": 7859}}, "White": {"hex": "#ffffff", "hex2": null, "sizes": {"One size": 7853}}}}, "sticker": {"id": 358, "title": "Kiss-Cut Stickers", "colors": {"White": {"hex": "#ffffff", "hex2": null, "sizes": {"3″×3″": 10163, "4″×4″": 10164, "5.5″×5.5″": 10165, "15″×3.75″": 16362}}}}};
+const defaults = {product:"tee",color:"White",size:"M",primary:"",secondary:"",primarySide:"back"};
 const settings = {retainSecondary:true, allowRepeats:true, allowBlank:false};
 const initial = () => ({...defaults,cart:[]});
 const positions = state => products[state.product].back
   ? [{label:"Back", art:state[state.primarySide==="back"?"primary":"secondary"]},
      {label:"Chest", art:state[state.primarySide==="back"?"secondary":"primary"]}]
   : [{label:products[state.product].position, art:state.primary}];
-const canAdd = state => settings.allowBlank || positions(state).some(print=>print.art);
+const variant = state => catalog[state.product].colors[state.color]?.sizes[state.size];
+const canAdd = state => Boolean(variant(state)) && (settings.allowBlank || positions(state).some(print=>print.art));
+const defaultColors = {tee:"White",sweatshirt:"Sport Grey",hat:"Khaki",mug:"White",sticker:"White"};
+const sizeOrder = ["XS","S","M","L","XL","2XL","3XL","4XL","5XL"];
+function sizesFor(product,color) {
+  return Object.keys(catalog[product].colors[color].sizes).sort((a,b) => {
+    if(sizeOrder.includes(a) && sizeOrder.includes(b)) return sizeOrder.indexOf(a)-sizeOrder.indexOf(b);
+    return a.localeCompare(b,undefined,{numeric:true});
+  });
+}
+function chooseVariant(state,product,color) {
+  const sizes = sizesFor(product,color);
+  return {...state,product,color,size:sizes.includes(state.size)?state.size:sizes.includes("M")?"M":sizes[0]};
+}
 function change(state, action) {
   switch(action.type) {
-    case "product": return {...state,product:action.value,secondary:products[action.value].back || settings.retainSecondary ? state.secondary : ""};
+    case "product": {
+      if (state.product === action.value) return state;
+      const selected = chooseVariant(state,action.value,defaultColors[action.value]);
+      return {...selected,secondary:products[action.value].back || settings.retainSecondary ? state.secondary : ""};
+    }
+    case "color": return chooseVariant(state,state.product,action.value);
+    case "size": return {...state,size:action.value};
     case "art": {
       const other = action.slot==="primary"?"secondary":"primary";
       return {...state,[action.slot]:action.value,[other]:!settings.allowRepeats && state[other]===action.value?"":state[other]};
     }
     case "swap": return products[state.product].back ? {...state,primarySide:state.primarySide==="back"?"chest":"back"} : state;
-    case "add": return canAdd(state) ? {...state,cart:[...state.cart,{product:state.product,prints:positions(state)}]} : state;
+    case "add": return canAdd(state) ? {...state,cart:[...state.cart,{product:state.product,color:state.color,size:state.size,variantId:variant(state),prints:positions(state)}]} : state;
     case "reset": return {...initial(),cart:state.cart};
     default: return state;
   }
@@ -186,10 +223,24 @@ function run(action) {
   state=action.type==="clear"?{...state,primary:"",secondary:""}:change(state,action);
   render(action.type==="add"?"Added to the preview cart.":"");
 }
+const garmentShapes = {
+  tee:"36,180 145,98 242,62 262,52 288,58 338,58 365,51 384,59 472,91 590,182 519,281 488,267 493,578 131,578 138,268 109,282",
+  "tee-back":"36,180 145,98 245,60 260,52 287,57 338,57 365,51 384,59 472,91 590,182 519,281 488,267 493,578 131,578 138,268 109,282",
+  sweatshirt:"27,538 23,453 52,318 101,204 133,135 194,88 245,58 262,53 290,58 338,58 365,54 383,60 448,88 499,129 526,194 576,316 597,417 597,477 587,550 529,561 507,503 487,438 474,498 469,552 151,552 143,498 134,438 110,505 88,557 34,551",
+  "sweatshirt-back":"29,557 24,467 53,335 94,224 125,155 174,103 235,69 256,54 276,60 349,60 368,54 392,65 447,91 494,132 532,197 577,309 597,425 598,485 585,560 537,562 517,509 487,438 473,502 464,552 371,542 253,545 151,553 144,502 135,438 110,505 92,554 39,557",
+  hat:"68,374 79,301 98,221 137,157 192,119 249,99 289,94 297,83 325,81 339,94 393,99 448,119 497,151 529,205 548,283 557,375 545,402 544,465 520,501 473,509 409,485 347,476 276,479 223,487 155,507 113,516 85,500 79,465 82,402"
+};
 function figure(label,blank,art,x,y,size) {
   const f=document.createElement("figure");
   const scene=document.createElement("div"); scene.className="scene";
   if(blank){const image=new Image();image.className="blank";image.src=blanks[blank];image.alt="";scene.append(image);}
+  if (garmentShapes[blank] && state.color !== defaultColors[state.product]) {
+    const tint = document.createElement("div");
+    tint.className = "product-color";
+    tint.style.setProperty("--product-color",catalog[state.product].colors[state.color].hex);
+    tint.style.clipPath = "polygon("+garmentShapes[blank].split(" ").map(point=>point.split(",").map(n=>(Number(n)/6.27).toFixed(2)+"%").join(" ")).join(",")+")";
+    scene.append(tint);
+  }
   if(art){
     const image=new Image();image.className="print";image.src=artwork[art].src;image.alt=artName(art);
     if (artwork[art].lightInk) image.classList.add("light-ink");
@@ -199,8 +250,35 @@ function figure(label,blank,art,x,y,size) {
   const caption=document.createElement("figcaption");caption.textContent=label;
   f.append(scene,caption);return f;
 }
+$("size").onchange = event => run({type:"size",value:event.target.value});
+function renderVariants() {
+  const product = catalog[state.product];
+  const swatches = $("swatches");
+  if (swatches.dataset.product !== state.product) {
+    swatches.dataset.product = state.product;
+    swatches.replaceChildren(...Object.entries(product.colors).map(([name,color]) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "swatch";
+      button.dataset.color = name;
+      button.setAttribute("aria-label",name);
+      button.title = name;
+      const chip = document.createElement("span");
+      chip.style.background = color.hex2 ? `linear-gradient(135deg,${color.hex} 50%,${color.hex2} 50%)` : color.hex;
+      button.append(chip);
+      button.onclick = () => run({type:"color",value:name});
+      return button;
+    }));
+  }
+  for (const button of swatches.children) button.setAttribute("aria-pressed",String(button.dataset.color===state.color));
+  $("color-name").textContent = state.color;
+  $("size").replaceChildren(...sizesFor(state.product,state.color).map(size=>new Option(size,size)));
+  $("size").value = state.size;
+  $("catalog-note").textContent = product.title+" · Printful U.S. catalog snapshot, Nov 13, 2026. Mockup colors are approximate.";
+}
 function render(notice="") {
   const product=products[state.product], prints=positions(state), apparel=product.back;
+  renderVariants();
   for(const [key,button] of productButtons)button.setAttribute("aria-pressed",String(key===state.product));
   $("secondary-field").hidden = !apparel;
   if (!apparel) $("secondary").open = false;
@@ -219,14 +297,14 @@ function render(notice="") {
     figure("Back",state.product+"-back",prints[0].art,50,46,48),
     figure("Front",state.product,prints[1].art,64,31,14)
   ]:[figure(product.position,state.product==="sticker"?null:state.product,state.primary,product.x,product.y,product.size)]));
-  $("summary").replaceChildren(...[["Product",product.name],...prints.map(p=>[p.label,artName(p.art)])].flatMap(([label,value])=>{
+  $("summary").replaceChildren(...[["Product",product.name],["Color",state.color],["Size",state.size],...prints.map(p=>[p.label,artName(p.art)])].flatMap(([label,value])=>{
     const dt=document.createElement("dt"),dd=document.createElement("dd");dt.textContent=label;dd.textContent=value;return [dt,dd];
   }));
   $("add").disabled=!canAdd(state);
   $("notice").textContent=notice || (!canAdd(state)?"Choose at least one design to add this item.":"");
   $("cart-empty").hidden=state.cart.length>0;
   $("cart").replaceChildren(...state.cart.map(item=>{
-    const li=document.createElement("li");li.textContent=products[item.product].name+" · "+item.prints.map(p=>p.label+" — "+artName(p.art)).join(" · ");return li;
+    const li=document.createElement("li");li.textContent=products[item.product].name+" · "+item.color+" · "+item.size+" · "+item.prints.map(p=>p.label+" — "+artName(p.art)).join(" · ");return li;
   }));
 }
 const tabs=[...document.querySelectorAll("[data-example]")];

@@ -34,7 +34,7 @@ Static HTML, CSS, and JavaScript. The standalone prototype uses the existing sto
 
 ## Frontier
 
-- Awaiting review of the combined dropdowns.
+- [Pick a Printful color and size](tickets/open/printful-colors.md)
 
 ## Fog
 

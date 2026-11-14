@@ -21,3 +21,6 @@ The chosen product and the artwork assigned to its print locations. Both locatio
 
 **Preview cart**:
 A list of customizations the shopper has chosen to keep while trying the customizer. An item needs artwork in at least one print location to be added.
+
+**Printful variant**:
+The provider’s catalog entry for a specific product, color, and size. The preview cart records its ID with the shopper’s print locations.
