@@ -28,3 +28,7 @@ Verify the offered combinations against the source snapshot and try changing pro
 ## Review evidence
 
 [Local prototype](http://10.200.0.59:18763/). Compared all 294 U.S. in-stock color, size, and variant ID rows to Printful’s public catalog on November 13, 2026. Verified selection and preview cart behavior at 375px and 1440px. The color preview uses tinted mockups. Stock and exact placement eligibility must be checked before order submission.
+
+## Expanded shop preview
+
+Joe requested the front view first, independently selectable logo ink colors, and a larger mug print with three preview sizes. The black and white originals now share one entry per design. The [public customizer](https://shop.fwbp.net/customizer) offers 17 Printful models, including the new hat, beanie, tee and mug styles, plus the tumbler, straw-lid bottle, long-sleeve tee, and zip hoodie. The snapshot carries 1,306 U.S. color and size variants. Verified the live page at 375px and 1440px. Some back views use sample garments. Preview ink colors and artwork dimensions need production verification, including embroidery compatibility.
